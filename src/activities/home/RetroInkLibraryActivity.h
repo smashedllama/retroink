@@ -42,6 +42,12 @@ class RetroInkLibraryActivity final : public Activity {
   uint32_t stripStart_ = 0;  // leftmost visible spine (page-aligned)
   uint32_t lastShownScanCount_ = UINT32_MAX;
   bool scanFinished_ = false;
+  // A fresh/changed-library scan can take a long time with many or large
+  // books (see docs/whats-different.md's Real Library section), so it's
+  // gated behind an explicit confirm instead of running the moment the
+  // screen opens. True between openCached()/refreshLibrary() finding the
+  // cache stale and the user actually choosing to scan now.
+  bool awaitingScanConfirmation_ = false;
   bool moveFailed_ = false;
   GfxRenderer::Orientation previousOrientation_ = GfxRenderer::Orientation::Portrait;
 
@@ -78,6 +84,7 @@ class RetroInkLibraryActivity final : public Activity {
 
   void rebuildView();
   void refreshLibrary();
+  void confirmAndBeginScan();
   void showActions();
   void showShelves();
   void showSort();

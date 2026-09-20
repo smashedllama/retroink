@@ -104,4 +104,9 @@ class RetroInkLibraryCatalog {
   uint32_t scannedCount() const { return count_; }
   uint32_t viewCount() const { return viewCount_; }
   const std::string& currentPath() const { return currentPath_; }
+  // Book count from the catalog this scan is replacing, 0 before/without a
+  // scan in progress. A rough denominator for a progress estimate only --
+  // not authoritative, since books added or removed during this scan make
+  // it drift from the real eventual total.
+  uint32_t previousCount();
 };

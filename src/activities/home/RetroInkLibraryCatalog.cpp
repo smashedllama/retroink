@@ -397,6 +397,11 @@ bool RetroInkLibraryCatalog::beginScan() {
   return true;
 }
 
+uint32_t RetroInkLibraryCatalog::previousCount() {
+  if (!oldFile_ || oldFile_.fileSize64() < 12) return 0;
+  return static_cast<uint32_t>((oldFile_.fileSize64() - 12) / sizeof(Record));
+}
+
 bool RetroInkLibraryCatalog::openCached() {
   close();
   count_ = viewCount_ = 0;
@@ -522,7 +527,16 @@ bool RetroInkLibraryCatalog::stepScan() {
   // metadataFor so it can skip a second open+read when nothing changed.
   const uint64_t sizeHint = child.fileSize64();
   uint16_t mtimeDate = 0, mtimeTime = 0;
+#ifndef SIMULATOR
+  // The simulator's HalFile comes from a separate vendored dependency
+  // (platformio.ini's `lib_ignore = hal` for simulator envs), not
+  // lib/hal/HalStorage.*, and doesn't implement this. Leaving both at 0
+  // makes metadataFor() treat the timestamp as unknown and always
+  // fall back to the full content-hash fingerprint, same as before this
+  // optimization existed -- correct, just without the speedup, which
+  // doesn't matter for simulator testing.
   child.getLastWriteTime(mtimeDate, mtimeTime);
+#endif
   child.close();
   if (name[0] == '.' || strcmp(name, "") == 0) return true;
   const std::string path = frame.path == "/" ? std::string("/") + name : frame.path + "/" + name;

@@ -54,6 +54,9 @@ enum class SmokeStep : uint8_t {
   Start,
   Home,
   Library,
+  LibraryConfirmScanPress,
+  LibraryConfirmScanRelease,
+  LibraryScanComplete,
   LibraryShelfDownPress,
   LibraryShelfDownRelease,
   LibraryShelfDown,
@@ -719,7 +722,28 @@ class SimulatorSmokeTest {
         break;
 
       case SmokeStep::Library:
+        // A fresh/changed library now opens on a scan-confirmation screen
+        // (see RetroInkLibraryActivity::awaitingScanConfirmation_) rather
+        // than scanning immediately; Confirm dismisses it and starts the
+        // scan.
         if (!activityManager.isCurrentActivityNamed("RetroInkLibrary")) fail("Library did not open");
+        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Confirm);
+        step = SmokeStep::LibraryConfirmScanPress;
+        break;
+
+      case SmokeStep::LibraryConfirmScanPress:
+        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Confirm);
+        step = SmokeStep::LibraryConfirmScanRelease;
+        break;
+
+      case SmokeStep::LibraryConfirmScanRelease:
+        // Give the scan itself room to finish (same 40-frame allowance the
+        // Library entry used before this confirm screen existed).
+        queueStep("RetroInk Library scan complete", SmokeStep::LibraryScanComplete, 40);
+        break;
+
+      case SmokeStep::LibraryScanComplete:
+        if (!activityManager.isCurrentActivityNamed("RetroInkLibrary")) fail("Library scan did not return to browsing");
         step = SmokeStep::LibraryShelfDownPress;
         break;
 

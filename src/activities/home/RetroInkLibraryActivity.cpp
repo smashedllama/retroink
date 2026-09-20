@@ -134,7 +134,7 @@ void RetroInkLibraryActivity::onEnter() {
   rebuildShelfCycle();
   shelfIndex_ = shelfIndexForToken(SETTINGS.libraryDefaultShelf);
   scanFinished_ = catalog_.openCached();
-  if (!scanFinished_) scanFinished_ = !catalog_.beginScan();
+  awaitingScanConfirmation_ = !scanFinished_;
   selected_ = stripStart_ = 0;
   rowShelfIdValid_ = false;
   filteredRows_.clear();
@@ -278,11 +278,20 @@ void RetroInkLibraryActivity::rebuildView() {
 
 void RetroInkLibraryActivity::refreshLibrary() {
   catalog_.close();
-  scanFinished_ = !catalog_.beginScan();
+  scanFinished_ = false;
+  awaitingScanConfirmation_ = true;
   selected_ = stripStart_ = 0;
   lastShownScanCount_ = UINT32_MAX;
   rowShelfIdValid_ = false;
   filteredRows_.clear();
+  requestUpdate();
+}
+
+void RetroInkLibraryActivity::confirmAndBeginScan() {
+  awaitingScanConfirmation_ = false;
+  lastShownScanCount_ = UINT32_MAX;
+  scanFinished_ = !catalog_.beginScan();
+  if (scanFinished_) rebuildView();
   requestUpdate();
 }
 
@@ -458,6 +467,10 @@ void RetroInkLibraryActivity::loop() {
     if (catalog_.isScanning()) catalog_.pauseScan();
     finish(); return;
   }
+  if (awaitingScanConfirmation_) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) confirmAndBeginScan();
+    return;
+  }
   if (catalog_.isScanning()) {
     if (!catalog_.stepScan()) {
       scanFinished_ = !catalog_.isScanning();
@@ -514,11 +527,37 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
   renderer.fillRect(x + 3, top + 3, w, bottom - top, true);
   renderer.fillRect(x, top, w, bottom - top, false);
   renderer.drawRect(x, top, w, bottom - top);
-  if (catalog_.isScanning()) {
+  if (awaitingScanConfirmation_) {
+    renderer.drawCenteredText(UI_12_FONT_ID, top + 35, tr(STR_LIBRARY_SCAN_CONFIRM_TITLE), true, EpdFontFamily::BOLD);
+    const auto lines = renderer.wrappedText(UI_10_FONT_ID, tr(STR_LIBRARY_SCAN_EXPLANATION), w - 60, 6);
+    const int lineHeight = renderer.getLineHeight(UI_10_FONT_ID) + 6;
+    int ly = top + 90;
+    for (const auto& line : lines) {
+      renderer.drawCenteredText(UI_10_FONT_ID, ly, line.c_str());
+      ly += lineHeight;
+    }
+    const auto labels = mappedInput.mapLabels(tr(STR_LIBRARY_SCAN_LATER), tr(STR_LIBRARY_SCAN_NOW), "", "");
+    GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  } else if (catalog_.isScanning()) {
     renderer.drawCenteredText(UI_12_FONT_ID, top + 35, tr(STR_LIBRARY_SCAN), true, EpdFontFamily::BOLD);
-    char count[32]; snprintf(count, sizeof(count), "%lu", static_cast<unsigned long>(catalog_.scannedCount()));
-    renderer.drawCenteredText(UI_12_FONT_ID, top + 100, count, true, EpdFontFamily::BOLD);
-    drawFitted(renderer, UI_10_FONT_ID, x + 20, top + 165, w - 40, catalog_.currentPath().c_str(), false);
+    const uint32_t scanned = catalog_.scannedCount();
+    const uint32_t estimatedTotal = catalog_.previousCount();
+    char count[48];
+    if (estimatedTotal > 0) {
+      snprintf(count, sizeof(count), "~%lu / %lu", static_cast<unsigned long>(scanned),
+               static_cast<unsigned long>(estimatedTotal));
+    } else {
+      snprintf(count, sizeof(count), "%lu", static_cast<unsigned long>(scanned));
+    }
+    renderer.drawCenteredText(UI_12_FONT_ID, top + 95, count, true, EpdFontFamily::BOLD);
+    if (estimatedTotal > 0) {
+      // Books added/removed since the last scan make this an estimate, not
+      // an exact percentage -- clamp so a library that grew doesn't draw a
+      // bar past full.
+      GUI.drawProgressBar(renderer, Rect{x + 30, top + 125, w - 60, m.progressBarHeight},
+                          std::min(scanned, estimatedTotal), estimatedTotal);
+    }
+    drawFitted(renderer, UI_10_FONT_ID, x + 20, top + 170, w - 40, catalog_.currentPath().c_str(), false);
   } else if (catalog_.failed()) {
     renderer.drawCenteredText(UI_10_FONT_ID, top + 100, tr(STR_LIBRARY_SD_ERROR));
   } else {
