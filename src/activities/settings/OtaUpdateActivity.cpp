@@ -60,6 +60,17 @@ void OtaUpdateActivity::buildChangelogLines(const int maxWidth) {
   changelogLines.clear();
   changelogScrollLine = 0;
 
+#ifdef SIMULATOR
+  // The simulator's OtaUpdater stub (crossink-simulator's simulator_ota.cpp,
+  // a separate vendored dependency from src/network/OtaUpdater.cpp) always
+  // reports NO_UPDATE and has no getReleaseNotes(), so this state is never
+  // reached there anyway -- checkForUpdate() short-circuits before this is
+  // called. Keep the function callable unconditionally rather than guarding
+  // every call site.
+  (void)maxWidth;
+  changelogVisibleLines = 0;
+  return;
+#else
   const std::string& body = updater.getReleaseNotes();
   if (body.empty()) {
     changelogVisibleLines = 0;
@@ -94,6 +105,7 @@ void OtaUpdateActivity::buildChangelogLines(const int maxWidth) {
   int top = 0, bottom = 0, lineHeight = 1;
   changelogGeometry(top, bottom, lineHeight);
   changelogVisibleLines = std::max(1, (bottom - top) / std::max(1, lineHeight));
+#endif
 }
 
 void OtaUpdateActivity::scrollChangelog(const int delta) {
