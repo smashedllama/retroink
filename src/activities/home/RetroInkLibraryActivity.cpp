@@ -54,6 +54,32 @@ const char* sortLabel(RetroInkLibraryCatalog::Sort sort) {
   }
 }
 
+struct ConfirmActionRects {
+  Rect scanNow;
+  Rect back;
+};
+
+ConfirmActionRects getScanConfirmActionRects(const int x, const int w, const int buttonsTop) {
+  constexpr int gap = 16;
+  constexpr int buttonH = 60;
+  const int buttonW = (w - gap) / 2;
+  return {Rect{x, buttonsTop, buttonW, buttonH}, Rect{x + buttonW + gap, buttonsTop, buttonW, buttonH}};
+}
+
+bool containsPoint(const Rect& rect, const int x, const int y) {
+  return x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height;
+}
+
+void drawConfirmButton(const GfxRenderer& r, const Rect& rect, const char* label) {
+  r.fillRect(rect.x + 3, rect.y + 3, rect.width, rect.height);
+  r.fillRect(rect.x, rect.y, rect.width, rect.height, false);
+  r.drawRect(rect.x, rect.y, rect.width, rect.height);
+  const int textWidth = r.getTextWidth(UI_12_FONT_ID, label, EpdFontFamily::BOLD);
+  const int textHeight = r.getLineHeight(UI_12_FONT_ID);
+  r.drawText(UI_12_FONT_ID, rect.x + (rect.width - textWidth) / 2, rect.y + (rect.height - textHeight) / 2, label,
+            true, EpdFontFamily::BOLD);
+}
+
 void drawFitted(const GfxRenderer& r, int font, int x, int y, int width, const char* text, bool bold) {
   char line[224];
   snprintf(line, sizeof(line), "%s", text);
@@ -295,6 +321,19 @@ void RetroInkLibraryActivity::confirmAndBeginScan() {
   requestUpdate();
 }
 
+void RetroInkLibraryActivity::computeScanConfirmActionRects(Rect& scanNow, Rect& back) const {
+  const auto& m = UITheme::getInstance().getMetrics();
+  const int x = m.contentSidePadding;
+  const int w = renderer.getScreenWidth() - x * 2;
+  const int top = CompactHeader::contentTop(m) + 8;
+  const auto lines = renderer.wrappedText(UI_10_FONT_ID, tr(STR_LIBRARY_SCAN_EXPLANATION), w - 60, 6);
+  const int lineHeight = renderer.getLineHeight(UI_10_FONT_ID) + 6;
+  const int textBottom = top + 90 + static_cast<int>(lines.size()) * lineHeight;
+  const auto rects = getScanConfirmActionRects(x + 20, w - 40, textBottom + 20);
+  scanNow = rects.scanNow;
+  back = rects.back;
+}
+
 void RetroInkLibraryActivity::showShelves() {
   std::vector<std::string> choices;
   choices.reserve(shelfCycle_.size());
@@ -468,7 +507,14 @@ void RetroInkLibraryActivity::loop() {
     finish(); return;
   }
   if (awaitingScanConfirmation_) {
-    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) confirmAndBeginScan();
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) { confirmAndBeginScan(); return; }
+    int x = 0, y = 0;
+    if (mappedInput.wasScreenTapped(x, y)) {
+      Rect scanNowRect, backRect;
+      computeScanConfirmActionRects(scanNowRect, backRect);
+      if (containsPoint(scanNowRect, x, y)) { confirmAndBeginScan(); return; }
+      if (containsPoint(backRect, x, y)) { finish(); return; }
+    }
     return;
   }
   if (catalog_.isScanning()) {
@@ -536,7 +582,14 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
       renderer.drawCenteredText(UI_10_FONT_ID, ly, line.c_str());
       ly += lineHeight;
     }
-    const auto labels = mappedInput.mapLabels(tr(STR_LIBRARY_SCAN_LATER), tr(STR_LIBRARY_SCAN_NOW), "", "");
+    // Real, legible buttons in the content area (not just the tiny bottom
+    // hint bar, which also disappears entirely on touch devices) -- this is
+    // a decision the user should not have to guess at from a cramped hint.
+    Rect scanNowRect, backRect;
+    computeScanConfirmActionRects(scanNowRect, backRect);
+    drawConfirmButton(renderer, scanNowRect, tr(STR_LIBRARY_SCAN_NOW));
+    drawConfirmButton(renderer, backRect, tr(STR_BACK));
+    const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_LIBRARY_SCAN_NOW_SHORT), "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   } else if (catalog_.isScanning()) {
     renderer.drawCenteredText(UI_12_FONT_ID, top + 35, tr(STR_LIBRARY_SCAN), true, EpdFontFamily::BOLD);

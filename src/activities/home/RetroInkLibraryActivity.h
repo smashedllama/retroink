@@ -8,6 +8,8 @@
 #include "RetroInkLibraryCatalog.h"
 #include "activities/Activity.h"
 
+struct Rect;
+
 class RetroInkLibraryActivity final : public Activity {
   // One entry per selectable shelf: the 5 built-ins, then the custom shelves
   // from RetroInkCustomShelves::shelves() in order. customId == kNoShelf
@@ -85,6 +87,7 @@ class RetroInkLibraryActivity final : public Activity {
   void rebuildView();
   void refreshLibrary();
   void confirmAndBeginScan();
+  void computeScanConfirmActionRects(Rect& scanNow, Rect& back) const;
   void showActions();
   void showShelves();
   void showSort();
