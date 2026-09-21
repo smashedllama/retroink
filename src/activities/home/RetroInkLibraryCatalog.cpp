@@ -174,10 +174,7 @@ bool RetroInkLibraryCatalog::supported(const char* path) {
          FsHelpers::hasTxtExtension(name) || FsHelpers::hasMarkdownExtension(name);
 }
 
-uint64_t RetroInkLibraryCatalog::fingerprintFor(const std::string& path, uint64_t& size) {
-  FsFile file;
-  if (!Storage.openFileForRead("Library", path, file)) return 0;
-  size = file.fileSize64();
+uint64_t RetroInkLibraryCatalog::fingerprintForOpenFile(HalFile& file, const uint64_t size) {
   uint64_t hash = 14695981039346656037ULL;
   for (unsigned i = 0; i < 8; ++i) { hash ^= (size >> (i * 8)) & 0xff; hash *= 1099511628211ULL; }
   uint8_t buf[128];  // bounded stack; sample only the first and last 4 KB
@@ -191,6 +188,14 @@ uint64_t RetroInkLibraryCatalog::fingerprintFor(const std::string& path, uint64_
       left -= got;
     }
   }
+  return hash;
+}
+
+uint64_t RetroInkLibraryCatalog::fingerprintFor(const std::string& path, uint64_t& size) {
+  FsFile file;
+  if (!Storage.openFileForRead("Library", path, file)) return 0;
+  size = file.fileSize64();
+  const uint64_t hash = fingerprintForOpenFile(file, size);
   file.close();
   return hash;
 }
@@ -239,8 +244,8 @@ bool RetroInkLibraryCatalog::findMoveSource(const std::string& path, std::string
   hints.close(); return false;
 }
 
-bool RetroInkLibraryCatalog::metadataFor(const std::string& path, const uint64_t sizeHint, const uint16_t mtimeDate,
-                                         const uint16_t mtimeTime, Record& record) {
+bool RetroInkLibraryCatalog::metadataFor(const std::string& path, HalFile& openFile, const uint64_t sizeHint,
+                                         const uint16_t mtimeDate, const uint16_t mtimeTime, Record& record) {
   record = Record{};
   if (path.size() >= sizeof(record.path)) {
     LOG_ERR("Library", "Book path too long for catalog: %s", path.c_str());
@@ -267,8 +272,10 @@ bool RetroInkLibraryCatalog::metadataFor(const std::string& path, const uint64_t
     record.fingerprint = scratchB_.fingerprint;
     unchanged = true;
   } else {
-    uint64_t hashedSize = 0;
-    record.fingerprint = fingerprintFor(path, hashedSize);
+    // Read straight from the walk's already-open handle instead of
+    // reopening the file by path -- on a first scan every book takes this
+    // branch, so this halves the SD opens for the whole scan.
+    record.fingerprint = fingerprintForOpenFile(openFile, sizeHint);
     if (!record.fingerprint) return false;
     unchanged = haveOld && scratchB_.fingerprint == record.fingerprint;
   }
@@ -537,20 +544,27 @@ bool RetroInkLibraryCatalog::stepScan() {
   // doesn't matter for simulator testing.
   child.getLastWriteTime(mtimeDate, mtimeTime);
 #endif
-  child.close();
-  if (name[0] == '.' || strcmp(name, "") == 0) return true;
+  if (name[0] == '.' || strcmp(name, "") == 0) { child.close(); return true; }
   const std::string path = frame.path == "/" ? std::string("/") + name : frame.path + "/" + name;
   currentPath_ = path;
   if (dir) {
+    child.close();
     if (excludedDirectory(name)) return true;
     if (frames_.size() >= 24) { LOG_ERR("Library", "Folder nesting exceeds 24 at %s", path.c_str()); failed_ = true; return false; }
     auto nested = Storage.open(path.c_str());
     if (!nested || !nested.isDirectory()) { failed_ = true; return false; }
     frames_.push_back(Frame{path, std::move(nested), 0});
   } else if (supported(path.c_str())) {
-    if (!metadataFor(path, sizeHint, mtimeDate, mtimeTime, scratchA_) || !writeRecord(scratchA_)) {
-      failed_ = true; LOG_ERR("Library", "Scan paused at %s", path.c_str()); return false;
-    }
+    // child stays open through metadataFor(): a changed/new file's
+    // fingerprint reads straight from this same handle instead of
+    // reopening the file a second time. First scans pay this open cost
+    // for every single book, so this halves the SD opens for the common
+    // "everything is new" case.
+    const bool ok = metadataFor(path, child, sizeHint, mtimeDate, mtimeTime, scratchA_) && writeRecord(scratchA_);
+    child.close();
+    if (!ok) { failed_ = true; LOG_ERR("Library", "Scan paused at %s", path.c_str()); return false; }
+  } else {
+    child.close();
   }
   return true;
 }

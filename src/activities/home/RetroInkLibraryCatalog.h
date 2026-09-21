@@ -68,12 +68,15 @@ class RetroInkLibraryCatalog {
   bool writeRecord(const Record& record);
   bool openComplete();
   bool sortAndWriteIndex(Sort sort, Shelf shelf, const char* output);
-  bool metadataFor(const std::string& path, uint64_t sizeHint, uint16_t mtimeDate, uint16_t mtimeTime,
-                   Record& record);
+  bool metadataFor(const std::string& path, HalFile& openFile, uint64_t sizeHint, uint16_t mtimeDate,
+                   uint16_t mtimeTime, Record& record);
   bool appendOrphan(const Record& record);
   bool preserveOrphans();
   bool scanLegacyHeaders(const char* directory, bool bookmarks);
   static uint64_t fingerprintFor(const std::string& path, uint64_t& size);
+  // Same hash as fingerprintFor, but reads from a file the caller already
+  // has open (the scan walk's own handle) instead of reopening by path.
+  static uint64_t fingerprintForOpenFile(HalFile& file, uint64_t size);
   static bool supported(const char* path);
 
  public:
