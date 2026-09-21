@@ -1,3 +1,17 @@
+## [Unreleased]
+
+### Added
+
+- A dedicated Xteink X4 Pro firmware build, using its ESP32-S3, touch and Home key, frontlight, and native SD-card interface.
+
+### Fixed
+
+- Manual Refresh Screen actions now perform a full panel refresh in menus and books, including restoring grayscale text and images afterward.
+- X4 Pro units with a UC8179 display wake correctly from sleep instead of turning on the frontlight while leaving the book cover on screen.
+- The X4 Pro simulator now enables its Home key and frontlight, so device-specific navigation checks run.
+- Tapping the X4 Pro Home pad now exits an EPUB to Home, including when reader touch input is disabled.
+- Touch menus use a single RetroInk title bar without overlapping titles or status icons, and no longer reserve an empty physical-button strip at the bottom.
+
 ## [RetroInk 0.2.0 test] - 2026-09-15
 
 ### Added
