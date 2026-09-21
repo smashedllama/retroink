@@ -45,10 +45,17 @@ void OtaUpdateActivity::changelogGeometry(int& top, int& bottom, int& lineHeight
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto pageHeight = renderer.getScreenHeight();
   lineHeight = renderer.getLineHeight(UI_10_FONT_ID);
-  const int titleTop = (pageHeight - lineHeight) / 2;
+  // Anchored right below the header, matching confirmContentTop() in
+  // render() -- NOT vertically centered on the whole screen the way the
+  // other, single-line states (Checking/No Update/Failed) are. A changelog
+  // needs every pixel of room it can get; centering it left most of the
+  // screen blank above the text and cut the bottom off with no way to
+  // reach it, which is exactly what was reported.
+  const int confirmTop =
+      metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput) + metrics.verticalSpacing;
   // Below the title, current-version, and new-version lines already drawn
   // above this point in render().
-  top = titleTop + lineHeight * 3 + metrics.verticalSpacing * 3;
+  top = confirmTop + lineHeight * 3 + metrics.verticalSpacing * 3;
   // getOtaActionRects() reserves 80px for the touch Cancel/Update buttons;
   // non-touch devices use the shorter button-hints bar instead, so 80 is
   // the larger of the two and safe for both.
@@ -229,10 +236,16 @@ void OtaUpdateActivity::render(RenderLock&&) {
   if (state == CHECKING_FOR_UPDATE) {
     renderer.drawCenteredText(UI_10_FONT_ID, top, tr(STR_CHECKING_UPDATE));
   } else if (state == WAITING_CONFIRMATION) {
-    renderer.drawCenteredText(UI_10_FONT_ID, top, tr(STR_NEW_UPDATE), true, EpdFontFamily::BOLD);
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, top + height + metrics.verticalSpacing,
+    // Anchored below the header rather than the vertically-centered `top`
+    // the short one-line states use above -- must match changelogGeometry()
+    // exactly, since that's what decides where the changelog text (and the
+    // line count used for scrolling) starts.
+    const int confirmTop =
+        metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput) + metrics.verticalSpacing;
+    renderer.drawCenteredText(UI_10_FONT_ID, confirmTop, tr(STR_NEW_UPDATE), true, EpdFontFamily::BOLD);
+    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, confirmTop + height + metrics.verticalSpacing,
                       (std::string(tr(STR_CURRENT_VERSION)) + CROSSINK_VERSION).c_str());
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, top + height * 2 + metrics.verticalSpacing * 2,
+    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, confirmTop + height * 2 + metrics.verticalSpacing * 2,
                       (std::string(tr(STR_NEW_VERSION)) + updater.getLatestVersion()).c_str());
 
     if (!changelogLines.empty()) {
@@ -376,11 +389,15 @@ void OtaUpdateActivity::loop() {
       return;
     }
 
+    // A full page per press, not one line: with only a handful of lines
+    // visible at once, scrolling by a single line barely moved and read as
+    // "nothing happened" (each press is a real e-ink refresh either way, so
+    // a bigger jump per press is strictly better here).
     if (mappedInput.wasReleased(MappedInputManager::Button::Up)) {
-      scrollChangelog(-1);
+      scrollChangelog(-std::max(1, changelogVisibleLines));
     }
     if (mappedInput.wasReleased(MappedInputManager::Button::Down)) {
-      scrollChangelog(1);
+      scrollChangelog(std::max(1, changelogVisibleLines));
     }
 
     if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
