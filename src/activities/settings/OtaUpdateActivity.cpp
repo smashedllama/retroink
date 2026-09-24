@@ -393,10 +393,18 @@ void OtaUpdateActivity::loop() {
     // visible at once, scrolling by a single line barely moved and read as
     // "nothing happened" (each press is a real e-ink refresh either way, so
     // a bigger jump per press is strictly better here).
-    if (mappedInput.wasReleased(MappedInputManager::Button::Up)) {
+    //
+    // Left/Right as well as Up/Down: the Up/Down hints are drawn into the
+    // third and fourth hint slots, which mapLabels fills from its "previous"
+    // and "next" arguments -- the front buttons along the bottom bezel. Only
+    // listening for the side rocker meant the buttons directly under the
+    // labels did nothing.
+    if (mappedInput.wasReleased(MappedInputManager::Button::Up) ||
+        mappedInput.wasReleased(MappedInputManager::Button::Left)) {
       scrollChangelog(-std::max(1, changelogVisibleLines));
     }
-    if (mappedInput.wasReleased(MappedInputManager::Button::Down)) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Down) ||
+        mappedInput.wasReleased(MappedInputManager::Button::Right)) {
       scrollChangelog(std::max(1, changelogVisibleLines));
     }
 

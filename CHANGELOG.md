@@ -1,3 +1,9 @@
+## [RetroInk 0.4.2] - 2026-09-23
+
+### Fixed
+
+- The OTA update screen's Up and Down hints did nothing. They are drawn into the third and fourth hint slots, which belong to the front buttons along the bottom bezel, but only the side rocker was being read. Both now scroll the changelog, matching how every other list screen handles the pair.
+
 ## [RetroInk 0.4.1] - 2026-09-23
 
 ### Added
