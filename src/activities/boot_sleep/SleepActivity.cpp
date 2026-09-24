@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <new>
 #include <string_view>
 
@@ -28,6 +29,10 @@
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "RecentBooksStore.h"
+#include "components/CalendarView.h"
+#include "components/ClockFormat.h"
+#include "components/EarthPhase.h"
+#include "components/MoonPhase.h"
 #include "SleepCoverAssets.h"
 #include "activities/boot_sleep/BootActivity.h"
 #include "activities/reader/ReaderUtils.h"
@@ -562,6 +567,12 @@ void SleepActivity::onEnter() {
       return renderBookWeekStatsSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::DASHBOARD_SLEEP):
       return renderDashboardSleepScreen();
+    case (CrossPointSettings::SLEEP_SCREEN_MODE::MOON_PHASE_SLEEP):
+      return renderMoonPhaseSleepScreen();
+    case (CrossPointSettings::SLEEP_SCREEN_MODE::DESK_CALENDAR_SLEEP):
+      return renderDeskCalendarSleepScreen();
+    case (CrossPointSettings::SLEEP_SCREEN_MODE::EARTH_PHASE_SLEEP):
+      return renderEarthPhaseSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::RETROINK_ERROR_404_SLEEP):
     case (CrossPointSettings::SLEEP_SCREEN_MODE::RETROINK_INSERT_BOOKMARK_SLEEP):
     case (CrossPointSettings::SLEEP_SCREEN_MODE::RETROINK_SYSTEM_NAP_SLEEP):
@@ -657,6 +668,216 @@ void SleepActivity::renderDefaultSleepScreen() const {
       renderer.truncatedText(SMALL_FONT_ID, buildInfo.c_str(), pageWidth - sleepBuildInfoSideMargin * 2);
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight / 2 + 118, visibleBuildInfo.c_str(), lightSleepScreen);
 #endif
+
+  renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+}
+
+namespace {
+// Same 2x2 checkerboard fill as RetroInkBoot's drawRetroInkDesktop() and
+// System6Theme's own desktop() -- both are file-local to their own
+// translation units, so this is a third small copy rather than a shared
+// export, matching how this exact pattern is already duplicated between
+// those two.
+void drawSystem6Desktop(const GfxRenderer& renderer, const int pageWidth, const int pageHeight) {
+  for (int y = 0; y < pageHeight; y += 2) {
+    for (int x = ((y / 2) & 1) * 2; x < pageWidth; x += 4) {
+      renderer.fillRect(x, y, 2, 2);
+    }
+  }
+}
+}  // namespace
+
+void SleepActivity::renderMoonPhaseSleepScreen() const {
+  const auto pageWidth = renderer.getScreenWidth();
+  const auto pageHeight = renderer.getScreenHeight();
+  renderer.clearScreen();
+  drawSystem6Desktop(renderer, pageWidth, pageHeight);
+
+  float fraction = 0.0f;
+  bool haveDate = false;
+  char dateText[40] = {};
+  if (halClock.isAvailable()) {
+    uint16_t year;
+    uint8_t month, day, hour, minute;
+    if (halClock.getDateTime(year, month, day, hour, minute)) {
+      fraction = MoonPhase::phaseFraction(year, month, day, hour, minute);
+      haveDate = formatLocalDate(dateText, sizeof(dateText));
+    }
+  }
+
+  // A System6 window (double border, pinstriped title bar with a knocked-
+  // out label) holding the disc, matching the rest of the boot/sleep/charge
+  // screens' chrome (RetroInkBoot::drawSleepScreen et al.) instead of the
+  // moon floating directly on the desktop.
+  const int windowWidth = std::min(480, pageWidth - 24);
+  const int windowHeight = std::min(pageHeight - 40, pageHeight * 9 / 10);
+  const int wx = (pageWidth - windowWidth) / 2;
+  const int wy = (pageHeight - windowHeight) / 2;
+  renderer.fillRect(wx + 5, wy + 5, windowWidth, windowHeight);
+  renderer.fillRect(wx, wy, windowWidth, windowHeight, false);
+  renderer.drawRect(wx, wy, windowWidth, windowHeight);
+  renderer.drawRect(wx + 3, wy + 3, windowWidth - 6, windowHeight - 6);
+
+  constexpr int titleHeight = 42;
+  for (int stripeY = wy + 8; stripeY < wy + titleHeight - 5; stripeY += 4) {
+    renderer.drawLine(wx + 8, stripeY, wx + windowWidth - 9, stripeY);
+  }
+  const char* title = tr(STR_MOON_PHASE);
+  const int titleWidth = renderer.getTextWidth(UI_12_FONT_ID, title);
+  const int titleX = wx + (windowWidth - titleWidth) / 2;
+  renderer.fillRect(titleX - 10, wy + 5, titleWidth + 20, titleHeight - 8, false);
+  renderer.drawText(UI_12_FONT_ID, titleX, wy + (titleHeight - renderer.getLineHeight(UI_12_FONT_ID)) / 2, title);
+  renderer.drawLine(wx + 4, wy + titleHeight, wx + windowWidth - 5, wy + titleHeight);
+
+  const int contentTop = wy + titleHeight + 14;
+  const int contentBottom = wy + windowHeight - 14;
+
+  if (!haveDate) {
+    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, tr(STR_SET_DATE_TIME));
+    renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+    return;
+  }
+
+  // The disc fills essentially the whole window, same "full commitment"
+  // sizing as the desk-accessory screen -- just a name + illumination/date
+  // caption reserved at the foot, not a small decorative accent.
+  const int nameLineHeight = renderer.getLineHeight(UI_12_FONT_ID);
+  const int captionLineHeight = renderer.getLineHeight(UI_10_FONT_ID);
+  const int captionY = contentBottom - captionLineHeight;
+  const int nameY = captionY - nameLineHeight - 4;
+  const int diameter = std::min(windowWidth - 24, (nameY - contentTop) - 10);
+  const int cx = pageWidth / 2;
+  const int cy = contentTop + (nameY - contentTop) / 2;
+
+  const MoonPhase::DiscTexture texture(diameter / 2, fraction);
+  MoonPhase::draw(renderer, cx, cy, texture);
+
+  char caption[48];
+  std::snprintf(caption, sizeof(caption), tr(STR_MOON_ILLUMINATED), MoonPhase::illuminationPercent(fraction));
+  std::snprintf(caption + std::strlen(caption), sizeof(caption) - std::strlen(caption), "   %s", dateText);
+  renderer.drawCenteredText(UI_12_FONT_ID, nameY, MoonPhase::phaseName(fraction), true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_10_FONT_ID, captionY, caption);
+
+  renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+}
+
+void SleepActivity::renderEarthPhaseSleepScreen() const {
+  const auto pageWidth = renderer.getScreenWidth();
+  const auto pageHeight = renderer.getScreenHeight();
+  renderer.clearScreen();
+  drawSystem6Desktop(renderer, pageWidth, pageHeight);
+
+  bool haveDate = false;
+  char dateText[40] = {};
+  float declination = 0.0f, subsolarLon = 0.0f;
+  if (halClock.isAvailable()) {
+    uint16_t year;
+    uint8_t month, day, hour, minute;
+    if (halClock.getDateTime(year, month, day, hour, minute)) {
+      EarthPhase::subsolar(year, month, day, hour, minute, declination, subsolarLon);
+      haveDate = formatLocalDate(dateText, sizeof(dateText));
+    }
+  }
+
+  // Same window chrome as the Moon Phase and Desk Calendar sleep screens, so
+  // the desk-accessory sleep screens read as a matched set.
+  const int windowWidth = std::min(480, pageWidth - 24);
+  const int windowHeight = std::min(pageHeight - 40, pageHeight * 9 / 10);
+  const int wx = (pageWidth - windowWidth) / 2;
+  const int wy = (pageHeight - windowHeight) / 2;
+  renderer.fillRect(wx + 5, wy + 5, windowWidth, windowHeight);
+  renderer.fillRect(wx, wy, windowWidth, windowHeight, false);
+  renderer.drawRect(wx, wy, windowWidth, windowHeight);
+  renderer.drawRect(wx + 3, wy + 3, windowWidth - 6, windowHeight - 6);
+
+  constexpr int titleHeight = 42;
+  for (int stripeY = wy + 8; stripeY < wy + titleHeight - 5; stripeY += 4) {
+    renderer.drawLine(wx + 8, stripeY, wx + windowWidth - 9, stripeY);
+  }
+  const char* title = tr(STR_EARTH_PHASE);
+  const int titleWidth = renderer.getTextWidth(UI_12_FONT_ID, title);
+  const int titleX = wx + (windowWidth - titleWidth) / 2;
+  renderer.fillRect(titleX - 10, wy + 5, titleWidth + 20, titleHeight - 8, false);
+  renderer.drawText(UI_12_FONT_ID, titleX, wy + (titleHeight - renderer.getLineHeight(UI_12_FONT_ID)) / 2, title);
+  renderer.drawLine(wx + 4, wy + titleHeight, wx + windowWidth - 5, wy + titleHeight);
+
+  const int contentTop = wy + titleHeight + 14;
+  const int contentBottom = wy + windowHeight - 14;
+
+  if (!haveDate) {
+    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, tr(STR_SET_DATE_TIME));
+    renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+    return;
+  }
+
+  const int captionLineHeight = renderer.getLineHeight(UI_10_FONT_ID);
+  const int captionY = contentBottom - captionLineHeight;
+  const int diameter = std::min(windowWidth - 24, (captionY - contentTop) - 12);
+  const int cx = pageWidth / 2;
+  const int cy = contentTop + (captionY - contentTop) / 2;
+
+  const EarthPhase::DiscTexture texture(diameter / 2, EarthPhase::centerLonForUtcOffsetQ(SETTINGS.clockUtcOffsetQ),
+                                        declination, subsolarLon);
+  EarthPhase::draw(renderer, cx, cy, texture);
+  renderer.drawCenteredText(UI_10_FONT_ID, captionY, dateText);
+
+  renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+}
+
+void SleepActivity::renderDeskCalendarSleepScreen() const {
+  const auto pageWidth = renderer.getScreenWidth();
+  const auto pageHeight = renderer.getScreenHeight();
+  renderer.clearScreen();
+  drawSystem6Desktop(renderer, pageWidth, pageHeight);
+
+  bool todayKnown = false;
+  int todayYear = 0, todayMonth = 0, todayDay = 0;
+  if (halClock.isAvailable()) {
+    uint16_t year;
+    uint8_t month, day, hour, minute;
+    if (halClock.getDateTime(year, month, day, hour, minute)) {
+      todayKnown = true;
+      todayYear = year;
+      todayMonth = month;
+      todayDay = day;
+    }
+  }
+
+  // Same System6 window chrome as the Moon Phase sleep screen, so the two
+  // "desk accessory" sleep screens read as a matched pair.
+  const int windowWidth = std::min(480, pageWidth - 24);
+  const int windowHeight = std::min(pageHeight - 40, pageHeight * 9 / 10);
+  const int wx = (pageWidth - windowWidth) / 2;
+  const int wy = (pageHeight - windowHeight) / 2;
+  renderer.fillRect(wx + 5, wy + 5, windowWidth, windowHeight);
+  renderer.fillRect(wx, wy, windowWidth, windowHeight, false);
+  renderer.drawRect(wx, wy, windowWidth, windowHeight);
+  renderer.drawRect(wx + 3, wy + 3, windowWidth - 6, windowHeight - 6);
+
+  constexpr int titleHeight = 42;
+  for (int stripeY = wy + 8; stripeY < wy + titleHeight - 5; stripeY += 4) {
+    renderer.drawLine(wx + 8, stripeY, wx + windowWidth - 9, stripeY);
+  }
+  const char* title = tr(STR_DESK_CALENDAR);
+  const int titleWidth = renderer.getTextWidth(UI_12_FONT_ID, title);
+  const int titleX = wx + (windowWidth - titleWidth) / 2;
+  renderer.fillRect(titleX - 10, wy + 5, titleWidth + 20, titleHeight - 8, false);
+  renderer.drawText(UI_12_FONT_ID, titleX, wy + (titleHeight - renderer.getLineHeight(UI_12_FONT_ID)) / 2, title);
+  renderer.drawLine(wx + 4, wy + titleHeight, wx + windowWidth - 5, wy + titleHeight);
+
+  const int contentTop = wy + titleHeight + 8;
+  const int contentBottom = wy + windowHeight - 14;
+
+  if (!todayKnown) {
+    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, tr(STR_SET_DATE_TIME));
+    renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+    return;
+  }
+
+  const int left = wx + 20;
+  const int gridWidth = windowWidth - 40;
+  CalendarView::draw(renderer, Rect{left, contentTop, gridWidth, contentBottom - contentTop}, todayYear, todayMonth,
+                     todayKnown, todayYear, todayMonth, todayDay);
 
   renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
 }

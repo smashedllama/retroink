@@ -570,9 +570,11 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
   const int w = renderer.getScreenWidth() - x * 2;
   const int top = CompactHeader::contentTop(m) + 8;
   const int bottom = renderer.getScreenHeight() - m.buttonHintsHeight - 8;
-  renderer.fillRect(x + 3, top + 3, w, bottom - top, true);
-  renderer.fillRect(x, top, w, bottom - top, false);
-  renderer.drawRect(x, top, w, bottom - top);
+  // No window drawn here: CompactHeader::drawTitle routes to
+  // System6Theme::drawHeader, which already lays down the window body (white
+  // fill, border, drop shadow and grow box) from the header down to the button
+  // hints. Drawing a second one inside it stacked two windows, clipping the
+  // grow box in the bottom-right corner.
   if (awaitingScanConfirmation_) {
     renderer.drawCenteredText(UI_12_FONT_ID, top + 35, tr(STR_LIBRARY_SCAN_CONFIRM_TITLE), true, EpdFontFamily::BOLD);
     const auto lines = renderer.wrappedText(UI_10_FONT_ID, tr(STR_LIBRARY_SCAN_EXPLANATION), w - 60, 6);

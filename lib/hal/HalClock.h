@@ -44,6 +44,15 @@ class HalClock {
   // Returns false if RTC is not available.
   bool getTime(uint8_t& hour, uint8_t& minute) const;
 
+  // Like getTime(), but also returns the current second (0-59) and always
+  // reads the RTC fresh rather than using the 10-second cache getTime()
+  // relies on -- a cached second would just show as frozen for up to 10s.
+  // Only worth the extra I2C traffic for callers that actually display
+  // seconds (e.g. an opt-in clock mode); everyone else should keep using
+  // getTime()/formatTime().
+  // Returns false if RTC is not available.
+  bool getTimeWithSeconds(uint8_t& hour, uint8_t& minute, uint8_t& second) const;
+
   // Format time into a caller-provided buffer.
   // 24h mode produces "HH:MM" (needs >=6 bytes); 12h mode produces "H:MM AM"/"HH:MM PM" (needs >=9 bytes).
   // utcOffsetQuarterHoursBiased: biased quarter-hour offset (48 = UTC+0, 0 = UTC-12, 104 = UTC+14).

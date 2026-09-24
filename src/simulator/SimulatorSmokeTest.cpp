@@ -75,6 +75,17 @@ enum class SmokeStep : uint8_t {
   HomeFocusNavigateRelease,
   HomeFocusConfirmPress,
   HomeFocusConfirmRelease,
+  DeskAccessoriesConfirmPress,
+  DeskAccessoryCheckDownPress,
+  DeskAccessoryCheckDownRelease,
+  DeskAccessoryCheckConfirmPress,
+  DeskAccessoryCheckConfirmRelease,
+  DeskAccessoryCheckVerify,
+  DeskAccessoryCheckBackRelease,
+  DeskAccessoryCheckReturnVerify,
+  DeskAccessoryCheckUpPress,
+  DeskAccessoryCheckUpRelease,
+  DeskAccessoriesConfirmRelease,
   FocusDesk,
   FocusSettingsSelectRelease,
   FocusSettingsOpenRelease,
@@ -178,6 +189,7 @@ class SimulatorSmokeTest {
   size_t scriptIndex = 0;
   int settingsCategoryAdvances = 0;
   int homeFocusAdvances = 0;
+  int deskAccessoryCheckIndex = 0;
   uint32_t focusRedrawWaitStartedMs = 0;
 
   static bool enabled() { return std::getenv("CROSSINK_SIMULATOR_SMOKE_TEST") != nullptr; }
@@ -848,6 +860,94 @@ class SimulatorSmokeTest {
         break;
 
       case SmokeStep::HomeFocusConfirmRelease:
+        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Confirm);
+        queueStep("Desk Accessories", SmokeStep::DeskAccessoriesConfirmPress);
+        break;
+
+      case SmokeStep::DeskAccessoriesConfirmPress:
+        // Home's Focus entry now opens the Desk Accessories submenu, which
+        // opens on Focus Timer (index 0). Before reaching it, cycle Down
+        // through the 5 newer accessories (Moon Phase, Clock, Puzzle, Desk
+        // Calendar, System Info), confirming each opens and Back returns
+        // here, then navigate back Up to Focus Timer to continue the
+        // original flow unchanged.
+        if (!activityManager.isCurrentActivityNamed("DeskAccessories")) fail("Desk Accessories did not open");
+        deskAccessoryCheckIndex = 0;
+        step = SmokeStep::DeskAccessoryCheckDownPress;
+        break;
+
+      case SmokeStep::DeskAccessoryCheckDownPress:
+        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Down);
+        step = SmokeStep::DeskAccessoryCheckDownRelease;
+        break;
+
+      case SmokeStep::DeskAccessoryCheckDownRelease:
+        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Down);
+        queueStep("Desk Accessory item selected", SmokeStep::DeskAccessoryCheckConfirmPress);
+        break;
+
+      case SmokeStep::DeskAccessoryCheckConfirmPress:
+        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Confirm);
+        step = SmokeStep::DeskAccessoryCheckConfirmRelease;
+        break;
+
+      case SmokeStep::DeskAccessoryCheckConfirmRelease: {
+        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Confirm);
+        // Named per accessory rather than one shared "item opened" label, so
+        // a capture run leaves one frame per screen instead of each
+        // overwriting the last. String literals: queueStep stores the pointer.
+        static const char* const kOpenedNames[] = {"Desk Accessory Moon Phase", "Desk Accessory Earth",
+                                                   "Desk Accessory Clock",      "Desk Accessory Puzzle",
+                                                   "Desk Accessory Calendar",   "Desk Accessory System Info"};
+        queueStep(kOpenedNames[deskAccessoryCheckIndex], SmokeStep::DeskAccessoryCheckVerify);
+        break;
+      }
+
+      case SmokeStep::DeskAccessoryCheckVerify: {
+        static const char* kNames[] = {"MoonPhaseDesk", "EarthPhaseDesk", "ClockDesk",
+                                       "PuzzleDesk",    "DeskCalendar",   "SystemInfoDesk"};
+        if (!activityManager.isCurrentActivityNamed(kNames[deskAccessoryCheckIndex])) {
+          fail("Desk accessory did not open");
+        }
+        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Back);
+        step = SmokeStep::DeskAccessoryCheckBackRelease;
+        break;
+      }
+
+      case SmokeStep::DeskAccessoryCheckBackRelease:
+        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Back);
+        queueStep("Desk Accessory item closed", SmokeStep::DeskAccessoryCheckReturnVerify);
+        break;
+
+      case SmokeStep::DeskAccessoryCheckReturnVerify:
+        if (!activityManager.isCurrentActivityNamed("DeskAccessories")) fail("Desk accessory Back did not return");
+        ++deskAccessoryCheckIndex;
+        if (deskAccessoryCheckIndex < 6) {
+          step = SmokeStep::DeskAccessoryCheckDownPress;
+        } else {
+          deskAccessoryCheckIndex = 0;
+          step = SmokeStep::DeskAccessoryCheckUpPress;
+        }
+        break;
+
+      case SmokeStep::DeskAccessoryCheckUpPress:
+        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Up);
+        step = SmokeStep::DeskAccessoryCheckUpRelease;
+        break;
+
+      case SmokeStep::DeskAccessoryCheckUpRelease:
+        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Up);
+        ++deskAccessoryCheckIndex;
+        if (deskAccessoryCheckIndex < 6) {
+          step = SmokeStep::DeskAccessoryCheckUpPress;
+        } else {
+          // Back at Focus Timer (index 0) -- continue the original flow.
+          mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Confirm);
+          step = SmokeStep::DeskAccessoriesConfirmRelease;
+        }
+        break;
+
+      case SmokeStep::DeskAccessoriesConfirmRelease:
         mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Confirm);
         queueStep("Focus Desk", SmokeStep::FocusDesk);
         break;

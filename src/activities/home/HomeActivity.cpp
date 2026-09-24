@@ -23,6 +23,7 @@
 #include "../reader/BookReadingStats.h"
 #include "../reader/BookStatsActivity.h"
 #include "../reader/RetroInkFocusDeskActivity.h"
+#include "DeskAccessoriesActivity.h"
 #include "RetroInkLibraryActivity.h"
 #include "../reader/EpubReaderUtils.h"
 #include "BookmarkStore.h"
@@ -59,7 +60,7 @@ enum class HomeMenuAction {
   RecentBooks,
   OpdsBrowser,
   ReadingStats,
-  FocusSession,
+  DeskAccessories,
   Bookmarks,
   FileTransfer,
   Settings,
@@ -269,7 +270,7 @@ void appendHomeMenuItems(HomeMenuEntries& items, bool hasOpdsServers, bool hasRe
     if (SETTINGS.showFilesOnHome) items.push({tr(STR_RETRO_FILES), Folder, HomeMenuAction::BrowseFiles});
     items.push({tr(STR_RETRO_LIBRARY), File, HomeMenuAction::RetroLibrary});
     items.push({tr(STR_READING_STATS), Chart, HomeMenuAction::ReadingStats});
-    items.push({tr(STR_FOCUS_SESSION), Hourglass, HomeMenuAction::FocusSession});
+    items.push({tr(STR_DESK_ACCESSORIES), DeskAccessories, HomeMenuAction::DeskAccessories});
     items.push({tr(STR_CLIPPINGS), BookmarkIcon, HomeMenuAction::Bookmarks});
     items.push({tr(STR_FILE_TRANSFER), Transfer, HomeMenuAction::FileTransfer});
     items.push({tr(STR_SETTINGS_TITLE), Settings, HomeMenuAction::Settings});
@@ -1449,7 +1450,7 @@ void HomeActivity::loop() {
           case HomeMenuAction::ReadingStats:
             onReadingStatsOpen();
             break;
-          case HomeMenuAction::FocusSession:
+          case HomeMenuAction::DeskAccessories:
             break;
           case HomeMenuAction::Bookmarks:
             onSavedItemsOpen();
@@ -1665,10 +1666,9 @@ void HomeActivity::loop() {
       case HomeMenuAction::ReadingStats:
         onReadingStatsOpen();
         break;
-      case HomeMenuAction::FocusSession:
-        startActivityForResult(
-            std::make_unique<RetroInkFocusDeskActivity>(renderer, mappedInput, RetroInkFocusDeskActivity::Entry::Home),
-            [this](const ActivityResult&) { requestUpdate(); });
+      case HomeMenuAction::DeskAccessories:
+        startActivityForResult(std::make_unique<DeskAccessoriesActivity>(renderer, mappedInput),
+                               [this](const ActivityResult&) { requestUpdate(); });
         break;
       case HomeMenuAction::Bookmarks:
         if (SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {

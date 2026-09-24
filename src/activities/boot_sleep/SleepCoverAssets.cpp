@@ -221,7 +221,12 @@ std::string cachedMinimalCoverPathFor(const std::string& bookPath) {
   if (FsHelpers::hasEpubExtension(bookPath)) {
     const Epub epub(bookPath, "/.crosspoint");
     const std::string coverPath = epub.getAdaptiveThumbBmpPath(kMinimalSleepCoverWidth, kMinimalSleepCoverHeight);
-    return fileExists(coverPath) ? epub.getThumbBmpPath() : std::string{};
+    // coverPath here is already the real, size-substituted file path (unlike
+    // epub.getThumbBmpPath() with no args, which is a reusable [WIDTH]x[HEIGHT]
+    // template meant for UITheme::getCoverThumbPath() to substitute -- passing
+    // that raw template straight to Storage.openFileForRead() as done here
+    // previously always failed, silently falling back to the placeholder box).
+    return fileExists(coverPath) ? coverPath : std::string{};
   }
 
   const std::string reusablePath = reusableCoverPathFor(bookPath);
@@ -234,7 +239,7 @@ std::string cachedDashboardCoverPathFor(const std::string& bookPath) {
   if (FsHelpers::hasEpubExtension(bookPath)) {
     const Epub epub(bookPath, "/.crosspoint");
     const std::string coverPath = epub.getAdaptiveThumbBmpPath(kDashboardSleepCoverWidth, kDashboardSleepCoverHeight);
-    return fileExists(coverPath) ? epub.getThumbBmpPath() : std::string{};
+    return fileExists(coverPath) ? coverPath : std::string{};
   }
 
   const std::string reusablePath = reusableCoverPathFor(bookPath);
@@ -247,12 +252,18 @@ std::string cachedBookWeekCoverPathFor(const std::string& bookPath) {
   if (FsHelpers::hasEpubExtension(bookPath)) {
     const Epub epub(bookPath, "/.crosspoint");
     const std::string coverPath = epub.getAdaptiveThumbBmpPath(kBookWeekCoverWidth, kBookWeekCoverHeight);
-    return fileExists(coverPath) ? epub.getThumbBmpPath() : std::string{};
+    return fileExists(coverPath) ? coverPath : std::string{};
   }
 
+  // Unlike cachedMinimalCoverPathFor()/cachedDashboardCoverPathFor(), this
+  // one's only consumer (RetroInkReadingDeskView::renderBookWeekStatus) opens
+  // the path directly rather than re-substituting it through
+  // UITheme::getCoverThumbPath() itself -- so this has to hand back the
+  // already-substituted real path, not the [WIDTH]x[HEIGHT]/[HEIGHT] template
+  // reusablePath still carries.
   const std::string reusablePath = reusableCoverPathFor(bookPath);
   const std::string coverPath = UITheme::getCoverThumbPath(reusablePath, kBookWeekCoverWidth, kBookWeekCoverHeight);
-  return fileExists(coverPath) ? reusablePath : std::string{};
+  return fileExists(coverPath) ? coverPath : std::string{};
 }
 
 }  // namespace SleepCoverAssets

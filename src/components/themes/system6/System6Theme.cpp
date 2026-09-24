@@ -148,6 +148,85 @@ void menuIcon(const GfxRenderer& r, UIIcon icon, int x, int y, bool black) {
       r.drawLine(x + 13, y + 8, x + 13, y + 22, black);
       r.drawLine(x + 13, y + 22, x + 24, y + 25, black);
       break;
+    case DeskAccessories: {
+      // A small drawer/tray, evoking the classic Apple-menu "Desk
+      // Accessories" folder rather than any one accessory in particular.
+      r.drawRect(x + 1, y + 5, 24, 18, black);
+      r.drawLine(x + 1, y + 13, x + 25, y + 13, black);
+      r.fillRect(x + 10, y + 9, 6, 2, black);
+      break;
+    }
+    case MoonPhaseIcon: {
+      // A solid crescent: every pixel inside the moon's disc but outside an
+      // overlapping shadow disc offset to its right. Drawing the two circles
+      // as outlines (what this did before) reads as a Venn diagram, not a
+      // moon. The radius tests compare against r*r + r rather than r*r --
+      // effectively (r+0.5)^2 -- because the exact form leaves single-pixel
+      // spikes at the disc's cardinal extremes that look like dirt at 26px.
+      // drawPixel takes the same `black` flag as the other icons, so this
+      // still inverts correctly on a highlighted row.
+      constexpr int kCx = 17, kCy = 13, kRadius = 12;
+      constexpr int kShadowDx = 9, kShadowRadius = 13;
+      for (int dy = -kRadius; dy <= kRadius; ++dy) {
+        for (int dx = -kRadius; dx <= kRadius; ++dx) {
+          if (dx * dx + dy * dy > kRadius * kRadius + kRadius) continue;
+          const int shadowDx = dx - kShadowDx;
+          if (shadowDx * shadowDx + dy * dy <= kShadowRadius * kShadowRadius + kShadowRadius) continue;
+          r.drawPixel(x + kCx + dx, y + kCy + dy, black);
+        }
+      }
+      break;
+    }
+    case EarthPhaseIcon: {
+      // A globe: rim, equator and two parallels clipped to it, plus a central
+      // meridian. Half-widths are precomputed (sqrt(12^2 - dy^2), less a pixel
+      // so the lines stop just inside the rim rather than touching it).
+      constexpr int kCx = 17, kCy = 13, kRadius = 12;
+      r.drawArc(kRadius, x + kCx, y + kCy, -1, -1, 1, black);
+      r.drawArc(kRadius, x + kCx, y + kCy, -1, 1, 1, black);
+      r.drawArc(kRadius, x + kCx, y + kCy, 1, -1, 1, black);
+      r.drawArc(kRadius, x + kCx, y + kCy, 1, 1, 1, black);
+      constexpr int kParallels[3][2] = {{-6, 9}, {0, 11}, {6, 9}};
+      for (const auto& parallel : kParallels) {
+        r.drawLine(x + kCx - parallel[1], y + kCy + parallel[0], x + kCx + parallel[1], y + kCy + parallel[0], black);
+      }
+      r.drawLine(x + kCx, y + kCy - kRadius + 1, x + kCx, y + kCy + kRadius - 1, black);
+      break;
+    }
+    case ClockIcon: {
+      r.drawArc(11, x + 15, y + 14, -1, -1, 1, black);
+      r.drawArc(11, x + 15, y + 14, -1, 1, 1, black);
+      r.drawArc(11, x + 15, y + 14, 1, -1, 1, black);
+      r.drawArc(11, x + 15, y + 14, 1, 1, 1, black);
+      r.drawLine(x + 15, y + 14, x + 15, y + 7, black);
+      r.drawLine(x + 15, y + 14, x + 20, y + 16, black);
+      break;
+    }
+    case PuzzleIcon: {
+      r.drawRect(x + 1, y + 1, 12, 12, black);
+      r.drawRect(x + 14, y + 1, 12, 12, black);
+      r.drawRect(x + 1, y + 14, 12, 12, black);
+      r.fillRect(x + 14, y + 14, 12, 12, black);
+      break;
+    }
+    case CalendarIcon: {
+      r.drawRect(x + 1, y + 4, 24, 22, black);
+      r.drawLine(x + 1, y + 10, x + 25, y + 10, black);
+      r.fillRect(x + 6, y + 1, 2, 5, black);
+      r.fillRect(x + 18, y + 1, 2, 5, black);
+      for (int row = 0; row < 2; ++row)
+        for (int col = 0; col < 4; ++col) r.fillRect(x + 5 + col * 5, y + 14 + row * 6, 2, 2, black);
+      break;
+    }
+    case SystemInfoIcon: {
+      r.drawArc(11, x + 15, y + 14, -1, -1, 1, black);
+      r.drawArc(11, x + 15, y + 14, -1, 1, 1, black);
+      r.drawArc(11, x + 15, y + 14, 1, -1, 1, black);
+      r.drawArc(11, x + 15, y + 14, 1, 1, 1, black);
+      r.fillRect(x + 14, y + 9, 2, 2, black);
+      r.fillRect(x + 14, y + 13, 2, 8, black);
+      break;
+    }
     default:
       documentIcon(r, x + 2, y, black);
       break;
@@ -370,6 +449,10 @@ void System6Theme::fillPopupProgress(const GfxRenderer& r, const Rect& layout, c
     r.fillRect(x, barY + 2, std::min(2, barX + 2 + fillWidth - x), barHeight - 4);
   }
   r.displayBuffer(HalDisplay::FAST_REFRESH);
+}
+
+void System6Theme::drawMenuIcon(const GfxRenderer& r, UIIcon icon, int x, int y, bool black) const {
+  menuIcon(r, icon, x, y, black);
 }
 
 void System6Theme::drawButtonMenu(GfxRenderer& r, Rect rect, int count, int selected,

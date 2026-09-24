@@ -28,6 +28,9 @@ class SleepActivity final : public Activity {
   void renderMinimalStatsSleepScreen() const;
   void renderBookWeekStatsSleepScreen() const;
   void renderDashboardSleepScreen() const;
+  void renderMoonPhaseSleepScreen() const;
+  void renderDeskCalendarSleepScreen() const;
+  void renderEarthPhaseSleepScreen() const;
   void renderBitmapSleepScreen(const Bitmap& bitmap, bool forceFastNoGreyscale = false) const;
   void renderLastScreenSleepScreen() const;
   void renderBlankSleepScreen() const;

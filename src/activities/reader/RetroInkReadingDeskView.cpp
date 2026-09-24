@@ -17,11 +17,14 @@
 #include "fontIds.h"
 
 namespace {
+// A null or empty title draws the panel without a caption bar -- used where
+// the caption would only repeat the screen's own header title.
 void window(const GfxRenderer& r, const int x, const int y, const int w, const int h, const char* title) {
   r.fillRect(x + 3, y + 3, w, h);
   r.fillRect(x, y, w, h, false);
   r.drawRect(x, y, w, h);
   r.drawRect(x + 2, y + 2, w - 4, h - 4);
+  if (title == nullptr || title[0] == '\0') return;
   r.fillRect(x + 8, y + 6, w - 16, 24, false);
   r.drawCenteredText(UI_10_FONT_ID, y + 7, title, true, EpdFontFamily::BOLD);
 }
@@ -130,7 +133,9 @@ void renderYear(GfxRenderer& r, const MappedInputManager* input) {
   char rangeTitle[40] = {};
   if (hasClock)
     snprintf(rangeTitle, sizeof(rangeTitle), tr(STR_READING_YEAR_RANGE), static_cast<unsigned>(current.year));
-  window(r, x, top, w, bottom - top, hasClock ? rangeTitle : tr(STR_READING_YEAR));
+  // With a clock the caption is the year range, which the header doesn't
+  // already say; without one it would just repeat "Reading Year".
+  window(r, x, top, w, bottom - top, hasClock ? rangeTitle : nullptr);
   if (!hasClock) {
     r.drawCenteredText(UI_10_FONT_ID, top + 75, tr(STR_SET_DATE_TIME));
     footer(r, input, tr(STR_BACK), tr(STR_ACTIONS));
@@ -191,10 +196,15 @@ void renderBookStatus(GfxRenderer& r, const MappedInputManager* input, const std
   const int maxTitleLines = std::max(1, (titleLimit - 54) / std::max(1, titleLineHeight));
   const auto titleLines = r.wrappedText(UI_10_FONT_ID, title.c_str(), w - 46, maxTitleLines,
                                         EpdFontFamily::BOLD);
-  const int titleHeight = std::min(titleLimit, std::max(100, 54 + static_cast<int>(titleLines.size()) * titleLineHeight));
-  window(r, x, top, w, titleHeight, tr(STR_BOOK_STATUS));
+  // Untitled: the header already reads "Book Status", and this panel holds
+  // the book's own title, so a caption here just said it twice. Without the
+  // caption bar the panel shrinks and the title centres in what's left.
+  const int titleBlockHeight = static_cast<int>(titleLines.size()) * titleLineHeight;
+  const int titleHeight = std::min(titleLimit, std::max(72, 28 + titleBlockHeight));
+  window(r, x, top, w, titleHeight, nullptr);
+  const int titleTextTop = top + std::max(14, (titleHeight - titleBlockHeight) / 2);
   for (size_t i = 0; i < titleLines.size(); ++i)
-    r.drawText(UI_10_FONT_ID, x + 23, top + 43 + static_cast<int>(i) * titleLineHeight,
+    r.drawText(UI_10_FONT_ID, x + 23, titleTextTop + static_cast<int>(i) * titleLineHeight,
                titleLines[i].c_str(), true, EpdFontFamily::BOLD);
   const int statsTop = top + titleHeight + 14;
   window(r, x, statsTop, w, std::max(216, bottom - statsTop), tr(STR_STATS_THIS_BOOK));
@@ -231,10 +241,13 @@ void renderBookWeekStatus(GfxRenderer& r, const MappedInputManager* input, const
   constexpr int coverW = 110;
   constexpr int coverH = 160;
   constexpr int coverPad = 14;
-  const int headerH = coverH + coverPad * 2 + 24;
-  window(r, x, top, w, headerH, tr(STR_BOOK_STATUS));
+  // Untitled for the same reason as renderBookStatus: the header above
+  // already reads "Book Status". Dropping the caption bar reclaims its 24px,
+  // so the cover sits at the panel's own padding instead of below it.
+  const int headerH = coverH + coverPad * 2;
+  window(r, x, top, w, headerH, nullptr);
   const int coverX = x + coverPad;
-  const int coverY = top + 30 + coverPad;
+  const int coverY = top + coverPad;
   bool coverDrawn = false;
   if (!coverBmpPath.empty()) {
     FsFile file;

@@ -38,6 +38,7 @@ class System6Theme final : public BaseTheme {
   void drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                       const std::function<const char*(int)>& buttonLabel,
                       const std::function<UIIcon(int)>& rowIcon) const override;
+  void drawMenuIcon(const GfxRenderer& renderer, UIIcon icon, int x, int y, bool black) const override;
   void drawProgressBar(const GfxRenderer& renderer, Rect rect, size_t current, size_t total) const override;
   void fillProgressIndicator(const GfxRenderer& renderer, Rect rect, bool foregroundBlack = true) const override;
   Rect drawPopup(const GfxRenderer& renderer, const char* message) const override;

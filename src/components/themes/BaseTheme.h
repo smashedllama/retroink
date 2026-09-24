@@ -139,7 +139,14 @@ enum UIIcon {
   Dictionary,
   Chart,
   Hourglass,
-  Obsidian
+  Obsidian,
+  DeskAccessories,
+  MoonPhaseIcon,
+  EarthPhaseIcon,
+  ClockIcon,
+  PuzzleIcon,
+  CalendarIcon,
+  SystemInfoIcon
 };
 
 // Default theme implementation (Classic Theme)
@@ -270,6 +277,11 @@ class BaseTheme {
   virtual void drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                               const std::function<const char*(int index)>& buttonLabel,
                               const std::function<UIIcon(int index)>& rowIcon) const;
+  // Draws just one menu-row icon glyph at (x, y), the same glyphs
+  // drawButtonMenu uses internally -- for screens that build their own list
+  // layout (no secondary title-barred box) but still want the icon set.
+  // No-op by default; System6Theme is the only theme with per-icon glyphs.
+  virtual void drawMenuIcon(const GfxRenderer& renderer, UIIcon icon, int x, int y, bool black) const;
   virtual Rect drawPopup(const GfxRenderer& renderer, const char* message) const;
   virtual void drawOptionPopup(const GfxRenderer& renderer, const char* title, const std::vector<std::string>& options,
                                int selectedIndex) const;

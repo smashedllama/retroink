@@ -337,26 +337,32 @@ inline SettingInfo buildDictionarySetting(const DictionaryRegistry* dictRegistry
 }
 
 inline SettingInfo buildSleepScreenSetting() {
+  // Grouped rather than insertion-order: everyday defaults first, then the
+  // reading-stats screens, then the desk-accessory-style screens (Moon
+  // Phase, Earth, Desk Calendar), then the playful/joke screens last.
   SettingInfo s = SettingInfo::Enum(
       StrId::STR_SLEEP_SCREEN, &CrossPointSettings::sleepScreen,
       {StrId::STR_RETROINK_REST, StrId::STR_CUSTOM, StrId::STR_COVER, StrId::STR_PAGE_OVERLAY,
-       StrId::STR_TODAY, StrId::STR_BOOK_STATUS, StrId::STR_BOOK_WEEK_STATS, StrId::STR_READING_YEAR,
-       StrId::STR_SLEEP_ERROR_404, StrId::STR_SLEEP_INSERT_BOOKMARK, StrId::STR_SLEEP_SYSTEM_NAP,
-       StrId::STR_QUICK_RESUME},
+       StrId::STR_QUICK_RESUME, StrId::STR_TODAY, StrId::STR_BOOK_STATUS, StrId::STR_BOOK_WEEK_STATS,
+       StrId::STR_READING_YEAR, StrId::STR_MOON_PHASE, StrId::STR_EARTH_PHASE, StrId::STR_DESK_CALENDAR,
+       StrId::STR_SLEEP_SYSTEM_NAP, StrId::STR_SLEEP_ERROR_404, StrId::STR_SLEEP_INSERT_BOOKMARK},
       "sleepScreen", StrId::STR_CAT_DISPLAY);
   s.withEnumRawValues({
       static_cast<uint8_t>(CrossPointSettings::DARK),
       static_cast<uint8_t>(CrossPointSettings::CUSTOM),
       static_cast<uint8_t>(CrossPointSettings::COVER),
       static_cast<uint8_t>(CrossPointSettings::OVERLAY),
+      static_cast<uint8_t>(CrossPointSettings::QUICK_RESUME),
       static_cast<uint8_t>(CrossPointSettings::READING_STATS_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::MINIMAL_STATS_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::BOOK_WEEK_STATS_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::DASHBOARD_SLEEP),
+      static_cast<uint8_t>(CrossPointSettings::MOON_PHASE_SLEEP),
+      static_cast<uint8_t>(CrossPointSettings::EARTH_PHASE_SLEEP),
+      static_cast<uint8_t>(CrossPointSettings::DESK_CALENDAR_SLEEP),
+      static_cast<uint8_t>(CrossPointSettings::RETROINK_SYSTEM_NAP_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::RETROINK_ERROR_404_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::RETROINK_INSERT_BOOKMARK_SLEEP),
-      static_cast<uint8_t>(CrossPointSettings::RETROINK_SYSTEM_NAP_SLEEP),
-      static_cast<uint8_t>(CrossPointSettings::QUICK_RESUME),
   });
   return s;
 }

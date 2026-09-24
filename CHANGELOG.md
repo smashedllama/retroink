@@ -1,3 +1,31 @@
+## [RetroInk 0.4.1] - 2026-09-23
+
+### Added
+
+- Home's Focus Session entry becomes Desk Accessories, a submenu in the classic Macintosh sense. Focus Timer moves inside it unchanged, joined by Moon Phase, Earth, Clock, Puzzle, Desk Calendar, and System Info.
+- Moon Phase draws the current phase from an embedded photograph of the lunar surface, dithered to one bit, with the illuminated boundary computed geometrically so surface detail never distorts the terminator. The built disc is cached for the session so revisiting the screen is instant.
+- Earth shows a day/night globe centred on the reader's own timezone. The terminator sweeps with the time of day and tilts with the time of year from the solar declination, so the poles hold daylight or darkness around the solstices, and the continents are shaded by real elevation data. It rebuilds every ten minutes while open.
+- Clock is a desk clock with analog and digital faces and an optional seconds display. The digital face stacks hours, minutes, and seconds as separate System 6 windows, each with a pinstriped title band. The screen holds off the inactivity timer while it is open.
+- Puzzle is the classic fifteen-tile slider. The board and move count are saved after every move, so closing it or letting the device sleep resumes the same game.
+- Desk Calendar shows the current month with today marked, and pages through months with the front buttons.
+- System Info reports firmware version, storage use, and battery level.
+- Moon Phase, Earth, and Desk Calendar are also available as sleep screens, sharing the window chrome of the existing desk-accessory sleep screens.
+
+### Changed
+
+- The sleep screen list is grouped in a sensible order: the general screens first, then the reading-stats screens, then the desk-accessory screens, with the playful Macintosh dialogs last.
+- The moon's surface is stored at four bits per sample instead of eight and carries more contrast, so the maria read as dark rather than washed out. Halving the storage is invisible because the disc is dithered to one bit when drawn.
+
+### Fixed
+
+- Desk-accessory and Library screens drew their own window frame on top of the one the System 6 header already provides, stacking two windows and cutting the inner corner across the window's grow box.
+- The Book and Week Stats sleep screen showed a placeholder instead of the book cover. It was handed an unsubstituted path template rather than the generated cover file.
+- Book Status and Reading Year repeated their own titles in a panel directly beneath the header.
+- Button presses on the Clock were frequently ignored. The once-a-second repaint ran on the main loop, which blocks for the duration of a panel refresh, and button state is polled rather than interrupt-driven, so any press that began and ended inside that gap was never sampled. The repaint now runs on the render task.
+- Toggling a Clock setting tore the display, from the per-second repaint racing the full redraw across two tasks.
+- The Clock header's own clock froze at whatever time the last full redraw ran, because it sits outside the region repainted each second.
+- The Puzzle's on-screen Up and Down hints moved tiles sideways; the front buttons now match their labels and the side rocker moves tiles horizontally.
+
 ## [RetroInk 0.2.0 test] - 2026-09-15
 
 ### Added

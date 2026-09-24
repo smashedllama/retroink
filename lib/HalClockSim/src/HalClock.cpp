@@ -8,6 +8,13 @@ bool HalClock::getTime(uint8_t& hour, uint8_t& minute) const {
   return false;
 }
 
+bool HalClock::getTimeWithSeconds(uint8_t& hour, uint8_t& minute, uint8_t& second) const {
+  hour = 0;
+  minute = 0;
+  second = 0;
+  return false;
+}
+
 bool HalClock::getDateTime(uint16_t& year, uint8_t& month, uint8_t& day, uint8_t& hour, uint8_t& minute) const {
   year = 0;
   month = 0;

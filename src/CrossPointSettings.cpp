@@ -58,6 +58,9 @@ constexpr uint8_t SLEEP_SCREEN_STORAGE_ORDER[] = {
     static_cast<uint8_t>(CrossPointSettings::RETROINK_INSERT_BOOKMARK_SLEEP),
     static_cast<uint8_t>(CrossPointSettings::RETROINK_SYSTEM_NAP_SLEEP),
     static_cast<uint8_t>(CrossPointSettings::BOOK_WEEK_STATS_SLEEP),
+    static_cast<uint8_t>(CrossPointSettings::MOON_PHASE_SLEEP),
+    static_cast<uint8_t>(CrossPointSettings::DESK_CALENDAR_SLEEP),
+    static_cast<uint8_t>(CrossPointSettings::EARTH_PHASE_SLEEP),
 };
 constexpr uint8_t SLEEP_SCREEN_STORAGE_ORDER_COUNT =
     sizeof(SLEEP_SCREEN_STORAGE_ORDER) / sizeof(SLEEP_SCREEN_STORAGE_ORDER[0]);
