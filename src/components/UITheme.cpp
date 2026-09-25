@@ -24,6 +24,7 @@
 #include "components/themes/minimal/MinimalTheme.h"
 #include "components/themes/roundedraff/RoundedRaffTheme.h"
 #include "components/themes/system6/System6Theme.h"
+#include "fontIds.h"
 
 namespace {
 constexpr char kWidthPlaceholder[] = "[WIDTH]";
@@ -274,8 +275,28 @@ int UITheme::getStatusBarHeight() {
   const auto statusBar = SETTINGS.statusBarSpec();
   // Reserve the clock lane independently of the current board so orientation
   // and layout do not change when the same settings are used on another device.
-  return (statusBar.textLaneVisible(true) ? metrics.statusBarVerticalMargin : 0) +
+  return (statusBar.textLaneVisible(true) ? getStatusBarTextLaneHeight() : 0) +
          (statusBar.showsProgressBar() ? statusBar.progressBarHeightPx + metrics.progressBarMarginTop : 0);
+}
+
+int UITheme::getStatusBarFontId() {
+  switch (SETTINGS.statusBarTextSize) {
+    case 1:
+      return UI_10_FONT_ID;
+    case 2:
+      return UI_12_FONT_ID;
+    default:
+      return SMALL_FONT_ID;
+  }
+}
+
+int UITheme::getStatusBarTextLaneHeight() {
+  // Line heights of Inter 8/10/12 are 20/25/30px. The lane was tuned for the
+  // 8pt font, so the larger sizes add exactly the difference -- this is
+  // static with no renderer to hand, so it can't measure them.
+  static constexpr int kExtraForSize[3] = {0, 5, 10};
+  const uint8_t size = SETTINGS.statusBarTextSize < 3 ? SETTINGS.statusBarTextSize : 0;
+  return UITheme::getInstance().getMetrics().statusBarVerticalMargin + kExtraForSize[size];
 }
 
 int UITheme::getProgressBarHeight() {

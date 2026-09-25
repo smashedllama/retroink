@@ -240,8 +240,11 @@ class BaseTheme {
   // Component drawing methods
   virtual void drawProgressBar(const GfxRenderer& renderer, Rect rect, size_t current, size_t total) const;
   virtual void fillProgressIndicator(const GfxRenderer& renderer, Rect rect, bool foregroundBlack = true) const;
+  // Left aligned (reader mode). fontId 0 means the default small UI font --
+  // 0 is the codebase's font-ID sentinel (see fontIds.h); IDs are hashes and
+  // can be negative, so a negative sentinel would swallow real fonts.
   void drawBatteryLeft(const GfxRenderer& renderer, Rect rect, bool showPercentage = true,
-                       bool foregroundBlack = true) const;  // Left aligned (reader mode)
+                       bool foregroundBlack = true, int fontId = 0) const;
   void drawBatteryRight(const GfxRenderer& renderer, Rect rect, bool showPercentage = true,
                         bool foregroundBlack = true) const;  // Right aligned (UI headers)
   virtual void fillBatteryIcon(const GfxRenderer& renderer, Rect rect, uint16_t percentage,

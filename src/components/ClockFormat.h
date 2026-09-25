@@ -11,3 +11,9 @@
 // and SETTINGS.clockUtcOffsetQ. Returns false if the RTC is unavailable or has
 // never been synced.
 bool formatLocalDate(char* buf, size_t len);
+
+// What to say when a screen needs the date and doesn't have it. With a clock
+// chip that just hasn't been set, point at setting it; on hardware with no
+// clock chip at all (the original X4) that instruction is impossible, so say
+// so plainly instead.
+const char* dateUnavailableMessage();

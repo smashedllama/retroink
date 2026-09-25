@@ -693,6 +693,9 @@ inline const std::vector<SettingInfo>& getBaseSettingsList() {
                             StrId::STR_CAT_SYSTEM));
     add(SettingInfo::Toggle(StrId::STR_SHOW_FILES_ON_HOME, &CrossPointSettings::showFilesOnHome, "showFilesOnHome",
                             StrId::STR_CAT_SYSTEM));
+    add(SettingInfo::Enum(StrId::STR_LIBRARY_VIEW, &CrossPointSettings::libraryViewMode,
+                          {StrId::STR_LIBRARY_VIEW_SHELF, StrId::STR_LIBRARY_VIEW_ICONS}, "libraryViewMode",
+                          StrId::STR_CAT_SYSTEM));
     add(SettingInfo::Toggle(StrId::STR_HIDE_FILE_EXTENSION, &CrossPointSettings::hideFileExtension, "hideFileExtension",
                             StrId::STR_CAT_SYSTEM));
     add(SettingInfo::Enum(StrId::STR_FILE_BROWSER_DISPLAY, &CrossPointSettings::fileBrowserDisplay,
@@ -825,6 +828,9 @@ inline const std::vector<SettingInfo>& getBaseSettingsList() {
                           StrId::STR_CUSTOMISE_STATUS_BAR));
     add(SettingInfo::Toggle(StrId::STR_BATTERY, &CrossPointSettings::statusBarBattery, "statusBarBattery",
                             StrId::STR_CUSTOMISE_STATUS_BAR));
+    add(SettingInfo::Enum(StrId::STR_STATUS_BAR_TEXT_SIZE, &CrossPointSettings::statusBarTextSize,
+                          {StrId::STR_SMALL, StrId::STR_MEDIUM, StrId::STR_LARGE}, "statusBarTextSize",
+                          StrId::STR_CUSTOMISE_STATUS_BAR));
     add(SettingInfo::Enum(StrId::STR_XTC_STATUS_BAR, &CrossPointSettings::xtcStatusBarMode,
                           {StrId::STR_HIDE, StrId::STR_BOTTOM, StrId::STR_TOP}, "xtcStatusBarMode",
                           StrId::STR_CUSTOMISE_STATUS_BAR));

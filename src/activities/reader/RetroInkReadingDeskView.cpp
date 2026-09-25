@@ -14,6 +14,7 @@
 #include "ReadingStatsUtils.h"
 #include "components/CompactHeader.h"
 #include "components/UITheme.h"
+#include "components/ClockFormat.h"
 #include "fontIds.h"
 
 namespace {
@@ -75,7 +76,7 @@ void renderToday(GfxRenderer& r, const MappedInputManager* input, const GlobalRe
   const int top = metrics.topPadding + metrics.headerHeight + 10;
   if (!ReadingDeskStore::hasUsableClock()) {
     window(r, x, top, w, 150, tr(STR_TODAY));
-    r.drawCenteredText(UI_10_FONT_ID, top + 70, tr(STR_SET_DATE_TIME));
+    r.drawCenteredText(UI_10_FONT_ID, top + 70, dateUnavailableMessage());
     footer(r, input, tr(STR_BACK), tr(STR_ACTIONS));
     return;
   }
@@ -137,7 +138,7 @@ void renderYear(GfxRenderer& r, const MappedInputManager* input) {
   // already say; without one it would just repeat "Reading Year".
   window(r, x, top, w, bottom - top, hasClock ? rangeTitle : nullptr);
   if (!hasClock) {
-    r.drawCenteredText(UI_10_FONT_ID, top + 75, tr(STR_SET_DATE_TIME));
+    r.drawCenteredText(UI_10_FONT_ID, top + 75, dateUnavailableMessage());
     footer(r, input, tr(STR_BACK), tr(STR_ACTIONS));
     return;
   }

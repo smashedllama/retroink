@@ -84,14 +84,17 @@ void BaseTheme::fillBatteryIcon(const GfxRenderer& renderer, Rect rect, uint16_t
 }
 
 void BaseTheme::drawBatteryLeft(const GfxRenderer& renderer, Rect rect, const bool showPercentage,
-                                const bool foregroundBlack) const {
+                                const bool foregroundBlack, const int fontId) const {
   // Left aligned: icon on left, percentage on right (reader mode)
   const uint16_t percentage = powerManager.getBatteryPercentage();
-  const int y = rect.y + 6;
+  const int font = fontId == 0 ? SMALL_FONT_ID : fontId;
+  // The +6 centres the icon against the small font's line; a larger font's
+  // line is taller, so drop the icon by half the difference to stay centred.
+  const int y = rect.y + 6 + (renderer.getLineHeight(font) - renderer.getLineHeight(SMALL_FONT_ID)) / 2;
 
   if (showPercentage) {
     const auto percentageText = std::to_string(percentage) + "%";
-    renderer.drawText(SMALL_FONT_ID, rect.x + batteryPercentSpacing + rect.width, rect.y, percentageText.c_str(),
+    renderer.drawText(font, rect.x + batteryPercentSpacing + rect.width, rect.y, percentageText.c_str(),
                       foregroundBlack);
   }
 
@@ -877,6 +880,10 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
   const auto statusBar = SETTINGS.statusBarSpec();
+  const int statusFont = UITheme::getStatusBarFontId();
+  // Icons are positioned for the small font's line; a larger font's line is
+  // taller, so icons drop by half the difference to stay centred on the text.
+  const int iconDrop = (renderer.getLineHeight(statusFont) - renderer.getLineHeight(SMALL_FONT_ID)) / 2;
   const bool showStatusBarTextLane = statusBar.textLaneVisible(halClock.isAvailable());
 
   // Draw Progress Text
@@ -910,9 +917,9 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
       snprintf(progressStr, sizeof(progressStr), "%s%d/%d", estimatePrefix, currentPage, pageCount);
     }
 
-    progressTextWidth = renderer.getTextWidth(SMALL_FONT_ID, progressStr);
+    progressTextWidth = renderer.getTextWidth(statusFont, progressStr);
     renderer.drawText(
-        SMALL_FONT_ID,
+        statusFont,
         renderer.getScreenWidth() - metrics.statusBarHorizontalMargin - orientedMarginRight - progressTextWidth, textY,
         progressStr, foregroundBlack);
   }
@@ -952,7 +959,7 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
     const int bmX = leftClusterX;
     // +5 compensates for the battery nub drawn above the rect origin by drawBatteryLeft,
     // which shifts the battery body's visual center below the mathematical rect center.
-    const int bmY = textY + (metrics.batteryHeight - bmIconH) / 2 + 5;
+    const int bmY = textY + (metrics.batteryHeight - bmIconH) / 2 + 5 + iconDrop;
     renderer.fillRect(bmX, bmY, bmIconW, bmIconH, foregroundBlack);
     const int xNotch[3] = {bmX, bmX + bmIconW, bmX + bmIconW / 2};
     const int yNotch[3] = {bmY + bmIconH, bmY + bmIconH, bmY + bmIconH - bmNotchDepth};
@@ -964,13 +971,13 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
   int leftClusterWidth = bmTotalWidth;
   if (statusBar.showBattery) {
     GUI.drawBatteryLeft(renderer, Rect{leftClusterX + bmTotalWidth, textY, metrics.batteryWidth, metrics.batteryHeight},
-                        showBatteryPercentage, foregroundBlack);
+                        showBatteryPercentage, foregroundBlack, statusFont);
     int batteryWidth = metrics.batteryWidth;
     if (showBatteryPercentage) {
       char batteryPercent[8];
       snprintf(batteryPercent, sizeof(batteryPercent), "%u%%",
                static_cast<unsigned>(powerManager.getBatteryPercentage()));
-      batteryWidth += batteryPercentSpacing + renderer.getTextWidth(SMALL_FONT_ID, batteryPercent);
+      batteryWidth += batteryPercentSpacing + renderer.getTextWidth(statusFont, batteryPercent);
     }
     leftClusterWidth += batteryWidth;
   }
@@ -979,8 +986,8 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
   if (hasTimeLeftLabel) {
     const bool hasLeftItem = leftClusterWidth > 0;
     const int timeLeftX = leftClusterX + leftClusterWidth + (hasLeftItem ? statusItemGap : 0);
-    renderer.drawText(SMALL_FONT_ID, timeLeftX, textY, timeLeftLabel, foregroundBlack);
-    const int timeLeftWidth = renderer.getTextWidth(SMALL_FONT_ID, timeLeftLabel);
+    renderer.drawText(statusFont, timeLeftX, textY, timeLeftLabel, foregroundBlack);
+    const int timeLeftWidth = renderer.getTextWidth(statusFont, timeLeftLabel);
     leftClusterWidth += (hasLeftItem ? statusItemGap : 0) + timeLeftWidth;
   }
 
@@ -1001,18 +1008,18 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
     int availableTitleSpace = rendererableScreenWidth - 2 * titleMarginLeftAdjusted;
 
     int titleWidth;
-    titleWidth = renderer.getTextWidth(SMALL_FONT_ID, title.c_str());
+    titleWidth = renderer.getTextWidth(statusFont, title.c_str());
     if (titleWidth > availableTitleSpace) {
       // Not enough space to center on the screen, center it within the remaining space instead
       availableTitleSpace = rendererableScreenWidth - titleMarginLeft - titleMarginRight;
       titleMarginLeftAdjusted = titleMarginLeft;
     }
     if (titleWidth > availableTitleSpace) {
-      title = renderer.truncatedText(SMALL_FONT_ID, title.c_str(), availableTitleSpace);
-      titleWidth = renderer.getTextWidth(SMALL_FONT_ID, title.c_str());
+      title = renderer.truncatedText(statusFont, title.c_str(), availableTitleSpace);
+      titleWidth = renderer.getTextWidth(statusFont, title.c_str());
     }
 
-    renderer.drawText(SMALL_FONT_ID,
+    renderer.drawText(statusFont,
                       titleMarginLeftAdjusted + metrics.statusBarHorizontalMargin + orientedMarginLeft +
                           (availableTitleSpace - titleWidth) / 2,
                       textY, title.c_str(), foregroundBlack);
@@ -1050,13 +1057,23 @@ void BaseTheme::drawTopStatusBarClock(const GfxRenderer& renderer, int topY, con
   (void)orientedMarginBottom;
   (void)orientedMarginLeft;
 
-  const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, timeText);
-  const int lineHeight = renderer.getLineHeight(SMALL_FONT_ID);
+  // The reader clock follows the status bar Text Size; everywhere else it
+  // stays the small UI font, so Home and other headers are unaffected.
+  const int font = readerContext ? UITheme::getStatusBarFontId() : SMALL_FONT_ID;
+  const int textWidth = renderer.getTextWidth(font, timeText);
   const int textX = (renderer.getScreenWidth() - textWidth) / 2;
-  const int effectiveTextYOffset = textYOffset + (readerContext ? homeHeaderClockTextYOffset(renderer) : 0);
   const int baseTopY = topY >= 0 ? topY : orientedMarginTop + metrics.topPadding;
-  const int textY = baseTopY + (statusBarHeight - lineHeight) / 2 + effectiveTextYOffset;
-  renderer.drawText(SMALL_FONT_ID, textX, textY, timeText, !darkMode);
+  int textY;
+  if (readerContext) {
+    // Top-anchored at the Home header clock's inset -- exactly what
+    // homeHeaderClockTextYOffset produced for the small font -- so a taller
+    // font grows down into the larger reserved lane instead of up off the top
+    // of the screen.
+    textY = baseTopY + homeHeaderTopInset + textYOffset;
+  } else {
+    textY = baseTopY + (statusBarHeight - renderer.getLineHeight(font)) / 2 + textYOffset;
+  }
+  renderer.drawText(font, textX, textY, timeText, !darkMode);
 }
 
 void BaseTheme::drawHelpText(const GfxRenderer& renderer, Rect rect, const char* label) const {

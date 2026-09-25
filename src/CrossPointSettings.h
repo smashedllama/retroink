@@ -351,6 +351,10 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   uint8_t statusBarTitle = CHAPTER_TITLE;
   uint8_t statusBarTimeLeft = TIME_LEFT_HIDE;
   uint8_t statusBarBattery = 1;
+  // Text size for the reader's status bar and top clock: 0 = Small (Inter 8,
+  // the original look), 1 = Medium (Inter 10), 2 = Large (Inter 12). All three
+  // are UI fonts that are already embedded, so this costs no flash.
+  uint8_t statusBarTextSize = 0;
   uint8_t xtcStatusBarMode = XTC_STATUS_BAR_HIDE;
   // Clock visibility mode (requires an RTC-backed clock).
   uint8_t hideClock = HIDE_CLOCK_ALWAYS;
@@ -472,6 +476,9 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   uint8_t showHiddenFiles = 0;
   // Show the physical Files browser on RetroInk Home. Library is the default entry point.
   uint8_t showFilesOnHome = 0;
+  // Library layout: 0 = a shelf of spines (titles rotated to run up the
+  // spine), 1 = a Finder-style icon grid with upright titles.
+  uint8_t libraryViewMode = 0;
   // Hide file extensions in the file browser right-side value column (0 = show, 1 = hide)
   uint8_t hideFileExtension = 0;
   // File browser display row style (0 = one-line theme list, 1 = two-line compact display)

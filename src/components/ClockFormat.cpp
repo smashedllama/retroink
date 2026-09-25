@@ -2,6 +2,8 @@
 
 #include <HalClock.h>
 
+#include <I18n.h>
+
 #include "CrossPointSettings.h"
 
 namespace {
@@ -39,4 +41,8 @@ bool formatLocalDate(char* buf, const size_t len) {
   return halClock.formatDate(buf, len, SETTINGS.clockUtcOffsetQ, static_cast<HalClock::DateFormat>(SETTINGS.dateFormat),
                              dateSeparatorChar());
 #endif
+}
+
+const char* dateUnavailableMessage() {
+  return halClock.isAvailable() ? tr(STR_SET_DATE_TIME) : tr(STR_NO_CLOCK_HARDWARE);
 }

@@ -1,3 +1,21 @@
+## [RetroInk 0.4.3] - 2026-09-25
+
+### Added
+
+- Library has an Icons view alongside the shelf, a Finder-style grid of document icons with titles underneath. Switch from the Actions menu or under System > Library View.
+- Status bar Text Size (Small, Medium, Large) sets the size of the status bar and reader clock text.
+- OPDS Browser appears on Home when at least one OPDS server is configured.
+- The Home recent-book card shows a reading progress bar and percentage.
+
+### Changed
+
+- On hardware without a clock chip, date and time screens say "This device has no clock" instead of asking to set the date and time.
+- The X3 has a clock chip and the original X4 does not. Date and time features are built around the clock and may not work on an X4; X4 owners are asked to report what they see. The X4 Pro and X4 Classic use a different chip and are not supported.
+
+### Fixed
+
+- The reading goal countdown badge was too narrow for its text, which overlapped the border. It now sizes to the widest value it can show.
+
 ## [RetroInk 0.4.2] - 2026-09-23
 
 ### Fixed

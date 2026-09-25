@@ -19,6 +19,12 @@ RetroInk is distributed under the MIT License. See [LICENSE](./LICENSE) and
 - Xteink X4
 - Seeed Studio Sticky
 
+#### X3 vs X4
+
+Both run the same `firmware-x3-x4-*.bin`. The X3 has a battery-backed clock chip; the original X4 does not. Everything that depends on the date or time (the header and reader clocks, Clock, Moon Phase, Earth, Desk Calendar, the date-based sleep screens, the reading goal countdown, daily stats and streaks, and dated backups) is built around that clock. On an X4 these may show "This device has no clock" or not work as expected. X4 owners: please report what you see.
+
+The X4 Pro and X4 Classic use a different chip (ESP32-S3) and are not supported by this build.
+
 ## What RetroInk adds
 
 - A dedicated RetroInk interface with large, readable System 6-inspired type.

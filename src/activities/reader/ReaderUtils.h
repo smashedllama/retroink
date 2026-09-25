@@ -58,8 +58,10 @@ inline int getTopClockStatusBarHeight() {
     return 0;
   }
 
-  const auto& metrics = UITheme::getInstance().getMetrics();
-  return std::max(goalBadge ? 32 : 0, std::max(UITheme::getStatusBarHeight(), metrics.statusBarVerticalMargin));
+  // Floors at the text lane (not the fixed margin) so a larger status bar Text
+  // Size reserves room for the bigger top clock even when the bottom bar's own
+  // text lane is hidden.
+  return std::max(goalBadge ? 32 : 0, std::max(UITheme::getStatusBarHeight(), UITheme::getStatusBarTextLaneHeight()));
 }
 
 inline int getTopClockStatusBarReservedHeight() {

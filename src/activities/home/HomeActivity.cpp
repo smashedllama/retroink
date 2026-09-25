@@ -269,6 +269,9 @@ void appendHomeMenuItems(HomeMenuEntries& items, bool hasOpdsServers, bool hasRe
   if (SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {
     if (SETTINGS.showFilesOnHome) items.push({tr(STR_RETRO_FILES), Folder, HomeMenuAction::BrowseFiles});
     items.push({tr(STR_RETRO_LIBRARY), File, HomeMenuAction::RetroLibrary});
+    // Every other theme offers this once a server is configured; without it
+    // here, a server added in Settings had no way to be browsed at all.
+    if (hasOpdsServers) items.push({tr(STR_OPDS_BROWSER), Library, HomeMenuAction::OpdsBrowser});
     items.push({tr(STR_READING_STATS), Chart, HomeMenuAction::ReadingStats});
     items.push({tr(STR_DESK_ACCESSORIES), DeskAccessories, HomeMenuAction::DeskAccessories});
     items.push({tr(STR_CLIPPINGS), BookmarkIcon, HomeMenuAction::Bookmarks});

@@ -35,6 +35,12 @@ constexpr int SPINE_MAX_COUNT = 8;
 constexpr int BANNER_H = 40;
 constexpr int BOARD_H = 6;
 constexpr int DETAIL_H = 130;
+// Icon view cells: a document icon with the title in up to two lines below.
+constexpr int ICON_CELL_MIN_W = 128;
+constexpr int ICON_CELL_H = 112;
+constexpr int DOC_ICON_W = 34;
+constexpr int DOC_ICON_H = 44;
+constexpr int DOC_ICON_FOLD = 10;
 
 const char* shelfLabel(RetroInkLibraryCatalog::Shelf shelf) {
   switch (shelf) {
@@ -105,6 +111,63 @@ void drawTwoLineTitle(const GfxRenderer& r, int x, int y, int width, const char*
   const char* second = title + split;
   while (*second == ' ') ++second;
   if (*second) drawFitted(r, UI_10_FONT_ID, x, y + 21, width, second, true);
+}
+
+// A classic Macintosh document icon: a page with its top-right corner folded
+// down. Selected icons draw inverted, the way the Finder darkens a selection.
+void drawDocIcon(const GfxRenderer& r, const int x, const int y, const bool selected) {
+  const int w = DOC_ICON_W, h = DOC_ICON_H, f = DOC_ICON_FOLD;
+  if (selected) {
+    r.fillRect(x, y + f, w + 1, h - f + 1, true);
+    r.fillRect(x, y, w - f + 1, f, true);
+    for (int i = 0; i < f; ++i) r.drawLine(x + w - f, y + i, x + w - f + i, y + i, true);
+  }
+  const bool ink = !selected;
+  r.drawLine(x, y, x + w - f, y, true);
+  r.drawLine(x + w - f, y, x + w, y + f, true);
+  r.drawLine(x + w, y + f, x + w, y + h, true);
+  r.drawLine(x, y + h, x + w, y + h, true);
+  r.drawLine(x, y, x, y + h, true);
+  // The fold itself.
+  r.drawLine(x + w - f, y, x + w - f, y + f, ink);
+  r.drawLine(x + w - f, y + f, x + w, y + f, ink);
+  // Ruled lines of text on the page.
+  for (int ly = y + 18; ly <= y + h - 8; ly += 6) r.drawLine(x + 6, ly, x + w - 6, ly, ink);
+}
+
+// Up to two centred lines of title under an icon, split at a space where it
+// can be, the second line ellipsised. Selected labels are white on black, as
+// the Finder highlights a selected icon's name.
+void drawIconLabel(const GfxRenderer& r, const int cx, const int y, const int width, const char* title,
+                   const bool selected) {
+  const int lineH = r.getLineHeight(UI_10_FONT_ID);
+  char first[224];
+  snprintf(first, sizeof(first), "%s", title);
+  size_t split = strlen(first);
+  while (split > 1 && r.getTextWidth(UI_10_FONT_ID, first) > width) first[--split] = '\0';
+  if (split < strlen(title)) {
+    size_t space = split;
+    while (space > 0 && title[space] != ' ') --space;
+    if (space > 0) { split = space; first[split] = '\0'; }
+  }
+  const char* rest = title + split;
+  while (*rest == ' ') ++rest;
+  char second[224];
+  snprintf(second, sizeof(second), "%s", rest);
+  if (r.getTextWidth(UI_10_FONT_ID, second) > width) {
+    size_t len = strlen(second);
+    while (len > 4 && r.getTextWidth(UI_10_FONT_ID, second) > width) second[--len] = '\0';
+    if (len > 3) { second[len - 3] = '.'; second[len - 2] = '.'; second[len - 1] = '.'; }
+  }
+  const char* lines[2] = {first, second};
+  for (int i = 0; i < 2; ++i) {
+    if (!lines[i][0]) continue;
+    const int tw = r.getTextWidth(UI_10_FONT_ID, lines[i]);
+    const int tx = cx - tw / 2;
+    const int ty = y + i * lineH;
+    if (selected) r.fillRect(tx - 3, ty, tw + 6, lineH, true);
+    r.drawText(UI_10_FONT_ID, tx, ty, lines[i], !selected);
+  }
 }
 
 std::string cacheFor(const std::string& path) {
@@ -260,7 +323,7 @@ void RetroInkLibraryActivity::clampSelection() {
   const uint32_t count = shelfBookCount();
   if (!count) { selected_ = stripStart_ = 0; return; }
   if (selected_ >= count) selected_ = count - 1;
-  const uint32_t perPage = static_cast<uint32_t>(spinesPerPage());
+  const uint32_t perPage = itemsPerPage();
   stripStart_ = (selected_ / perPage) * perPage;
 }
 
@@ -291,6 +354,38 @@ int RetroInkLibraryActivity::spineWidth() const {
   const int innerW = renderer.getScreenWidth() - m.contentSidePadding * 2 - 18;
   const int n = spinesPerPage();
   return (innerW - SPINE_GAP * (n - 1)) / n;
+}
+
+bool RetroInkLibraryActivity::iconView() const { return SETTINGS.libraryViewMode == 1; }
+
+void RetroInkLibraryActivity::iconGrid(int& cols, int& rows) const {
+  const auto& m = UITheme::getInstance().getMetrics();
+  const int innerW = renderer.getScreenWidth() - m.contentSidePadding * 2 - 18;
+  cols = std::max(1, innerW / ICON_CELL_MIN_W);
+  // Same vertical budget render() uses: below the shelf banner, above the
+  // detail panel. Fixed rather than following moveFailed_'s extra banner
+  // line, so a failed move never changes the page size mid-browse.
+  const int top = CompactHeader::contentTop(m) + 8;
+  const int bottom = renderer.getScreenHeight() - m.buttonHintsHeight - 8;
+  const int areaTop = top + 4 + BANNER_H + 12;
+  const int areaBottom = bottom - 8 - DETAIL_H - 10;
+  rows = std::max(1, (areaBottom - areaTop) / ICON_CELL_H);
+}
+
+uint32_t RetroInkLibraryActivity::itemsPerPage() const {
+  if (!iconView()) return static_cast<uint32_t>(spinesPerPage());
+  int cols, rows;
+  iconGrid(cols, rows);
+  return static_cast<uint32_t>(cols * rows);
+}
+
+void RetroInkLibraryActivity::toggleView() {
+  SETTINGS.libraryViewMode = iconView() ? 0 : 1;
+  SETTINGS.saveToFile();
+  // Keep the same book selected; only the page around it changes size.
+  const uint32_t perPage = itemsPerPage();
+  stripStart_ = (selected_ / perPage) * perPage;
+  requestUpdate();
 }
 
 void RetroInkLibraryActivity::rebuildView() {
@@ -373,7 +468,7 @@ void RetroInkLibraryActivity::showLetterJump() {
                            const auto* choice = std::get_if<OptionSelectionResult>(&result.data);
                            if (!choice) return;
                            const uint32_t count = shelfBookCount();
-                           const uint32_t perPage = static_cast<uint32_t>(spinesPerPage());
+                           const uint32_t perPage = itemsPerPage();
                            for (uint32_t row = 0; row < count; ++row) {
                              if (!shelfRecord(row, selectedRecord_)) break;
                              const uint8_t first = static_cast<uint8_t>(selectedRecord_.title[0]);
@@ -457,7 +552,8 @@ void RetroInkLibraryActivity::reviewRecovery() {
 void RetroInkLibraryActivity::showActions() {
   if (!shelfBookCount() || !shelfRecord(selected_, selectedRecord_)) {
     std::vector<std::string> choices = {tr(STR_LIBRARY_SHELVES), tr(STR_LIBRARY_SORT), tr(STR_LIBRARY_SET_DEFAULT),
-                                        tr(STR_LIBRARY_REFRESH)};
+                                        tr(STR_LIBRARY_REFRESH),
+                                        iconView() ? tr(STR_LIBRARY_VIEW_AS_SHELF) : tr(STR_LIBRARY_VIEW_AS_ICONS)};
     startActivityForResult(std::make_unique<OptionSelectionActivity>(renderer, mappedInput, "LibraryActions",
                                                              StrId::STR_LIBRARY_BOOK_MENU, std::move(choices), 0),
                            [this](const ActivityResult& result) {
@@ -467,6 +563,7 @@ void RetroInkLibraryActivity::showActions() {
                                  case 1: showSort(); break;
                                  case 2: writeDefaultShelfToken(); break;
                                  case 3: refreshLibrary(); break;
+                                 case 4: toggleView(); break;
                                }
                              }
                            });
@@ -478,7 +575,9 @@ void RetroInkLibraryActivity::showActions() {
                                       favorite ? tr(STR_LIBRARY_UNPIN) : tr(STR_LIBRARY_PIN),
                                       tr(STR_LIBRARY_MOVE), tr(STR_LIBRARY_SHELVES),
                                       tr(STR_LIBRARY_SORT), tr(STR_LIBRARY_JUMP),
-                                      tr(STR_LIBRARY_SET_DEFAULT), tr(STR_LIBRARY_REFRESH)};
+                                      tr(STR_LIBRARY_SET_DEFAULT), tr(STR_LIBRARY_REFRESH),
+                                      iconView() ? tr(STR_LIBRARY_VIEW_AS_SHELF) : tr(STR_LIBRARY_VIEW_AS_ICONS)};
+  // Recover is conditional, so it stays last to keep every other index fixed.
   if (catalog_.recoveryCount(selectedRecord_)) choices.push_back(tr(STR_LIBRARY_RECOVER));
   startActivityForResult(std::make_unique<OptionSelectionActivity>(renderer, mappedInput, "LibraryActions",
                                                            StrId::STR_LIBRARY_BOOK_MENU, std::move(choices), 0),
@@ -496,7 +595,8 @@ void RetroInkLibraryActivity::showActions() {
                              case 5: showLetterJump(); break;
                              case 6: writeDefaultShelfToken(); break;
                              case 7: refreshLibrary(); break;
-                             case 8: reviewRecovery(); break;
+                             case 8: toggleView(); break;
+                             case 9: reviewRecovery(); break;
                            }
                          });
 }
@@ -545,11 +645,11 @@ void RetroInkLibraryActivity::loop() {
     return;
   }
 
-  // Left/Right: previous/next book within this shelf, wrapping. The strip
-  // window is page-aligned, so it only repaints when the selection crosses
-  // a page edge instead of sliding one spine per press.
+  // Left/Right: previous/next book within this shelf, wrapping. The visible
+  // window is page-aligned (a strip of spines, or a page of icons), so it
+  // only jumps when the selection crosses a page edge.
   const uint32_t count = shelfBookCount();
-  const uint32_t perPage = static_cast<uint32_t>(spinesPerPage());
+  const uint32_t perPage = itemsPerPage();
   if (count && mappedInput.wasReleased(MappedInputManager::Button::Left)) {
     selected_ = selected_ ? selected_ - 1 : count - 1;
     stripStart_ = (selected_ / perPage) * perPage;
@@ -650,6 +750,23 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
     const uint32_t count = shelfBookCount();
     if (!count) {
       renderer.drawCenteredText(UI_10_FONT_ID, stripTop + spineAreaH / 2, tr(STR_LIBRARY_NO_BOOKS));
+    } else if (iconView()) {
+      // --- Finder icon view: a page of document icons, titles upright ---
+      int cols, rows;
+      iconGrid(cols, rows);
+      const int cellW = innerW / cols;
+      const int gridTop = bannerY + BANNER_H + 12;
+      const int perPage = cols * rows;
+      for (int i = 0; i < perPage && stripStart_ + static_cast<uint32_t>(i) < count; ++i) {
+        const uint32_t idx = stripStart_ + static_cast<uint32_t>(i);
+        if (!shelfRecord(idx, selectedRecord_)) break;
+        const bool isSelected = idx == selected_;
+        const int cellX = innerX + (i % cols) * cellW;
+        const int cellY = gridTop + (i / cols) * ICON_CELL_H;
+        drawDocIcon(renderer, cellX + (cellW - DOC_ICON_W) / 2, cellY + 6, isSelected);
+        drawIconLabel(renderer, cellX + cellW / 2, cellY + 6 + DOC_ICON_H + 8, cellW - 10, selectedRecord_.title,
+                      isSelected);
+      }
     } else {
       const int n = spinesPerPage();
       const int sw = spineWidth();
@@ -679,8 +796,11 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
         renderer.drawTextRotated90CW(UI_10_FONT_ID, tx, ty, label.c_str(), true, EpdFontFamily::BOLD);
       }
     }
-    renderer.fillRect(innerX, boardY, innerW, BOARD_H, true);
-    renderer.fillRect(innerX + 6, boardY + BOARD_H, innerW - 12, 3, true);
+    // The shelf board only belongs under spines.
+    if (!iconView()) {
+      renderer.fillRect(innerX, boardY, innerW, BOARD_H, true);
+      renderer.fillRect(innerX + 6, boardY + BOARD_H, innerW - 12, 3, true);
+    }
 
     // --- detail panel for the selected book: spine labels are necessarily
     // terse, so this is where the current selection is actually readable ---

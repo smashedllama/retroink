@@ -50,7 +50,20 @@ void RetroInkGoalCountdown::badgeRect(const GfxRenderer& renderer, int& x, int& 
   renderer.getOrientedViewableTRBL(&top, &right, &bottom, &left);
   (void)bottom;
   (void)left;
-  w = std::min(112, renderer.getScreenWidth() / 4);
+  // Sized to the widest text the badge can show today, not a fixed width: a
+  // fixed 112px clipped "180 min left" (goals run to 180). And not the live
+  // text either -- the badge repaints by partial refresh each minute, so a box
+  // that shrank from "10 min" to "9 min" would leave the old edges behind.
+  // Every digit is measured as an 8, the widest, at the goal's digit count.
+  const unsigned goal = SETTINGS.readingGoalMinutes;
+  const unsigned widestMinutes = goal >= 100 ? 888 : (goal >= 10 ? 88 : 8);
+  char widest[28];
+  snprintf(widest, sizeof(widest), tr(STR_READING_GOAL_BADGE), widestMinutes);
+  const int textWidth =
+      std::max(renderer.getTextWidth(UI_10_FONT_ID, widest, EpdFontFamily::BOLD),
+               renderer.getTextWidth(UI_10_FONT_ID, tr(STR_GOAL_REACHED_BADGE), EpdFontFamily::BOLD));
+  // Capped well short of the centre, where the reader's clock sits.
+  w = std::min(textWidth + 24, renderer.getScreenWidth() * 2 / 5);
   h = 32;
   x = renderer.getScreenWidth() - right - w - 4;
   y = top + UITheme::getInstance().getMetrics().topPadding;
@@ -70,7 +83,9 @@ void RetroInkGoalCountdown::drawBadge(const GfxRenderer& renderer, const Sample&
   } else {
     snprintf(text, sizeof(text), tr(STR_READING_GOAL_BADGE), static_cast<unsigned>(value.minutesLeft));
   }
-  const int textX = x + (w - renderer.getTextWidth(UI_10_FONT_ID, text)) / 2;
+  // Measured in bold because it's drawn in bold -- regular weight is narrower,
+  // which centred the text too far right and pushed it over the border.
+  const int textX = x + (w - renderer.getTextWidth(UI_10_FONT_ID, text, EpdFontFamily::BOLD)) / 2;
   renderer.drawText(UI_10_FONT_ID, textX, y + (h - renderer.getLineHeight(UI_10_FONT_ID)) / 2,
                     text, !black, EpdFontFamily::BOLD);
 }

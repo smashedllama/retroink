@@ -28,6 +28,7 @@ enum MenuItem {
   ITEM_TITLE,
   ITEM_TIME_LEFT,
   ITEM_BATTERY,
+  ITEM_TEXT_SIZE,
   ITEM_XTC_STATUS_BAR,
   ITEM_COUNT
 };
@@ -41,6 +42,7 @@ const StrId menuNames[ITEM_COUNT] = {
     StrId::STR_TITLE,
     StrId::STR_TIME_LEFT,
     StrId::STR_BATTERY,
+    StrId::STR_STATUS_BAR_TEXT_SIZE,
     StrId::STR_XTC_STATUS_BAR,
 };
 
@@ -67,6 +69,9 @@ const uint8_t titleRawValues[TITLE_ITEMS] = {
 constexpr int TIME_LEFT_ITEMS = 3;
 const StrId timeLeftNames[TIME_LEFT_ITEMS] = {StrId::STR_HIDE, StrId::STR_CHAPTER, StrId::STR_BOOK};
 
+constexpr int TEXT_SIZE_ITEMS = 3;
+const StrId textSizeNames[TEXT_SIZE_ITEMS] = {StrId::STR_SMALL, StrId::STR_MEDIUM, StrId::STR_LARGE};
+
 constexpr int XTC_STATUS_BAR_ITEMS = 3;
 const StrId xtcStatusBarNames[XTC_STATUS_BAR_ITEMS] = {StrId::STR_HIDE, StrId::STR_BOTTOM, StrId::STR_TOP};
 
@@ -80,6 +85,8 @@ int optionCountForItem(const int item) {
       return TITLE_ITEMS;
     case ITEM_TIME_LEFT:
       return TIME_LEFT_ITEMS;
+    case ITEM_TEXT_SIZE:
+      return TEXT_SIZE_ITEMS;
     case ITEM_XTC_STATUS_BAR:
       return XTC_STATUS_BAR_ITEMS;
     default:
@@ -97,6 +104,8 @@ StrId optionNameForItem(const int item, const int optionIndex) {
       return titleNames[optionIndex];
     case ITEM_TIME_LEFT:
       return timeLeftNames[optionIndex];
+    case ITEM_TEXT_SIZE:
+      return textSizeNames[optionIndex];
     case ITEM_XTC_STATUS_BAR:
       return xtcStatusBarNames[optionIndex];
     default:
@@ -130,6 +139,9 @@ uint8_t currentOptionIndexForItem(const int item) {
     case ITEM_TIME_LEFT:
       rawValue = SETTINGS.statusBarTimeLeft;
       break;
+    case ITEM_TEXT_SIZE:
+      rawValue = SETTINGS.statusBarTextSize;
+      break;
     case ITEM_XTC_STATUS_BAR:
       rawValue = SETTINGS.xtcStatusBarMode;
       break;
@@ -158,6 +170,9 @@ void setOptionIndexForItem(const int item, const uint8_t optionIndex) {
       break;
     case ITEM_TIME_LEFT:
       SETTINGS.statusBarTimeLeft = rawValue;
+      break;
+    case ITEM_TEXT_SIZE:
+      SETTINGS.statusBarTextSize = rawValue;
       break;
     case ITEM_XTC_STATUS_BAR:
       SETTINGS.xtcStatusBarMode = rawValue;
@@ -215,6 +230,10 @@ void StatusBarSettingsActivity::onEnter() {
 
   if (SETTINGS.statusBarTimeLeft >= TIME_LEFT_ITEMS) {
     SETTINGS.statusBarTimeLeft = CrossPointSettings::STATUS_BAR_TIME_LEFT::TIME_LEFT_HIDE;
+  }
+
+  if (SETTINGS.statusBarTextSize >= TEXT_SIZE_ITEMS) {
+    SETTINGS.statusBarTextSize = 0;
   }
 
   if (SETTINGS.xtcStatusBarMode >= XTC_STATUS_BAR_ITEMS) {

@@ -80,9 +80,18 @@ class RetroInkLibraryActivity final : public Activity {
   void rebuildCustomFilter();
   void clampSelection();
 
-  // --- layout (shared by loop() and render(), depends only on screen width) ---
+  // --- layout (shared by loop() and render(), depends only on screen size) ---
   int spinesPerPage() const;
   int spineWidth() const;
+  // Finder-style icon view: upright titles under document icons, for anyone
+  // who'd rather not turn the device sideways to read spines.
+  bool iconView() const;
+  // Columns and rows of the icon grid, fitted between the shelf banner and
+  // the detail panel. One function so paging and drawing can't disagree.
+  void iconGrid(int& cols, int& rows) const;
+  // Books per page in whichever view is active; the unit selected_ pages by.
+  uint32_t itemsPerPage() const;
+  void toggleView();
 
   void rebuildView();
   void refreshLibrary();

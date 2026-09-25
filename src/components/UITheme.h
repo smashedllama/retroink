@@ -41,6 +41,12 @@ class UITheme {
   static UIIcon getFileIcon(const std::string& filename);
   static int getStatusBarHeight();
   static int getProgressBarHeight();
+  // Font for the reader's status bar and top clock, per the Text Size setting.
+  static int getStatusBarFontId();
+  // Height of the status bar's text lane at the current Text Size. Both the
+  // bottom bar and the reader's top clock size themselves from this, so a
+  // larger font grows the reserved space instead of overlapping the page.
+  static int getStatusBarTextLaneHeight();
 
  private:
   const ThemeMetrics* currentMetrics;

@@ -68,11 +68,14 @@ class SleepClockScope {
 // starts. Clear only the clock lane in those preserved RetroInk frames.
 void erasePreservedRetroInkClock(const GfxRenderer& renderer, const bool readerPage) {
   if (SETTINGS.uiTheme != CrossPointSettings::SYSTEM6 || !halClock.isAvailable()) return;
-  const int textWidth = renderer.getTextWidth(readerPage ? SMALL_FONT_ID : UI_10_FONT_ID,
+  // A reader page's clock is drawn at the status bar Text Size, so erase the
+  // band at that size -- the small-font width would leave a larger clock's
+  // edges behind.
+  const int textWidth = renderer.getTextWidth(readerPage ? UITheme::getStatusBarFontId() : UI_10_FONT_ID,
                                               SETTINGS.clockFormat == 1 ? "12:59 PM" : "23:59");
   const auto& metrics = UITheme::getInstance().getMetrics();
   if (readerPage) {
-    const int bandHeight = std::max(UITheme::getStatusBarHeight(), metrics.statusBarVerticalMargin);
+    const int bandHeight = std::max(UITheme::getStatusBarHeight(), UITheme::getStatusBarTextLaneHeight());
     if (bandHeight > 0)
       renderer.fillRect((renderer.getScreenWidth() - textWidth) / 2 - 3, metrics.topPadding,
                         textWidth + 6, bandHeight + 8, ReaderUtils::readerDarkModeEnabled());
@@ -733,7 +736,7 @@ void SleepActivity::renderMoonPhaseSleepScreen() const {
   const int contentBottom = wy + windowHeight - 14;
 
   if (!haveDate) {
-    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, tr(STR_SET_DATE_TIME));
+    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, dateUnavailableMessage());
     renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
     return;
   }
@@ -805,7 +808,7 @@ void SleepActivity::renderEarthPhaseSleepScreen() const {
   const int contentBottom = wy + windowHeight - 14;
 
   if (!haveDate) {
-    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, tr(STR_SET_DATE_TIME));
+    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, dateUnavailableMessage());
     renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
     return;
   }
@@ -869,7 +872,7 @@ void SleepActivity::renderDeskCalendarSleepScreen() const {
   const int contentBottom = wy + windowHeight - 14;
 
   if (!todayKnown) {
-    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, tr(STR_SET_DATE_TIME));
+    renderer.drawCenteredText(UI_10_FONT_ID, contentTop + (contentBottom - contentTop) / 2, dateUnavailableMessage());
     renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
     return;
   }

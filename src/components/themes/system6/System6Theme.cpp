@@ -9,6 +9,7 @@
 #include <I18n.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -503,7 +504,6 @@ void System6Theme::drawRecentBookCover(GfxRenderer& r, Rect rect, const std::vec
   (void)stats;
   (void)globalStats;
   (void)chapter;
-  (void)progress;
   // The cover is streamed a row at a time through a 2x2 monochrome dither. No
   // image-sized buffer or Home cover snapshot is retained.
   rendered = false;
@@ -548,12 +548,32 @@ void System6Theme::drawRecentBookCover(GfxRenderer& r, Rect rect, const std::vec
   const int textWidth = tile.x + tile.width - textX - 18;
   const int lineHeight = r.getLineHeight(font);
   const int titleY = tile.y + 10;
-  const int maxTitleLines = std::max(1, (tile.height - 20) / std::max(1, lineHeight));
+  // Progress arrives as 0-100, or negative when the book has no saved position.
+  const bool showProgress = !books.empty() && progress >= 0.0f;
+  // The bottom line of the text column is held back for the progress bar.
+  const int maxTitleLines = std::max(1, (tile.height - 20) / std::max(1, lineHeight) - (showProgress ? 1 : 0));
   const auto titleLines = r.wrappedText(font, books.empty() ? tr(STR_NO_RECENT_BOOKS) : books.front().title.c_str(),
                                         textWidth, maxTitleLines, EpdFontFamily::BOLD);
   for (size_t i = 0; i < titleLines.size(); ++i) {
     r.drawText(font, textX, titleY + static_cast<int>(i) * lineHeight, titleLines[i].c_str(), !active,
                EpdFontFamily::BOLD);
+  }
+  if (showProgress) {
+    // A thin progress bar with the percentage beside it, along the bottom of
+    // the text column. Drawn in the tile's text colour so it inverts with the
+    // selection like everything else on the card.
+    char percentText[8];
+    snprintf(percentText, sizeof(percentText), "%d%%",
+             static_cast<int>(std::lround(std::clamp(progress, 0.0f, 100.0f))));
+    const int rowY = tile.y + tile.height - 10 - lineHeight;
+    const int percentWidth = r.getTextWidth(font, percentText, EpdFontFamily::BOLD);
+    const int barWidth = std::max(20, textWidth - percentWidth - 10);
+    constexpr int kBarHeight = 10;
+    const int barY = rowY + (lineHeight - kBarHeight) / 2;
+    r.drawRect(textX, barY, barWidth, kBarHeight, !active);
+    const int fill = (barWidth - 4) * static_cast<int>(std::clamp(progress, 0.0f, 100.0f)) / 100;
+    if (fill > 0) r.fillRect(textX + 2, barY + 2, fill, kBarHeight - 4, !active);
+    r.drawText(font, textX + barWidth + 10, rowY, percentText, !active, EpdFontFamily::BOLD);
   }
   if (!books.empty()) {
     TouchRegistry::getInstance().add(tile, 0, TouchRegistry::Cover);

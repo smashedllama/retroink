@@ -391,7 +391,7 @@ void ClockDeskActivity::render(RenderLock&&) {
                             haveTime ? tr(STR_SECONDS) : "");
 
   if (!haveTime) {
-    renderer.drawCenteredText(UI_10_FONT_ID, top + (bottom - top) / 2, tr(STR_SET_DATE_TIME));
+    renderer.drawCenteredText(UI_10_FONT_ID, top + (bottom - top) / 2, dateUnavailableMessage());
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
