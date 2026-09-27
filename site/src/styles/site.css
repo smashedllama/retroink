@@ -564,6 +564,24 @@ pre code {
   font-size: clamp(2rem, 4vw, 3rem);
 }
 
+.device-note {
+  margin: 12px 0 54px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.device-note p {
+  margin: 0 0 12px;
+  font-size: 1.04rem;
+  line-height: 1.45;
+}
+
+.device-note a {
+  font-weight: 700;
+}
+
 .useful-docs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

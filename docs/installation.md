@@ -15,6 +15,34 @@ you want to modify the code yourself.
 - Xteink X3, X4
 - Seeed Studio Sticky
 
+The X4 Pro and X4 Classic are built on a different chip (ESP32-S3) and can't
+run this firmware.
+
+## X3 vs X4
+
+The X3 and the original X4 run the same `firmware-x3-x4-*.bin`, but they
+aren't the same hardware. The X3 has a small battery-backed clock chip that
+keeps the date and time even while the reader is asleep or switched off. The
+original X4 has no clock chip at all, so it has no idea what day or time it
+is, and there's nothing for the firmware to read.
+
+A number of RetroInk features are built on knowing today's date. X4 testers
+confirmed they don't work without a clock, so on an X4 they're left out
+rather than shown broken:
+
+- **Desk Accessories:** Clock, Moon Phase, Earth, and Desk Calendar. Focus
+  Session, Puzzle, and System Info are still there.
+- **Sleep screens:** Today, Book + Week, Reading Year, Moon Phase, Earth, and
+  Desk Calendar. If one of these was already chosen, the default sleep screen
+  is used instead.
+- **Daily reading goal:** the goal and the reader countdown badge, since the
+  goal resets each calendar day.
+- **Clocks:** the header and reader clocks and the date and time settings.
+  These were already hidden on the X4.
+
+Everything else works the same on both: reading, the Library, Focus
+Session, per-book stats, all-time totals, transfers, and syncing.
+
 ## Install via the web flash tool (easiest)
 
 No software to install. Connect your device with USB-C, then go to

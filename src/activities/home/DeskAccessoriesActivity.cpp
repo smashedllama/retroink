@@ -1,5 +1,6 @@
 #include "DeskAccessoriesActivity.h"
 
+#include <HalClock.h>
 #include <I18n.h>
 
 #include <algorithm>
@@ -18,14 +19,37 @@
 #include "components/themes/BaseTheme.h"
 #include "fontIds.h"
 
+namespace {
+struct DeskEntry {
+  StrId label;
+  UIIcon icon;
+  bool needsClock;
+};
+
+// Indexed by DeskAction.
+constexpr DeskEntry kEntries[] = {
+    {StrId::STR_FOCUS_SESSION, Hourglass, false},    {StrId::STR_MOON_PHASE, MoonPhaseIcon, true},
+    {StrId::STR_EARTH_PHASE, EarthPhaseIcon, true},  {StrId::STR_DESK_CLOCK, ClockIcon, true},
+    {StrId::STR_PUZZLE, PuzzleIcon, false},          {StrId::STR_DESK_CALENDAR, CalendarIcon, true},
+    {StrId::STR_SYSTEM_INFO, SystemInfoIcon, false},
+};
+}  // namespace
+
 void DeskAccessoriesActivity::onEnter() {
   Activity::onEnter();
+  const bool hasClock = halClock.isAvailable();
+  itemCount_ = 0;
+  for (int i = 0; i < kMaxItems; ++i) {
+    if (kEntries[i].needsClock && !hasClock) continue;
+    items_[itemCount_++] = static_cast<DeskAction>(i);
+  }
   selected_ = 0;
   requestUpdate();
 }
 
 void DeskAccessoriesActivity::activate() {
-  switch (static_cast<DeskAction>(selected_)) {
+  if (selected_ < 0 || selected_ >= itemCount_) return;
+  switch (items_[selected_]) {
     case DeskAction::FocusTimer:
       startActivityForResult(
           std::make_unique<RetroInkFocusDeskActivity>(renderer, mappedInput, RetroInkFocusDeskActivity::Entry::Home),
@@ -68,7 +92,7 @@ void DeskAccessoriesActivity::loop() {
     return;
   }
   int tapped = -1;
-  if (mappedInput.wasItemTapped(tapped) && tapped >= 0 && tapped < kItemCount) {
+  if (mappedInput.wasItemTapped(tapped) && tapped >= 0 && tapped < itemCount_) {
     selected_ = tapped;
     activate();
     return;
@@ -78,11 +102,11 @@ void DeskAccessoriesActivity::loop() {
     return;
   }
   buttonNavigator_.onPreviousPress([this] {
-    selected_ = ButtonNavigator::previousIndex(selected_, kItemCount);
+    selected_ = ButtonNavigator::previousIndex(selected_, itemCount_);
     requestUpdate();
   });
   buttonNavigator_.onNextPress([this] {
-    selected_ = ButtonNavigator::nextIndex(selected_, kItemCount);
+    selected_ = ButtonNavigator::nextIndex(selected_, itemCount_);
     requestUpdate();
   });
 }
@@ -93,12 +117,6 @@ void DeskAccessoriesActivity::render(RenderLock&&) {
   const int pageHeight = renderer.getScreenHeight();
 
   renderer.clearScreen();
-
-  const char* labels[kItemCount] = {tr(STR_FOCUS_SESSION), tr(STR_MOON_PHASE),    tr(STR_EARTH_PHASE),
-                                    tr(STR_DESK_CLOCK),    tr(STR_PUZZLE),        tr(STR_DESK_CALENDAR),
-                                    tr(STR_SYSTEM_INFO)};
-  const UIIcon icons[kItemCount] = {Hourglass,  MoonPhaseIcon, EarthPhaseIcon, ClockIcon,
-                                   PuzzleIcon, CalendarIcon,  SystemInfoIcon};
 
   const Rect headerRect = TouchHeaderBackButton::headerRect(renderer, mappedInput);
   if (mappedInput.hasTouchHardware()) {
@@ -123,16 +141,17 @@ void DeskAccessoriesActivity::render(RenderLock&&) {
 
   const int rowX = frameX + 14;
   const int rowW = frameW - 28;
-  const int rowHeight = std::min(64, (bottom - top - 20) / kItemCount);
+  const int rowHeight = std::min(64, (bottom - top - 20) / std::max(1, itemCount_));
   const int rowTop = top + 10;
   const int iconFont = UI_10_FONT_ID;
-  for (int i = 0; i < kItemCount; ++i) {
+  for (int i = 0; i < itemCount_; ++i) {
+    const DeskEntry& entry = kEntries[static_cast<int>(items_[i])];
     const int y = rowTop + i * rowHeight;
     const int rowH = rowHeight - 6;
     const bool active = i == selected_;
     if (active) renderer.fillRect(rowX, y, rowW, rowH, true);
-    GUI.drawMenuIcon(renderer, icons[i], rowX + 10, y + (rowH - 26) / 2, !active);
-    renderer.drawText(iconFont, rowX + 46, y + (rowH - renderer.getLineHeight(iconFont)) / 2, labels[i], !active);
+    GUI.drawMenuIcon(renderer, entry.icon, rowX + 10, y + (rowH - 26) / 2, !active);
+    renderer.drawText(iconFont, rowX + 46, y + (rowH - renderer.getLineHeight(iconFont)) / 2, I18n::getInstance().get(entry.label), !active);
     TouchRegistry::getInstance().add(Rect{rowX, y, rowW, rowH}, i, TouchRegistry::Item);
   }
 

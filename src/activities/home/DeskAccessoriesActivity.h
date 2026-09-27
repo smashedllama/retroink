@@ -8,8 +8,13 @@
 // Desk Calendar, System Info), all nested here instead of flat in the Home menu.
 class DeskAccessoriesActivity final : public Activity {
   enum class DeskAction : uint8_t { FocusTimer, MoonPhase, Earth, Clock, Puzzle, Calendar, SystemInfo };
-  static constexpr int kItemCount = 7;
+  static constexpr int kMaxItems = 7;
 
+  // Visible entries in display order. Clock-driven accessories (Moon Phase,
+  // Earth, Clock, Desk Calendar) are left out on hardware without a clock
+  // chip, such as the original X4, since they have nothing to show there.
+  DeskAction items_[kMaxItems] = {};
+  int itemCount_ = 0;
   int selected_ = 0;
   ButtonNavigator buttonNavigator_;
 

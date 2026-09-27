@@ -2,6 +2,7 @@
 
 #include "SimulatorSmokeTest.h"
 
+#include <HalClock.h>
 #include <HalStorage.h>
 #include <Epub.h>
 #include <I18n.h>
@@ -49,6 +50,36 @@ extern GfxRenderer renderer;
 extern MappedInputManager mappedInputManager;
 
 namespace {
+// Desk Accessories below Focus Timer, in menu order. The clock-driven ones
+// are only listed on hardware with a clock chip, so the expected order
+// depends on halClock (the simulator has none, like an original X4).
+struct SmokeDeskAccessory {
+  const char* capture;  // String literals: queueStep stores the pointer.
+  const char* activity;
+  bool needsClock;
+};
+constexpr SmokeDeskAccessory kSmokeDeskAccessories[] = {
+    {"Desk Accessory Moon Phase", "MoonPhaseDesk", true},  {"Desk Accessory Earth", "EarthPhaseDesk", true},
+    {"Desk Accessory Clock", "ClockDesk", true},            {"Desk Accessory Puzzle", "PuzzleDesk", false},
+    {"Desk Accessory Calendar", "DeskCalendar", true},      {"Desk Accessory System Info", "SystemInfoDesk", false},
+};
+
+int visibleDeskAccessoryCount() {
+  int count = 0;
+  for (const auto& entry : kSmokeDeskAccessories) {
+    if (!entry.needsClock || halClock.isAvailable()) ++count;
+  }
+  return count;
+}
+
+const SmokeDeskAccessory& visibleDeskAccessory(int index) {
+  for (const auto& entry : kSmokeDeskAccessories) {
+    if (entry.needsClock && !halClock.isAvailable()) continue;
+    if (index-- == 0) return entry;
+  }
+  return kSmokeDeskAccessories[0];
+}
+
 
 enum class SmokeStep : uint8_t {
   Start,
@@ -867,8 +898,8 @@ class SimulatorSmokeTest {
       case SmokeStep::DeskAccessoriesConfirmPress:
         // Home's Focus entry now opens the Desk Accessories submenu, which
         // opens on Focus Timer (index 0). Before reaching it, cycle Down
-        // through the 5 newer accessories (Moon Phase, Clock, Puzzle, Desk
-        // Calendar, System Info), confirming each opens and Back returns
+        // through the other accessories (clock-driven ones only when the
+        // device has a clock, as on hardware), confirming each opens and Back returns
         // here, then navigate back Up to Focus Timer to continue the
         // original flow unchanged.
         if (!activityManager.isCurrentActivityNamed("DeskAccessories")) fail("Desk Accessories did not open");
@@ -896,17 +927,12 @@ class SimulatorSmokeTest {
         // Named per accessory rather than one shared "item opened" label, so
         // a capture run leaves one frame per screen instead of each
         // overwriting the last. String literals: queueStep stores the pointer.
-        static const char* const kOpenedNames[] = {"Desk Accessory Moon Phase", "Desk Accessory Earth",
-                                                   "Desk Accessory Clock",      "Desk Accessory Puzzle",
-                                                   "Desk Accessory Calendar",   "Desk Accessory System Info"};
-        queueStep(kOpenedNames[deskAccessoryCheckIndex], SmokeStep::DeskAccessoryCheckVerify);
+        queueStep(visibleDeskAccessory(deskAccessoryCheckIndex).capture, SmokeStep::DeskAccessoryCheckVerify);
         break;
       }
 
       case SmokeStep::DeskAccessoryCheckVerify: {
-        static const char* kNames[] = {"MoonPhaseDesk", "EarthPhaseDesk", "ClockDesk",
-                                       "PuzzleDesk",    "DeskCalendar",   "SystemInfoDesk"};
-        if (!activityManager.isCurrentActivityNamed(kNames[deskAccessoryCheckIndex])) {
+        if (!activityManager.isCurrentActivityNamed(visibleDeskAccessory(deskAccessoryCheckIndex).activity)) {
           fail("Desk accessory did not open");
         }
         mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Back);
@@ -922,7 +948,7 @@ class SimulatorSmokeTest {
       case SmokeStep::DeskAccessoryCheckReturnVerify:
         if (!activityManager.isCurrentActivityNamed("DeskAccessories")) fail("Desk accessory Back did not return");
         ++deskAccessoryCheckIndex;
-        if (deskAccessoryCheckIndex < 6) {
+        if (deskAccessoryCheckIndex < visibleDeskAccessoryCount()) {
           step = SmokeStep::DeskAccessoryCheckDownPress;
         } else {
           deskAccessoryCheckIndex = 0;
@@ -938,7 +964,7 @@ class SimulatorSmokeTest {
       case SmokeStep::DeskAccessoryCheckUpRelease:
         mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Up);
         ++deskAccessoryCheckIndex;
-        if (deskAccessoryCheckIndex < 6) {
+        if (deskAccessoryCheckIndex < visibleDeskAccessoryCount()) {
           step = SmokeStep::DeskAccessoryCheckUpPress;
         } else {
           // Back at Focus Timer (index 0) -- continue the original flow.
@@ -1201,6 +1227,12 @@ class SimulatorSmokeTest {
 
       case SmokeStep::StatsActions:
         if (!activityManager.isCurrentActivityNamed("RetroInkFocusDesk")) fail("Stats Actions did not open");
+        if (!halClock.isAvailable()) {
+          // Clockless hardware has no daily goal row here; skip its editor.
+          activityManager.goToFileBrowser("/");
+          queueStep("File Browser root", SmokeStep::FileBrowserRoot);
+          break;
+        }
         mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Down);
         step = SmokeStep::StatsGoalPress;
         break;

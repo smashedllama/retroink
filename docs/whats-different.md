@@ -7,6 +7,11 @@ nav_order: 1
 
 Everything you love about [CrossInk](https://github.com/uxjulia/CrossInk), its reading engine, library, transfer, dictionary, and synchronization features, now with a full System 6 retro redesign, a reimagined stats dashboard, a real library, Focus Session reading goals, and Obsidian clip syncing. This page covers that RetroInk-specific delta. For the full feature set RetroInk inherits from CrossInk, see the dropdown near the bottom of this page.
 
+> **On an original X4?** It has no clock chip, so the date-based features on
+> this page (Desk Accessories Clock, Moon Phase, Earth, and Desk Calendar,
+> the date-based sleep screens, and daily reading goals) are left out there.
+> See [X3 vs X4](./installation.md#x3-vs-x4) for why.
+
 ## Retro UI
 
 <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-home-with-book.png" alt="RetroInk's Home screen, styled after classic Macintosh System 6" /></div></div>

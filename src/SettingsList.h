@@ -367,6 +367,23 @@ inline SettingInfo buildSleepScreenSetting() {
   return s;
 }
 
+// Removes clock-driven options from a copy of the sleep screen setting when
+// the device has no clock. Only ever applied to display copies: the base list
+// must keep every raw value so an X3's saved choice still validates on load.
+inline void hideClockSleepScreens(SettingInfo& setting) {
+  if (halClock.isAvailable() || setting.nameId != StrId::STR_SLEEP_SCREEN) return;
+  if (setting.enumRawValues.size() != setting.enumValues.size()) return;
+  size_t out = 0;
+  for (size_t i = 0; i < setting.enumRawValues.size(); ++i) {
+    if (sleepScreenNeedsClock(setting.enumRawValues[i])) continue;
+    setting.enumRawValues[out] = setting.enumRawValues[i];
+    setting.enumValues[out] = setting.enumValues[i];
+    ++out;
+  }
+  setting.enumRawValues.resize(out);
+  setting.enumValues.resize(out);
+}
+
 // Shared settings list used by both the device settings UI and the web settings API.
 // Each entry has a key (for JSON API) and category (for grouping).
 // ACTION-type entries and entries without a key are device-only.
@@ -1167,6 +1184,7 @@ inline std::vector<SettingInfo> buildDisplaySleepSettingsList(const std::vector<
                                  [nameId](const auto& setting) { return setting.nameId == nameId; });
     if (it != allSettings.end()) {
       sleepSettings.push_back(*it);
+      hideClockSleepScreens(sleepSettings.back());
       sleepSettings.back().nameId = displayNameId;
     }
   };
@@ -1228,8 +1246,11 @@ inline std::vector<SettingInfo> buildSystemReadingStatsSettingsList(const std::v
   settings.reserve(8);
   addSettingByName(settings, allSettings, StrId::STR_TRACK_READING_STATS);
   addSettingByName(settings, allSettings, StrId::STR_SHOW_HOME_READING_STATS);
-  addSettingByName(settings, allSettings, StrId::STR_READING_GOAL);
-  addSettingByName(settings, allSettings, StrId::STR_READING_GOAL_COUNTDOWN);
+  // The daily goal is counted per calendar day, which needs a clock chip.
+  if (halClock.isAvailable()) {
+    addSettingByName(settings, allSettings, StrId::STR_READING_GOAL);
+    addSettingByName(settings, allSettings, StrId::STR_READING_GOAL_COUNTDOWN);
+  }
   addSettingByName(settings, allSettings, StrId::STR_FOCUS_SESSION_LENGTH);
   addSettingByName(settings, allSettings, StrId::STR_FOCUS_TIMER_REFRESH);
   settings.push_back(SettingInfo::Submenu(StrId::STR_ALL_TIME_STATS, SettingAction::SystemGlobalStats));

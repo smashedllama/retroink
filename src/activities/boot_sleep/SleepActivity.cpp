@@ -545,6 +545,12 @@ void SleepActivity::onEnter() {
     GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
   }
 
+  // A date-driven screen saved on a clockless device (the original X4) has
+  // nothing to draw; use the default screen instead.
+  if (!halClock.isAvailable() && sleepScreenNeedsClock(SETTINGS.sleepScreen)) {
+    return renderDefaultSleepScreen();
+  }
+
   switch (SETTINGS.sleepScreen) {
     case (CrossPointSettings::SLEEP_SCREEN_MODE::BLANK):
       return renderBlankSleepScreen();

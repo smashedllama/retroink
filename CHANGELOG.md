@@ -1,3 +1,13 @@
+## [RetroInk 0.4.4] - 2026-09-27
+
+### Changed
+
+- Date-based features are left out on the original X4. The X3 has a battery-backed clock chip, but the original X4 has no clock at all, so it never knows the date or time. X4 testers confirmed these features didn't work there, so they're now hidden instead of shown broken:
+  - Desk Accessories: Clock, Moon Phase, Earth, and Desk Calendar (Focus Session, Puzzle, and System Info remain).
+  - Sleep screens: Today, Book + Week, Reading Year, Moon Phase, Earth, and Desk Calendar, on the device and in web settings. If one was already chosen, the default sleep screen is used instead.
+  - The daily reading goal and its reader countdown badge, on the device and in web settings, since the goal resets each calendar day.
+- Nothing changes on the X3.
+
 ## [RetroInk 0.4.3] - 2026-09-25
 
 ### Added

@@ -21,7 +21,7 @@ RetroInk is distributed under the MIT License. See [LICENSE](./LICENSE) and
 
 #### X3 vs X4
 
-Both run the same `firmware-x3-x4-*.bin`. The X3 has a battery-backed clock chip; the original X4 does not. Everything that depends on the date or time (the header and reader clocks, Clock, Moon Phase, Earth, Desk Calendar, the date-based sleep screens, the reading goal countdown, daily stats and streaks, and dated backups) is built around that clock. On an X4 these may show "This device has no clock" or not work as expected. X4 owners: please report what you see.
+Both run the same `firmware-x3-x4-*.bin`. The X3 has a battery-backed clock chip; the original X4 has none, so it never knows the date or time. RetroInk's date-based features were confirmed not to work there, so on an X4 they're left out rather than shown broken: the Clock, Moon Phase, Earth, and Desk Calendar desk accessories; the Today, Book + Week, Reading Year, Moon Phase, Earth, and Desk Calendar sleep screens; and the daily reading goal and its countdown badge. The header and reader clocks were already hidden on the X4. Reading, the Library, Focus Session, and stats totals work the same on both. [More detail](https://smashedllama.github.io/retroink/installation.html#x3-vs-x4).
 
 The X4 Pro and X4 Classic use a different chip (ESP32-S3) and are not supported by this build.
 

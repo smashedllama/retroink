@@ -1,5 +1,7 @@
 #include "RetroInkFocusDeskActivity.h"
 
+#include <HalClock.h>
+
 #include <I18n.h>
 
 #include <algorithm>
@@ -56,6 +58,8 @@ void RetroInkFocusDeskActivity::onExit() {
   Activity::onExit();
 }
 
+bool RetroInkFocusDeskActivity::showsGoal() const { return entry_ == Entry::Stats && halClock.isAvailable(); }
+
 void RetroInkFocusDeskActivity::activate() {
   if (entry_ == Entry::Home && settingsMenu_) {
     editor_ = selected_ == 0 ? Editor::Length : Editor::Refresh;
@@ -70,6 +74,7 @@ void RetroInkFocusDeskActivity::activate() {
     return;
   }
   if (entry_ == Entry::Stats) {
+    if (!showsGoal()) return;
     editor_ = Editor::Goal;
   } else {
     settingsMenu_ = true;
@@ -148,7 +153,7 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
   renderer.drawRect(x + 2, top + 2, w - 4, bottom - top - 4);
   char value[32];
   if (editor_ == Editor::None) {
-    if (entry_ == Entry::Stats) {
+    if (showsGoal()) {
       snprintf(value, sizeof(value), tr(STR_SLEEP_TIMER_VALUE_FORMAT),
                static_cast<unsigned>(SETTINGS.readingGoalMinutes));
     } else {

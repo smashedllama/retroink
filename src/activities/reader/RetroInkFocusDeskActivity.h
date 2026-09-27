@@ -16,7 +16,10 @@ class RetroInkFocusDeskActivity final : public Activity {
   uint8_t selectedCadence_ = 1;
   GfxRenderer::Orientation previousOrientation_ = GfxRenderer::Orientation::Portrait;
 
-  uint8_t itemCount() const { return 2; }
+  // The daily reading goal is counted per calendar day, so the Stats entry
+  // only offers it on hardware with a clock chip.
+  bool showsGoal() const;
+  uint8_t itemCount() const { return entry_ == Entry::Stats && !showsGoal() ? 1 : 2; }
   void activate();
   void adjust(int delta);
 

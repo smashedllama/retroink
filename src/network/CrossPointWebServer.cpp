@@ -102,6 +102,8 @@ bool isWebSettingAvailable(const SettingInfo& setting) {
       case StrId::STR_DATE_FORMAT:
       case StrId::STR_DATE_SEPARATOR:
       case StrId::STR_CLOCK_SYNCED:
+      case StrId::STR_READING_GOAL:
+      case StrId::STR_READING_GOAL_COUNTDOWN:
         return false;
       default:
         break;
@@ -1292,7 +1294,21 @@ void CrossPointWebServer::handleGetSettings() const {
   bool seenFirst = false;
   JsonDocument doc;
 
-  for (const auto& s : settings) {
+  // Clockless hardware gets a sleep screen setting without the date-driven
+  // options, so its display indices line up with what the page offers.
+  const bool hasClock = halClock.isAvailable();
+  SettingInfo clocklessSleepScreen;
+  if (!hasClock) {
+    for (const auto& entry : settings) {
+      if (entry.nameId != StrId::STR_SLEEP_SCREEN) continue;
+      clocklessSleepScreen = entry;
+      hideClockSleepScreens(clocklessSleepScreen);
+      break;
+    }
+  }
+
+  for (const auto& entry : settings) {
+    const SettingInfo& s = (!hasClock && entry.nameId == StrId::STR_SLEEP_SCREEN) ? clocklessSleepScreen : entry;
     if (!s.key || !isWebSettingAvailable(s)) continue;  // Skip ACTION-only and unavailable entries.
 
     doc.clear();
@@ -1416,7 +1432,21 @@ void CrossPointWebServer::handlePostSettings() {
   const auto& settings = getSettingsList(&sdFontSystem.registry());
   int applied = 0;
 
-  for (const auto& s : settings) {
+  // Clockless hardware gets a sleep screen setting without the date-driven
+  // options, so its display indices line up with what the page offers.
+  const bool hasClock = halClock.isAvailable();
+  SettingInfo clocklessSleepScreen;
+  if (!hasClock) {
+    for (const auto& entry : settings) {
+      if (entry.nameId != StrId::STR_SLEEP_SCREEN) continue;
+      clocklessSleepScreen = entry;
+      hideClockSleepScreens(clocklessSleepScreen);
+      break;
+    }
+  }
+
+  for (const auto& entry : settings) {
+    const SettingInfo& s = (!hasClock && entry.nameId == StrId::STR_SLEEP_SCREEN) ? clocklessSleepScreen : entry;
     if (!s.key || !isWebSettingAvailable(s)) continue;
     if (!doc[s.key].is<JsonVariant>()) continue;
 
