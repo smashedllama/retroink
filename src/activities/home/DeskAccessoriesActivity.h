@@ -13,6 +13,7 @@ class DeskAccessoriesActivity final : public Activity {
   // Visible entries in display order. Clock is left out on hardware without
   // a clock chip, such as the original X4, since it has nothing to show
   // there; Moon Phase, Earth, and Desk Calendar ask for a date instead.
+  // Marble Maze is left out without a motion sensor (the X4).
   DeskAction items_[kMaxItems] = {};
   int itemCount_ = 0;
   int selected_ = 0;

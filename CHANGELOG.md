@@ -1,3 +1,17 @@
+## [RetroInk 0.5.2] - 2026-09-28
+
+### Added
+
+- Marble Maze Options, opened with the far-right button: **Recalibrate**, **Invert Left/Right**, and **Invert Forward/Back**. Recalibrate asks you to lay the reader flat on a table and keep it still, averages the motion sensor, and saves that as level for every maze. **Auto** goes back to levelling on whatever angle you hold when each maze starts. The two invert switches reverse a tilt direction to suit how you hold the reader. All of it is remembered on the SD card.
+
+### Changed
+
+- Marble Maze is now tilt-only and only offered on readers with a motion sensor, which is the X3. It no longer appears in Desk Accessories on the X4, and the front and side buttons no longer tilt the board.
+
+### Removed
+
+- The direction-learning setup from 0.5.1 (hold Select in Marble Maze). The invert switches replace it, and any direction file it saved is ignored.
+
 ## [RetroInk 0.5.1] - 2026-09-28
 
 RetroInk is now built on CrossInk 1.6.0 (previously 1.5.0), bringing in everything from CrossInk 1.5.1 and 1.6.0 alongside all of RetroInk's own features. All 28 languages are still included, and the firmware is smaller than before (96.8% of flash, down from 99.1%), mainly because CrossInk's built-in reader fonts no longer carry emoji.

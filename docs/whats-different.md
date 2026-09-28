@@ -95,7 +95,7 @@ Classic Macs had a menu of small utilities, the desk accessories. RetroInk has i
 - **Earth**, a day/night globe centred on your time zone, with the date, time, and zone it's showing.
 - **Clock**, an analog or digital desk clock with an optional seconds display. It keeps the reader awake while it's open, so it can sit on a desk.
 - **Puzzle**, the classic fifteen-tile slider. Your board and move count are saved after every move.
-- **Marble Maze**, a tabletop tilt maze. On the X3 you tilt the reader to roll the ball into the hole; on the X4, and alongside tilting on the X3, the buttons tilt the board. A new random maze every game.
+- **Marble Maze** (X3 only), a tabletop tilt maze. Tilt the reader to roll the ball into the hole; a new random maze every game. The far-right button opens Options: **Recalibrate** (lay the reader flat on a table to set level), and **Invert Left/Right** and **Invert Forward/Back** if a tilt rolls the wrong way for how you hold it.
 - **Desk Calendar**, a month view with today marked. Left and Right page through months.
 - **System Info**, firmware version, storage use, and battery level.
 

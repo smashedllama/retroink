@@ -42,6 +42,8 @@ Phase, Earth, and Desk Calendar sleep screens draw it.
 X4 rather than shown broken:
 
 - **Clock** in Desk Accessories.
+- **Marble Maze** in Desk Accessories, which is a tilt game and needs the X3's
+  motion sensor.
 - **Sleep screens:** Today, Book Status, Book + Week, and Reading Year. If one
   of these was already chosen, the default sleep screen is used instead.
 - **Daily reading goal:** the goal and the reader countdown badge, since the
@@ -52,8 +54,6 @@ X4 rather than shown broken:
 
 - **Focus Session** times correctly while the reader is awake, but pauses if
   the reader sleeps mid-session.
-- **Marble Maze** has no motion sensor to tilt with on the X4, so the buttons
-  tilt the board instead.
 - **Per-book stats** show a single screen without date-based figures, and
   started/finished dates can't be edited.
 - **Highlights and stats backups** aren't dated: highlights have no

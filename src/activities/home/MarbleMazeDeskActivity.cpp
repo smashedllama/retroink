@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
@@ -23,11 +24,8 @@ namespace {
 constexpr int kWallThickness = 6;
 // Acceleration in screen pixels per second squared for a full 1 g of tilt.
 constexpr float kPixelsPerG = 2800.0f;
-// The motion sensor reads much more tilt than a held button adds, so it gets
-// its own, gentler gain.
+// How strongly the motion sensor's tilt reads as ball acceleration.
 constexpr float kTiltGain = 0.45f;
-// How much tilt a held button adds, in g.
-constexpr float kButtonTilt = 0.5f;
 // Rolling friction: fraction of speed lost per second.
 constexpr float kFriction = 0.8f;
 constexpr float kMaxSpeed = 850.0f;
@@ -42,13 +40,17 @@ constexpr int kRedrawDistance = 4;
 constexpr int kCalibrationSamples = 8;
 constexpr unsigned long kSensorSettleMs = 350;
 
-// Direction setup: a tilt past this (in g) held for this many samples counts
-// as the player's "right" or "away" tilt.
-constexpr float kSetupTilt = 0.3f;
-constexpr int kSetupHoldSamples = 6;
-constexpr unsigned long kLongPressMs = 900;
-constexpr char kDirectionsPath[] = "/.crosspoint/marble.bin";
-constexpr uint8_t kDirectionsVersion = 1;
+// Recalibrating averages this many readings over at least this long, and
+// starts over if the reader moves more than this (in g) while it does.
+constexpr int kRecalSamples = 20;
+constexpr unsigned long kRecalMinMs = 800;
+constexpr float kRecalMaxSpread = 0.12f;
+// Saved settings. Version 3 replaces the direction-learning file from 0.5.1,
+// which had a different size and is ignored.
+constexpr char kSettingsPath[] = "/.crosspoint/marble.bin";
+constexpr uint8_t kSettingsVersion = 3;
+constexpr size_t kSettingsSize = 12;  // version, invert L/R, invert F/B, flat set, two floats
+constexpr int kOptionCount = 3;
 
 bool circleOverlapsRect(const float cx, const float cy, const float r, const Rect& rect) {
   const float nearestX = std::clamp(cx, static_cast<float>(rect.x), static_cast<float>(rect.x + rect.width));
@@ -183,42 +185,137 @@ void MarbleMazeDeskActivity::newGame() {
   solvedSeconds_ = 0;
   startedMs_ = millis();
   lastStepMs_ = millis();
-  // Re-level on the angle the reader is held at now.
-  calibrated_ = false;
-  calibrationSamples_ = 0;
-  baseX_ = baseY_ = 0;
+  if (flatSet_) {
+    // A saved flat-surface calibration is the level.
+    baseX_ = flatX_;
+    baseY_ = flatY_;
+    calibrated_ = true;
+  } else {
+    // Otherwise level on the angle the reader is held at now.
+    calibrated_ = false;
+    calibrationSamples_ = 0;
+    baseX_ = baseY_ = 0;
+    calibrateAfterMs_ = millis() + kSensorSettleMs;
+  }
+  fullRedraw_ = true;
+  requestUpdate();
+}
+
+void MarbleMazeDeskActivity::loadSettings() {
+  invertLeftRight_ = false;
+  invertFrontBack_ = false;
+  flatSet_ = false;
+  FsFile f;
+  if (!Storage.openFileForRead("MAZE", kSettingsPath, f)) return;
+  uint8_t data[kSettingsSize] = {};
+  const bool ok = f.fileSize() == kSettingsSize && f.read(data, kSettingsSize) == static_cast<int>(kSettingsSize);
+  f.close();
+  if (!ok || data[0] != kSettingsVersion) return;
+  invertLeftRight_ = data[1] != 0;
+  invertFrontBack_ = data[2] != 0;
+  float flat[2] = {};
+  std::memcpy(flat, data + 4, sizeof(flat));
+  // Only trust a saved level that looks like a real reading (within a few g).
+  if (data[3] != 0 && std::isfinite(flat[0]) && std::isfinite(flat[1]) && std::fabs(flat[0]) < 4.0f &&
+      std::fabs(flat[1]) < 4.0f) {
+    flatSet_ = true;
+    flatX_ = flat[0];
+    flatY_ = flat[1];
+  }
+}
+
+void MarbleMazeDeskActivity::saveSettings() const {
+  uint8_t data[kSettingsSize] = {};
+  data[0] = kSettingsVersion;
+  data[1] = invertLeftRight_ ? 1 : 0;
+  data[2] = invertFrontBack_ ? 1 : 0;
+  data[3] = flatSet_ ? 1 : 0;
+  const float flat[2] = {flatX_, flatY_};
+  std::memcpy(data + 4, flat, sizeof(flat));
+  FsFile f;
+  if (!Storage.openFileForWrite("MAZE", kSettingsPath, f)) return;
+  f.write(data, sizeof(data));
+  f.close();
+}
+
+// Switches screens. Leaving Options or Recalibrate returns to a fresh redraw.
+void MarbleMazeDeskActivity::showMode(const Mode mode) {
+  mode_ = mode;
+  recalibrating_ = false;
+  if (mode == Mode::Options) optionsSelected_ = 0;
+  deepRefresh_ = true;
+  fullRedraw_ = true;
+  requestUpdate();
+}
+
+void MarbleMazeDeskActivity::beginRecalibrate() {
+  recalibrating_ = true;
+  recalSamples_ = 0;
+  recalSumX_ = recalSumY_ = 0;
+  recalStartMs_ = millis();
   calibrateAfterMs_ = millis() + kSensorSettleMs;
   fullRedraw_ = true;
   requestUpdate();
 }
 
-bool MarbleMazeDeskActivity::loadDirections() {
-  FsFile f;
-  if (!Storage.openFileForRead("MAZE", kDirectionsPath, f)) return false;
-  uint8_t data[5] = {};
-  const bool ok = f.fileSize() == sizeof(data) && f.read(data, sizeof(data)) == static_cast<int>(sizeof(data));
-  f.close();
-  if (!ok || data[0] != kDirectionsVersion || data[1] > 1 || data[3] > 1 || data[1] == data[3]) return false;
-  xAxis_ = data[1];
-  xSign_ = data[2] ? 1 : -1;
-  yAxis_ = data[3];
-  ySign_ = data[4] ? 1 : -1;
-  return true;
-}
-
-void MarbleMazeDeskActivity::saveDirections() const {
-  const uint8_t data[5] = {kDirectionsVersion, xAxis_, static_cast<uint8_t>(xSign_ > 0), yAxis_,
-                           static_cast<uint8_t>(ySign_ > 0)};
-  FsFile f;
-  if (!Storage.openFileForWrite("MAZE", kDirectionsPath, f)) return;
-  f.write(data, sizeof(data));
-  f.close();
-}
-
-void MarbleMazeDeskActivity::startDirectionSetup() {
-  setup_ = Setup::Right;
-  setupHoldCount_ = 0;
+// Averages the sensor while the reader lies still, then saves that as level.
+void MarbleMazeDeskActivity::stepRecalibrate() {
+  if (!recalibrating_) return;
+#ifndef SIMULATOR
+  if (!sensorActive_ || millis() < calibrateAfterMs_) return;
+  float bx = 0, by = 0, bz = 0;
+  if (!halTiltSensor.readAccel(bx, by, bz)) return;
+  if (recalSamples_ == 0) {
+    recalMinX_ = recalMaxX_ = bx;
+    recalMinY_ = recalMaxY_ = by;
+  } else {
+    recalMinX_ = std::min(recalMinX_, bx);
+    recalMaxX_ = std::max(recalMaxX_, bx);
+    recalMinY_ = std::min(recalMinY_, by);
+    recalMaxY_ = std::max(recalMaxY_, by);
+  }
+  if (recalMaxX_ - recalMinX_ > kRecalMaxSpread || recalMaxY_ - recalMinY_ > kRecalMaxSpread) {
+    // It moved: start over rather than save a level from a shaky reading.
+    recalSamples_ = 0;
+    recalSumX_ = recalSumY_ = 0;
+    recalStartMs_ = millis();
+    return;
+  }
+  recalSumX_ += bx;
+  recalSumY_ += by;
+  ++recalSamples_;
+  if (recalSamples_ < kRecalSamples || millis() - recalStartMs_ < kRecalMinMs) return;
+  flatX_ = recalSumX_ / static_cast<float>(recalSamples_);
+  flatY_ = recalSumY_ / static_cast<float>(recalSamples_);
+  LOG_DBG("MAZE", "Flat level set at x=%.3f y=%.3f", flatX_, flatY_);
+#else
+  flatX_ = flatY_ = 0;
+#endif
+  flatSet_ = true;
+  saveSettings();
+  recalibrating_ = false;
+  mode_ = Mode::Play;
   newGame();
+}
+
+void MarbleMazeDeskActivity::activateOption(const int index) {
+  switch (index) {
+    case 0:
+      showMode(Mode::Recalibrate);
+      break;
+    case 1:
+      invertLeftRight_ = !invertLeftRight_;
+      saveSettings();
+      requestUpdate();
+      break;
+    case 2:
+      invertFrontBack_ = !invertFrontBack_;
+      saveSettings();
+      requestUpdate();
+      break;
+    default:
+      break;
+  }
 }
 
 void MarbleMazeDeskActivity::onEnter() {
@@ -235,8 +332,8 @@ void MarbleMazeDeskActivity::onEnter() {
   }
 #endif
   layout();
-  // A saved setup (from holding New) overrides the X3 defaults.
-  loadDirections();
+  loadSettings();
+  mode_ = Mode::Play;
   newGame();
 }
 
@@ -269,41 +366,10 @@ bool MarbleMazeDeskActivity::readTilt(float& ax, float& ay) {
     return false;
   }
   const float delta[2] = {bx - baseX_, by - baseY_};
-  if (setup_ != Setup::Done) {
-    // Learn the axis and direction the player uses for "right", then the
-    // other axis for "away from you".
-    const bool learningRight = setup_ == Setup::Right;
-    int axis = std::fabs(delta[0]) >= std::fabs(delta[1]) ? 0 : 1;
-    if (!learningRight) axis = 1 - xAxis_;
-    if (std::fabs(delta[axis]) < kSetupTilt) {
-      setupHoldCount_ = 0;
-      return false;
-    }
-    if (++setupHoldCount_ < kSetupHoldSamples) return false;
-    setupHoldCount_ = 0;
-    if (learningRight) {
-      xAxis_ = static_cast<uint8_t>(axis);
-      xSign_ = delta[axis] > 0 ? 1 : -1;
-      setup_ = Setup::Away;
-    } else {
-      yAxis_ = static_cast<uint8_t>(axis);
-      ySign_ = delta[axis] > 0 ? 1 : -1;
-      setup_ = Setup::Done;
-      saveDirections();
-      // Re-level: the player is still tilted from the setup.
-      calibrated_ = false;
-      calibrationSamples_ = 0;
-      baseX_ = baseY_ = 0;
-      calibrateAfterMs_ = millis() + 800;
-    }
-    LOG_DBG("MAZE", "Direction setup: x=axis%u%+d y=axis%u%+d", xAxis_, xSign_, yAxis_, ySign_);
-    fullRedraw_ = true;
-    requestUpdate();
-    return false;
-  }
-  // Tilting right rolls right; tilting the top away rolls the ball up.
-  ax = kTiltGain * xSign_ * delta[xAxis_];
-  ay = -kTiltGain * ySign_ * delta[yAxis_];
+  // Tilting right rolls right; tilting the top away rolls the ball up. Either
+  // direction can be inverted in Options.
+  ax = kTiltGain * (invertLeftRight_ ? -1.0f : 1.0f) * delta[xAxis_];
+  ay = -kTiltGain * (invertFrontBack_ ? -1.0f : 1.0f) * delta[yAxis_];
   if (std::fabs(ax) < kDeadZone * kTiltGain) ax = 0;
   if (std::fabs(ay) < kDeadZone * kTiltGain) ay = 0;
   return true;
@@ -366,22 +432,50 @@ void MarbleMazeDeskActivity::step(const float ax, const float ay, const float dt
 void MarbleMazeDeskActivity::loop() {
   if (TouchHeaderBackButton::wasTapped(mappedInput, renderer) ||
       mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+    if (mode_ != Mode::Play) {
+      // Back from Options or Recalibrate returns to the maze, not out of it.
+      showMode(Mode::Play);
+      lastStepMs_ = millis();
+      return;
+    }
     finish();
     return;
   }
-  // Hold Select to redo the tilt direction setup; a quick press is a new maze.
-  if (sensorActive_ && !confirmLongPressed_ && mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
-      mappedInput.getHeldTime() >= kLongPressMs) {
-    confirmLongPressed_ = true;
-    startDirectionSetup();
+
+  const Mode mode = mode_;
+  if (mode == Mode::Options) {
+    buttonNavigator_.onNextPress([this] {
+      optionsSelected_ = ButtonNavigator::nextIndex(optionsSelected_, kOptionCount);
+      requestUpdate();
+    });
+    buttonNavigator_.onPreviousPress([this] {
+      optionsSelected_ = ButtonNavigator::previousIndex(optionsSelected_, kOptionCount);
+      requestUpdate();
+    });
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) activateOption(optionsSelected_);
     return;
   }
-  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    if (confirmLongPressed_) {
-      confirmLongPressed_ = false;
-    } else {
+  if (mode == Mode::Recalibrate) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) && !recalibrating_) {
+      beginRecalibrate();
+    } else if (mappedInput.wasReleased(MappedInputManager::Button::Right) && !recalibrating_) {
+      // Auto: level at the start of each maze instead of on a flat surface.
+      flatSet_ = false;
+      saveSettings();
+      showMode(Mode::Play);
       newGame();
     }
+    stepRecalibrate();
+    return;
+  }
+
+  // Playing. Select starts a new maze; the far-right button opens Options.
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    newGame();
+    return;
+  }
+  if (mappedInput.wasReleased(MappedInputManager::Button::Right)) {
+    showMode(Mode::Options);
     return;
   }
   if (solved_) return;
@@ -395,12 +489,6 @@ void MarbleMazeDeskActivity::loop() {
 
   float ax = 0, ay = 0;
   readTilt(ax, ay);
-  // Buttons tilt the board too: the only control without a motion sensor,
-  // and a handy nudge with one.
-  if (mappedInput.isPressed(MappedInputManager::Button::Left)) ax -= kButtonTilt;
-  if (mappedInput.isPressed(MappedInputManager::Button::Right)) ax += kButtonTilt;
-  if (mappedInput.isPressed(MappedInputManager::Button::Up)) ay -= kButtonTilt;
-  if (mappedInput.isPressed(MappedInputManager::Button::Down)) ay += kButtonTilt;
 
   step(ax, ay, dt);
 
@@ -443,7 +531,95 @@ void MarbleMazeDeskActivity::drawBoard() const {
   drawHole();
 }
 
+void MarbleMazeDeskActivity::drawOptions() {
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  renderer.clearScreen();
+  const Rect headerRect = TouchHeaderBackButton::headerRect(renderer, mappedInput);
+  if (mappedInput.hasTouchHardware()) {
+    TouchHeaderBackButton::draw(renderer, headerRect, tr(STR_MARBLE_OPTIONS), false);
+  } else {
+    GUI.drawHeader(renderer, headerRect, tr(STR_MARBLE_OPTIONS), nullptr, false);
+  }
+
+  const int top = metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput) + metrics.verticalSpacing;
+  const int rowX = metrics.contentSidePadding + 14;
+  const int rowW = renderer.getScreenWidth() - 2 * metrics.contentSidePadding - 28;
+  constexpr int kRowStep = 58;
+  constexpr int kRowHeight = 50;
+  const char* labels[kOptionCount] = {tr(STR_MARBLE_RECALIBRATE), tr(STR_MARBLE_INVERT_LR), tr(STR_MARBLE_INVERT_FB)};
+  const char* values[kOptionCount] = {flatSet_ ? tr(STR_MARBLE_FLAT) : tr(STR_MARBLE_AUTO),
+                                      invertLeftRight_ ? tr(STR_STATE_ON) : tr(STR_STATE_OFF),
+                                      invertFrontBack_ ? tr(STR_STATE_ON) : tr(STR_STATE_OFF)};
+  const int selected = optionsSelected_;
+  for (int i = 0; i < kOptionCount; ++i) {
+    const int y = top + 10 + i * kRowStep;
+    const bool active = i == selected;
+    if (active) {
+      renderer.fillRect(rowX, y, rowW, kRowHeight, true);
+    } else {
+      renderer.drawRect(rowX, y, rowW, kRowHeight);
+    }
+    renderer.drawText(UI_10_FONT_ID, rowX + 14, y + (kRowHeight - renderer.getLineHeight(UI_10_FONT_ID)) / 2, labels[i],
+                      !active);
+    const int valueW = renderer.getTextWidth(UI_12_FONT_ID, values[i], EpdFontFamily::BOLD);
+    renderer.drawText(UI_12_FONT_ID, rowX + rowW - 14 - valueW,
+                      y + (kRowHeight - renderer.getLineHeight(UI_12_FONT_ID)) / 2, values[i], !active,
+                      EpdFontFamily::BOLD);
+  }
+
+  const auto hints = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
+  GUI.drawButtonHints(renderer, hints.btn1, hints.btn2, hints.btn3, hints.btn4);
+  fullRedraw_ = false;
+  renderer.displayBuffer(deepRefresh_.exchange(false) ? HalDisplay::HALF_REFRESH : HalDisplay::FAST_REFRESH);
+}
+
+void MarbleMazeDeskActivity::drawRecalibrate() {
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  renderer.clearScreen();
+  const Rect headerRect = TouchHeaderBackButton::headerRect(renderer, mappedInput);
+  if (mappedInput.hasTouchHardware()) {
+    TouchHeaderBackButton::draw(renderer, headerRect, tr(STR_MARBLE_RECALIBRATE), false);
+  } else {
+    GUI.drawHeader(renderer, headerRect, tr(STR_MARBLE_RECALIBRATE), nullptr, false);
+  }
+
+  const int top = metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput) + metrics.verticalSpacing;
+  const int textW = renderer.getScreenWidth() - 2 * metrics.contentSidePadding - 60;
+  const int lineHeight = renderer.getLineHeight(UI_10_FONT_ID) + 6;
+  int y = top + 60;
+  if (recalibrating_) {
+    renderer.drawCenteredText(UI_12_FONT_ID, y + 40, tr(STR_MARBLE_CALIBRATING), true, EpdFontFamily::BOLD);
+  } else {
+    for (const StrId id : {StrId::STR_MARBLE_RECAL_HELP, StrId::STR_MARBLE_RECAL_AUTO_HELP}) {
+      for (const auto& line : renderer.wrappedText(UI_10_FONT_ID, I18n::getInstance().get(id), textW, 5)) {
+        renderer.drawCenteredText(UI_10_FONT_ID, y, line.c_str());
+        y += lineHeight;
+      }
+      y += lineHeight / 2;
+    }
+    y += lineHeight;
+    renderer.drawCenteredText(UI_10_FONT_ID, y,
+                              flatSet_ ? tr(STR_MARBLE_LEVEL_FLAT) : tr(STR_MARBLE_LEVEL_AUTO), true,
+                              EpdFontFamily::BOLD);
+  }
+
+  const auto hints = recalibrating_ ? mappedInput.mapLabels(tr(STR_BACK), "", "", "")
+                                    : mappedInput.mapLabels(tr(STR_BACK), tr(STR_MARBLE_CALIBRATE), "", tr(STR_MARBLE_AUTO));
+  GUI.drawButtonHints(renderer, hints.btn1, hints.btn2, hints.btn3, hints.btn4);
+  fullRedraw_ = false;
+  renderer.displayBuffer(deepRefresh_.exchange(false) ? HalDisplay::HALF_REFRESH : HalDisplay::FAST_REFRESH);
+}
+
 void MarbleMazeDeskActivity::render(RenderLock&&) {
+  const Mode mode = mode_;
+  if (mode == Mode::Options) {
+    drawOptions();
+    return;
+  }
+  if (mode == Mode::Recalibrate) {
+    drawRecalibrate();
+    return;
+  }
   const int x = targetX_;
   const int y = targetY_;
 
@@ -493,20 +669,15 @@ void MarbleMazeDeskActivity::render(RenderLock&&) {
     std::snprintf(solvedText, sizeof(solvedText), tr(STR_MARBLE_SOLVED), static_cast<unsigned>(solvedSeconds_));
     renderer.drawCenteredText(UI_12_FONT_ID, captionY, solvedText, true, EpdFontFamily::BOLD);
   } else {
-    const Setup setup = setup_;
-    const char* caption = !sensorActive_          ? tr(STR_MARBLE_HINT_BUTTONS)
-                          : setup == Setup::Right ? tr(STR_MARBLE_SETUP_RIGHT)
-                          : setup == Setup::Away  ? tr(STR_MARBLE_SETUP_AWAY)
-                                                  : tr(STR_MARBLE_HINT_TILT);
-    renderer.drawCenteredText(UI_10_FONT_ID, captionY, caption, true,
-                              setup == Setup::Done ? EpdFontFamily::REGULAR : EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_10_FONT_ID, captionY, tr(STR_MARBLE_HINT_TILT));
   }
 
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_MARBLE_NEW), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_MARBLE_NEW), "", tr(STR_MARBLE_OPTIONS));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   fullRedraw_ = false;
   renderPending_ = false;
   // A deeper refresh that also wipes accumulated ghost trails. It flashes, but
   // only ever at a pause in play.
+  deepRefresh_ = false;
   renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 }

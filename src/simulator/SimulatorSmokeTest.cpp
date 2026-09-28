@@ -3,6 +3,7 @@
 #include "SimulatorSmokeTest.h"
 
 #include <HalClock.h>
+#include <HalTiltSensor.h>
 #include <HalStorage.h>
 #include <Epub.h>
 #include <I18n.h>
@@ -56,24 +57,29 @@ extern MappedInputManager mappedInputManager;
 
 namespace {
 // Desk Accessories below Focus Timer, in menu order. Clock is only listed on
-// hardware with a clock chip, so the expected order depends on halClock (the
-// simulator has none, like an original X4).
+// hardware with a clock chip and Marble Maze only with a motion sensor, so the
+// expected order depends on halClock and halTiltSensor (the X4-sized simulator
+// has neither, like an original X4; the X3-sized one has a sensor).
 struct SmokeDeskAccessory {
   const char* capture;  // String literals: queueStep stores the pointer.
   const char* activity;
   bool needsClock;
+  bool needsTilt;
 };
 constexpr SmokeDeskAccessory kSmokeDeskAccessories[] = {
-    {"Desk Accessory Moon Phase", "MoonPhaseDesk", false}, {"Desk Accessory Earth", "EarthPhaseDesk", false},
-    {"Desk Accessory Clock", "ClockDesk", true},            {"Desk Accessory Puzzle", "PuzzleDesk", false},
-    {"Desk Accessory Marble Maze", "MarbleMazeDesk", false}, {"Desk Accessory Calendar", "DeskCalendar", false},
-    {"Desk Accessory System Info", "SystemInfoDesk", false},
+    {"Desk Accessory Moon Phase", "MoonPhaseDesk", false, false},
+    {"Desk Accessory Earth", "EarthPhaseDesk", false, false},
+    {"Desk Accessory Clock", "ClockDesk", true, false},
+    {"Desk Accessory Puzzle", "PuzzleDesk", false, false},
+    {"Desk Accessory Marble Maze", "MarbleMazeDesk", false, true},
+    {"Desk Accessory Calendar", "DeskCalendar", false, false},
+    {"Desk Accessory System Info", "SystemInfoDesk", false, false},
 };
 
 int visibleDeskAccessoryCount() {
   int count = 0;
   for (const auto& entry : kSmokeDeskAccessories) {
-    if (!entry.needsClock || halClock.isAvailable()) ++count;
+    if ((!entry.needsClock || halClock.isAvailable()) && (!entry.needsTilt || halTiltSensor.isAvailable())) ++count;
   }
   return count;
 }
@@ -81,6 +87,7 @@ int visibleDeskAccessoryCount() {
 const SmokeDeskAccessory& visibleDeskAccessory(int index) {
   for (const auto& entry : kSmokeDeskAccessories) {
     if (entry.needsClock && !halClock.isAvailable()) continue;
+    if (entry.needsTilt && !halTiltSensor.isAvailable()) continue;
     if (index-- == 0) return entry;
   }
   return kSmokeDeskAccessories[0];
