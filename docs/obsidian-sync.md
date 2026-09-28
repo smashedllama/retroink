@@ -242,6 +242,13 @@ Auto-sync only fires when File Transfer or Calibre Wireless mode starts, not
 continuously in the background. Use **Sync Now** in the web UI at any time to
 drain the queue immediately.
 
+**Only some of my highlights synced**
+
+Highlights are queued when you save them, and only while sync is enabled.
+Anything from before that, including highlights from CrossInk, needs
+**Queue Older Highlights** once, then **Sync Now**. See [Older
+highlights](#older-highlights).
+
 **"Sync Now" says some clippings were skipped**
 
 One or more clippings failed to deliver 5 times in a row and were given up

@@ -21,7 +21,7 @@ RetroInk is distributed under the MIT License. See [LICENSE](./LICENSE) and
 
 #### X3 vs X4
 
-Both run the same `firmware-x3-x4-*.bin`. The X3 has a battery-backed clock chip; the original X4 has none, so it never knows the date or time. On an X4, Moon Phase, Earth, and Desk Calendar ask you to pick a date instead (Earth also takes a time and time zone); the date is saved and their sleep screens draw it. Features that need the real time as it passes are left out: the Clock accessory, the Today, Book + Week, and Reading Year sleep screens, the daily reading goal and its countdown badge, and the header and reader clocks. Reading, the Library, Focus Session, and stats totals work the same on both. [More detail](https://smashedllama.github.io/retroink/installation.html#x3-vs-x4).
+Both run the same `firmware-x3-x4-*.bin`. The X3 has a clock chip that keeps counting while it sleeps; the original X4 has none and powers off completely when it sleeps, so it never knows the date or time. On an X4, Moon Phase, Earth, and Desk Calendar ask you to pick a date instead (Earth also takes a time and time zone); the date is saved and their sleep screens draw it. Features that need the real time as it passes are left out: the Clock accessory, the Today, Book Status, Book + Week, and Reading Year sleep screens, the daily reading goal and its countdown badge, and the header and reader clocks. A few things work slightly differently (Focus Session pauses while asleep, per-book stats and highlights aren't dated). [Full details](https://smashedllama.github.io/retroink/installation.html#x3-vs-x4).
 
 The X4 Pro and X4 Classic use a different chip (ESP32-S3) and are not supported by this build.
 
@@ -30,15 +30,19 @@ The X4 Pro and X4 Classic use a different chip (ESP32-S3) and are not supported 
 - A dedicated RetroInk interface with large, readable System 6-inspired type.
 - Macintosh-style windows, menus, controls, dialogs, icons, and progress bars, covering every screen, not just a handful of them.
 - A RetroInk boot sequence with an animated Macintosh glance.
-- Three playful Mac-style sleep screen dialogs to choose from, on top of the plain themed default, plus monochrome book-cover rendering.
+- New sleep screens: the themed "resting between chapters" default, three playful Mac-style dialogs, reading-stats screens (Today, Book Status, Book + Week Stats, Reading Year), and desk-accessory screens (Moon Phase, Earth, Desk Calendar), plus monochrome book-cover rendering.
 - An optional charging screen that appears automatically when you plug in and aren't actively reading.
 - Code-drawn graphics that avoid extra framebuffers and large theme bitmaps.
-- A Finder-style Library for large nested collections: automatic reading shelves (To Read, Reading, Finished, Favorites), your own custom shelves you create and name yourself, title/filename/author/recent sorts, and A-Z jumps.
+- A Home screen with a progress bar on your current book, optional reading stats, and an OPDS Browser entry once you've added a server.
+- A Finder-style Library for large nested collections: automatic reading shelves (To Read, Reading, Finished, Favorites), your own custom shelves you create and name yourself, title/filename/author/recent sorts, A-Z jumps, and a choice of shelf or icon view.
 - A shelf-based way to browse the library on-device: books stand as spines on a shelf, Left/Right page through the current shelf, Up/Down switch straight to the next one, built in or custom, no menu in the way.
+- Desk Accessories in the classic Mac sense: Moon Phase (drawn from a real lunar photo, with days until the next phase), Earth (a day/night globe for your time zone), an analog/digital Clock with a ticking seconds display, the fifteen-tile Puzzle, Desk Calendar, and System Info. Moon Phase and Earth can show any date you pick.
 - Daily reading goals with a streak tracker and an in-reader countdown badge, plus a themed stats dashboard (Today, Reading Year, Book Status) when the System 6 theme is active.
-- Focus Session, a configurable timer for focusing away from the device, checkpointed so it survives sleep.
+- Focus Session, a configurable reading timer from 5 minutes to 24 hours, with Wi-Fi off while it runs.
+- Adjustable status bar text size (Small, Medium, Large).
 - Safe book moves across the device, web file manager, and WebDAV. RetroInk reviews old and current reading records before restoring progress after a move made elsewhere.
-- [Obsidian Clipping Sync](./docs/obsidian-sync.md): pushes saved highlights into an Obsidian vault over the local network (via the Local REST API plugin) or a webhook, on top of the existing `/My Clippings.txt` export.
+- [Obsidian Clipping Sync](./docs/obsidian-sync.md): pushes saved highlights into an Obsidian vault over the local network (via the Local REST API plugin) or a webhook, on top of the existing `/My Clippings.txt` export, including highlights saved before you set it up.
+- Over-the-air updates from RetroInk's own releases, with the release notes shown before you install.
 - A matching System 6 redesign of the on-device web portal (the page you get connecting over Wi-Fi in File Transfer mode), including a Library tab with drag-and-drop custom shelves.
 
 ## CrossInk foundation

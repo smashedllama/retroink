@@ -5,7 +5,8 @@ nav_order: 2
 
 # Installation
 
-Grab a prebuilt `.bin` from the [Releases
+Already on RetroInk 0.3.0 or newer? [Update over Wi-Fi](#update-over-wi-fi)
+from the reader itself. Otherwise, grab a prebuilt `.bin` from the [Releases
 page](https://github.com/smashedllama/retroink/releases) and use one of the
 install methods below, easiest first. Building from source is only needed if
 you want to modify the code yourself.
@@ -13,7 +14,8 @@ you want to modify the code yourself.
 ## Supported Devices
 
 - Xteink X3, X4
-- Seeed Studio Sticky
+- Seeed Studio Sticky (build from source with `pio run -e sticky`; releases
+  only include the X3/X4 firmware)
 
 The X4 Pro and X4 Classic are built on a different chip (ESP32-S3) and can't
 run this firmware.
@@ -21,10 +23,10 @@ run this firmware.
 ## X3 vs X4
 
 The X3 and the original X4 run the same `firmware-x3-x4-*.bin`, but they
-aren't the same hardware. The X3 has a small battery-backed clock chip that
-keeps the date and time even while the reader is asleep or switched off. The
-original X4 has no clock chip at all, so it has no idea what day or time it
-is, and there's nothing for the firmware to read.
+aren't the same hardware. The X3 has a small clock chip that keeps counting
+while the reader sleeps. The original X4 has no clock chip at all, and it
+powers off completely when it sleeps, so it has no idea what day or time it
+is.
 
 A number of RetroInk features are built on knowing today's date. On an X4
 they work in one of two ways.
@@ -40,14 +42,37 @@ Phase, Earth, and Desk Calendar sleep screens draw it.
 X4 rather than shown broken:
 
 - **Clock** in Desk Accessories.
-- **Sleep screens:** Today, Book + Week, and Reading Year. If one of these was
-  already chosen, the default sleep screen is used instead.
+- **Sleep screens:** Today, Book Status, Book + Week, and Reading Year. If one
+  of these was already chosen, the default sleep screen is used instead.
 - **Daily reading goal:** the goal and the reader countdown badge, since the
   goal resets each calendar day.
 - **Clocks:** the header and reader clocks and the date and time settings.
 
-Everything else works the same on both: reading, the Library, Focus
-Session, Puzzle, per-book stats, all-time totals, transfers, and syncing.
+**Works, with small differences:**
+
+- **Focus Session** times correctly while the reader is awake, but pauses if
+  the reader sleeps mid-session.
+- **Per-book stats** show a single screen without date-based figures, and
+  started/finished dates can't be edited.
+- **Highlights and stats backups** aren't dated: highlights have no
+  timestamp, "Backup Now" backups are numbered, and automatic stats backup is
+  hidden.
+
+Everything else works the same on both: reading, the Library, Puzzle,
+all-time totals, transfers, and syncing.
+
+## Update over Wi-Fi
+
+If you're already running RetroInk 0.3.0 or newer, you don't need a computer:
+
+1. On the reader, go to **Settings > System > Check for Updates**.
+2. Connect to Wi-Fi if it asks. It checks for the latest release and, from
+   0.4.1 on, shows what's new before installing.
+3. Confirm, and leave the reader alone until it restarts.
+
+Coming from CrossInk, CrossPoint, the stock firmware, or an early RetroInk
+test build? Install once with one of the methods below, and future updates
+can come over Wi-Fi.
 
 ## Install via the web flash tool (easiest)
 
