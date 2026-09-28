@@ -241,3 +241,29 @@ See [Data Cache](./docs/data-cache.md) for the `.crosspoint` layout and [File Fo
 ## Notice on Contributions
 
 This repository does not accept pull requests. Feature requests may be opened in [discussions](https://github.com/uxjulia/CrossInk/discussions), but major features requiring ongoing support should be directed upstream to [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader).
+
+## Testers
+
+Thank you to our early testers and testing volunteers from the Reddit community for helping shape RetroInk before its public release:
+
+- [u/Any_Zookeepergame408](https://www.reddit.com/user/Any_Zookeepergame408/)
+- [u/Bitter_Day_368](https://www.reddit.com/user/Bitter_Day_368/)
+- [u/dismal_n_darksome](https://www.reddit.com/user/dismal_n_darksome/)
+- [u/GojoXyz](https://www.reddit.com/user/GojoXyz/)
+- [u/heybullldog](https://www.reddit.com/user/heybullldog/)
+- [u/ImGooseI](https://www.reddit.com/user/ImGooseI/)
+- [u/intothe5d](https://www.reddit.com/user/intothe5d/)
+- [u/jessiwake](https://www.reddit.com/user/jessiwake/)
+- [u/kimmelm](https://www.reddit.com/user/kimmelm/)
+- [u/Lourenzo_](https://www.reddit.com/user/Lourenzo_/)
+- [u/memeeme22](https://www.reddit.com/user/memeeme22/)
+- [u/mnkythndr](https://www.reddit.com/user/mnkythndr/)
+- [u/MorphicSn0w](https://www.reddit.com/user/MorphicSn0w/)
+- [u/nunyo_bidness](https://www.reddit.com/user/nunyo_bidness/)
+- [u/Pale_Squirrel1459](https://www.reddit.com/user/Pale_Squirrel1459/)
+- [u/pastenes](https://www.reddit.com/user/pastenes/)
+- [u/Prize_Biscotti_2592](https://www.reddit.com/user/Prize_Biscotti_2592/)
+- [u/Rare-Fuel-2296](https://www.reddit.com/user/Rare-Fuel-2296/)
+- [u/Senior-Dragonfly6752](https://www.reddit.com/user/Senior-Dragonfly6752/)
+- [u/starkruzr](https://www.reddit.com/user/starkruzr/)
+- [u/True_mourning84](https://www.reddit.com/user/True_mourning84/)
