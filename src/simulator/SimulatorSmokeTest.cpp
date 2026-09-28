@@ -1396,6 +1396,13 @@ class SimulatorSmokeTest {
         break;
 
       case SmokeStep::Done:
+        {
+          const auto allSettings = getSettingsList();
+          const auto filesCache = buildSystemFilesCacheSettingsList(allSettings);
+          if (std::none_of(filesCache.begin(), filesCache.end(),
+                           [](const SettingInfo& setting) { return setting.nameId == StrId::STR_LIBRARY_VIEW; }))
+            fail("Library View missing from Files & Cache settings");
+        }
         LOG_INF("SMOKE", "Simulator smoke test passed");
         std::_Exit(0);
     }

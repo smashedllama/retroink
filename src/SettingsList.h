@@ -1230,8 +1230,9 @@ inline std::vector<SettingInfo> buildSystemDeviceSettingsList(const std::vector<
 
 inline std::vector<SettingInfo> buildSystemFilesCacheSettingsList(const std::vector<SettingInfo>& allSettings) {
   std::vector<SettingInfo> settings;
-  settings.reserve(7);
+  settings.reserve(8);
   addSettingByName(settings, allSettings, StrId::STR_SHOW_FILES_ON_HOME);
+  addSettingByName(settings, allSettings, StrId::STR_LIBRARY_VIEW);
   addSettingByName(settings, allSettings, StrId::STR_SHOW_HIDDEN_FILES);
   addSettingByName(settings, allSettings, StrId::STR_HIDE_FILE_EXTENSION);
   addSettingByName(settings, allSettings, StrId::STR_FILE_BROWSER_DISPLAY);

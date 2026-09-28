@@ -63,7 +63,7 @@ CrossInk doesn't have reading goals at all; this is new in RetroInk and it's wha
 
 A proper library, not a flat file list: shelves for **To Read, Reading, Finished, and Favorites**, four sort modes (Title, Filename, Author, Recent), and an A-Z jump list. It's backed by an SD-side catalog, not an in-RAM list, built to hold thousands of books on the X3/X4's limited memory, and it scans your folders incrementally instead of blocking on a full rescan. Move or rename a book on the SD card yourself, and RetroInk reconciles the catalog entry instead of treating it as a new, unread book. A first scan asks before it starts and shows roughly how long it'll take.
 
-Press Select for **Actions**: pin a book to Favorites, move it to another folder, switch shelves, change the sort, jump A-Z, refresh the library after changing files elsewhere, or switch to **Icons** view, a Finder-style grid of document icons with titles underneath, and back to the shelf. The view can also be set with **Library View** in the web settings.
+Press Select for **Actions**: pin a book to Favorites, move it to another folder, switch shelves, change the sort, jump A-Z, refresh the library after changing files elsewhere, or switch to **Icons** view, a Finder-style grid of document icons with titles underneath, and back to the shelf. The view can also be set with **Library View** in **Settings > System > Files & Cache**, or in web settings.
 
 ## Custom Shelves
 

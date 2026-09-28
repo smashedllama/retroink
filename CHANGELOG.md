@@ -1,3 +1,9 @@
+## [RetroInk 0.4.7] - 2026-09-28
+
+### Fixed
+
+- Library View is now on the device under Settings > System > Files & Cache, as the 0.4.3 notes described. It was only reachable from web settings and the Library's Actions menu.
+
 ## [RetroInk 0.4.6] - 2026-09-28
 
 ### Added
