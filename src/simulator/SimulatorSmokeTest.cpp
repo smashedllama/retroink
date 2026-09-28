@@ -20,6 +20,8 @@
 #include "CrossPointState.h"
 #include "BookmarkStore.h"
 #include "ClippingStore.h"
+#include "ObsidianPendingQueue.h"
+#include "clippings/ObsidianBackfill.h"
 #include "RecentBooksStore.h"
 #include "activities/reader/BookReadingStats.h"
 #include "MappedInputManager.h"
@@ -261,6 +263,24 @@ class SimulatorSmokeTest {
     if (CLIPPINGS.addClipping(0, 0, 0, 1, 0, 1, 2, "Chapter", UINT16_MAX, "example clipping", 0) ==
         ClippingStore::AddResult::SaveFailed) fail("Cannot create EPUB clipping fixture");
     CLIPPINGS.saveToFile(); CLIPPINGS.unload();
+
+    // Obsidian backfill: stored highlights are queued once, then skipped while
+    // pending and after they're recorded as sent.
+    Storage.remove(ObsidianPendingQueue::PENDING_PATH);
+    Storage.remove(ObsidianPendingQueue::SENT_PATH);
+    const auto firstBackfill = ObsidianBackfill::queueStoredClippings();
+    if (firstBackfill.queued == 0) fail("Obsidian backfill did not queue a stored clipping");
+    if (ObsidianBackfill::queueStoredClippings().queued != 0) fail("Obsidian backfill queued a pending clipping twice");
+    std::vector<uint32_t> deliveredKeys;
+    for (const auto& pending : ObsidianPendingQueue::readAll()) {
+      deliveredKeys.push_back(ObsidianPendingQueue::clippingKey(pending.book, pending.text));
+    }
+    ObsidianPendingQueue::recordSent(deliveredKeys);
+    Storage.remove(ObsidianPendingQueue::PENDING_PATH);
+    if (ObsidianBackfill::queueStoredClippings().queued != 0) fail("Obsidian backfill re-queued a sent clipping");
+    Storage.remove(ObsidianPendingQueue::PENDING_PATH);
+    Storage.remove(ObsidianPendingQueue::SENT_PATH);
+    LOG_INF("SMOKE", "Obsidian backfill passed (%u queued)", static_cast<unsigned>(firstBackfill.queued));
 
     auto scan = [](RetroInkLibraryCatalog& catalog) {
       if (!catalog.beginScan()) fail("Library scan did not start");

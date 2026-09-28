@@ -78,4 +78,18 @@ bool replaceAll(const std::vector<ObsidianPendingClipping>& remaining);
 // from it (typically via replaceAll).
 bool appendFailed(const ObsidianPendingClipping& clipping, const std::string& reason);
 
+// Keys of clippings already delivered, 4 bytes each, so re-queueing every
+// stored highlight (see ObsidianBackfill) can skip ones already in the vault.
+// Only covers deliveries made since this record was added.
+inline constexpr const char* SENT_PATH = "/.crosspoint/obsidian-sent.bin";
+
+// Identifies a clipping by its book and the start of its text. Only the
+// first CLIPPING_KEY_TEXT_BYTES count, because the per-book clipping store
+// keeps a shorter copy of long highlights than the queue sends.
+inline constexpr size_t CLIPPING_KEY_TEXT_BYTES = 200;
+uint32_t clippingKey(const std::string& book, const std::string& text);
+
+bool recordSent(const std::vector<uint32_t>& keys);
+std::vector<uint32_t> readSentKeys();
+
 }  // namespace ObsidianPendingQueue

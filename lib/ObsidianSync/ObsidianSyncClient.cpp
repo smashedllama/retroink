@@ -249,6 +249,7 @@ size_t ObsidianSyncClient::syncPending() {
   // give-up mechanism existed.
   size_t sent = 0;
   size_t consumed = 0;
+  std::vector<uint32_t> sentKeys;
   for (size_t i = 0; i < pending.size(); i++) {
     const auto& clipping = pending[i];
     const int code =
@@ -258,6 +259,7 @@ size_t ObsidianSyncClient::syncPending() {
     if (result == OK) {
       sent++;
       consumed++;
+      sentKeys.push_back(ObsidianPendingQueue::clippingKey(clipping.book, clipping.text));
       continue;
     }
 
@@ -280,6 +282,8 @@ size_t ObsidianSyncClient::syncPending() {
     _lastDroppedCount++;
     consumed++;
   }
+
+  ObsidianPendingQueue::recordSent(sentKeys);
 
   const std::vector<ObsidianPendingClipping> remaining(pending.begin() + static_cast<long>(consumed), pending.end());
   if (!ObsidianPendingQueue::replaceAll(remaining)) {

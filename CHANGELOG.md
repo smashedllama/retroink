@@ -1,3 +1,10 @@
+## [RetroInk 0.4.6] - 2026-09-28
+
+### Added
+
+- Obsidian sync can send older highlights. Only highlights saved while sync was on were ever queued, so ones from before setup, including any carried over from CrossInk, never reached the vault. **Queue Older Highlights** in the web Settings Obsidian card queues every stored highlight not already sent or queued; Sync Now delivers them.
+- Obsidian sync keeps a record of delivered highlights so they aren't queued twice. Highlights sent before this version weren't recorded and may be sent again once.
+
 ## [RetroInk 0.4.5] - 2026-09-27
 
 ### Added

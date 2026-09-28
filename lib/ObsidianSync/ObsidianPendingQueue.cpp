@@ -4,6 +4,8 @@
 #include <HalStorage.h>
 #include <Logging.h>
 
+#include <algorithm>
+
 namespace ObsidianPendingQueue {
 
 namespace {
@@ -154,6 +156,50 @@ bool appendFailed(const ObsidianPendingClipping& clipping, const std::string& re
     LOG_ERR("OBS", "Failed to write given-up clipping to %s", FAILED_PATH);
   }
   return ok;
+}
+
+uint32_t clippingKey(const std::string& book, const std::string& text) {
+  // FNV-1a over the book, a separator, and the start of the text.
+  uint32_t hash = 2166136261u;
+  auto mix = [&hash](const char* data, const size_t len) {
+    for (size_t i = 0; i < len; ++i) {
+      hash ^= static_cast<uint8_t>(data[i]);
+      hash *= 16777619u;
+    }
+  };
+  mix(book.data(), book.size());
+  mix("\n", 1);
+  mix(text.data(), std::min(text.size(), CLIPPING_KEY_TEXT_BYTES));
+  return hash;
+}
+
+bool recordSent(const std::vector<uint32_t>& keys) {
+  if (keys.empty()) return true;
+  FsFile file = Storage.open(SENT_PATH, O_RDWR | O_CREAT | O_AT_END);
+  if (!file) {
+    LOG_ERR("OBS", "Failed to open %s for append", SENT_PATH);
+    return false;
+  }
+  const size_t bytes = keys.size() * sizeof(uint32_t);
+  const bool ok = file.write(reinterpret_cast<const uint8_t*>(keys.data()), bytes) == bytes;
+  file.flush();
+  file.close();
+  if (!ok) LOG_ERR("OBS", "Failed to record sent clippings in %s", SENT_PATH);
+  return ok;
+}
+
+std::vector<uint32_t> readSentKeys() {
+  std::vector<uint32_t> keys;
+  FsFile file;
+  if (!Storage.openFileForRead("OBS", SENT_PATH, file)) return keys;
+  const size_t count = file.fileSize() / sizeof(uint32_t);
+  keys.resize(count);
+  const size_t bytes = count * sizeof(uint32_t);
+  if (count > 0 && file.read(reinterpret_cast<uint8_t*>(keys.data()), bytes) != static_cast<int>(bytes)) {
+    keys.clear();
+  }
+  file.close();
+  return keys;
 }
 
 }  // namespace ObsidianPendingQueue

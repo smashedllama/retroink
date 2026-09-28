@@ -580,6 +580,11 @@ let allSettings = [];
         '<button class="btn-small btn-save-server" onclick="saveObsidianConfig()">Save</button>' +
         '<button class="btn-small" onclick="syncObsidianNow()">Sync Now (' + (c.pendingCount || 0) + ' pending)</button>' +
       '</div>' +
+      '<p style="color:var(--label-color);">Only highlights saved while sync is on are queued. ' +
+      'To send older ones too, including any from CrossInk, queue them here, then Sync Now.</p>' +
+      '<div class="opds-actions">' +
+        '<button class="btn-small" onclick="queueOlderObsidianClippings()">Queue Older Highlights</button>' +
+      '</div>' +
     '</div>';
     container.innerHTML = html;
   }
@@ -643,6 +648,27 @@ let allSettings = [];
       const resp = await fetch('/api/obsidian/sync', {method: 'POST'});
       const result = await resp.json();
       showMessage(result.message || (result.ok ? 'Synced' : 'Sync failed'), !result.ok);
+      await loadObsidianConfig();
+    } catch (e) {
+      showMessage('Error: ' + e.message, true);
+    }
+  }
+
+  async function queueOlderObsidianClippings() {
+    if (!confirm(
+      'Queue every saved highlight that has not been sent yet? ' +
+      'Highlights sent before RetroInk 0.4.6 were not recorded, so any of those may be sent to your vault a second time.'
+    )) {
+      return;
+    }
+    try {
+      const resp = await fetch('/api/obsidian/backfill', {method: 'POST'});
+      if (!resp.ok) throw new Error(await resp.text());
+      const r = await resp.json();
+      let msg = 'Queued ' + r.queued + ' highlight' + (r.queued === 1 ? '' : 's');
+      if (r.skipped) msg += ', skipped ' + r.skipped + ' already sent or queued';
+      if (r.dropped) msg += ', ' + r.dropped + ' did not fit in the queue (sync, then queue again)';
+      showMessage(msg + '. Press Sync Now to send them.', r.dropped > 0);
       await loadObsidianConfig();
     } catch (e) {
       showMessage('Error: ' + e.message, true);

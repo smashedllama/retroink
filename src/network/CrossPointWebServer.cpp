@@ -29,6 +29,7 @@
 #include "ObsidianPendingQueue.h"
 #include "ObsidianSyncClient.h"
 #include "ObsidianSyncStore.h"
+#include "clippings/ObsidianBackfill.h"
 #include "OpdsServerStore.h"
 #include "SdCardFontSystem.h"
 #include "SettingsList.h"
@@ -367,6 +368,7 @@ void CrossPointWebServer::begin() {
   server->on("/api/obsidian", HTTP_GET, [this] { handleGetObsidianConfig(); });
   server->on("/api/obsidian", HTTP_POST, [this] { handlePostObsidianConfig(); });
   server->on("/api/obsidian/sync", HTTP_POST, [this] { handlePostObsidianSync(); });
+  server->on("/api/obsidian/backfill", HTTP_POST, [this] { handlePostObsidianBackfill(); });
 
   server->onNotFound([this] { handleNotFound(); });
 
@@ -2455,6 +2457,19 @@ void CrossPointWebServer::handlePostObsidianConfig() {
 
   LOG_DBG("WEB", "Updated Obsidian sync config: enabled=%d mode=%s", cfg.enabled, obsidianTargetModeToJson(cfg.mode));
   server->send(200, "text/plain", "OK");
+}
+
+void CrossPointWebServer::handlePostObsidianBackfill() const {
+  const ObsidianBackfill::Result result = ObsidianBackfill::queueStoredClippings();
+  JsonDocument doc;
+  doc["ok"] = true;
+  doc["queued"] = static_cast<uint32_t>(result.queued);
+  doc["skipped"] = static_cast<uint32_t>(result.skipped);
+  doc["dropped"] = static_cast<uint32_t>(result.dropped);
+  doc["pending"] = static_cast<uint32_t>(ObsidianPendingQueue::count());
+  String json;
+  serializeJson(doc, json);
+  server->send(200, "application/json", json);
 }
 
 void CrossPointWebServer::handlePostObsidianSync() const {

@@ -157,4 +157,5 @@ class CrossPointWebServer {
   void handleGetObsidianConfig() const;
   void handlePostObsidianConfig();
   void handlePostObsidianSync() const;
+  void handlePostObsidianBackfill() const;
 };

@@ -36,6 +36,17 @@ no delay in the reader. Nothing is sent until a sync runs. Sync is:
   clippings synced without spending extra battery keeping Wi-Fi on while you
   read.
 
+### Older highlights
+
+Only highlights saved while sync is set up and enabled are queued. Anything
+saved before that, including highlights carried over from CrossInk, stays in
+the reader but isn't sent. To send those too, press **Queue Older
+Highlights** in the Obsidian Clipping Sync card, then **Sync Now**. It queues
+every stored highlight that hasn't been sent or queued already, so pressing it
+again is safe. RetroInk only started recording what it has sent in 0.4.6, so
+highlights synced before then may be sent a second time the first time you
+use it.
+
 A sync stops at the first clipping it can't deliver, so nothing already sent
 is lost and nothing unsent is skipped. Whatever didn't go through stays
 queued for the next attempt, unless it's now failed 5 times in a row: at
