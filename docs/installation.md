@@ -17,8 +17,8 @@ you want to modify the code yourself.
 - Seeed Studio Sticky (build from source with `pio run -e sticky`; releases
   only include the X3/X4 firmware)
 
-The X4 Pro and X4 Classic are built on a different chip (ESP32-S3) and can't
-run this firmware.
+**Not supported (yet):** the Xteink X4 Pro and X4 Classic. They're built on a
+different chip (ESP32-S3), so this firmware can't run on them yet.
 
 ## X3 vs X4
 

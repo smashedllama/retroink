@@ -19,11 +19,13 @@ RetroInk is distributed under the MIT License. See [LICENSE](./LICENSE) and
 - Xteink X4
 - Seeed Studio Sticky
 
+**Not supported (yet):** the Xteink X4 Pro and X4 Classic.
+
 #### X3 vs X4
 
 Both run the same `firmware-x3-x4-*.bin`. The X3 has a clock chip that keeps counting while it sleeps; the original X4 has none and powers off completely when it sleeps, so it never knows the date or time. On an X4, Moon Phase, Earth, and Desk Calendar ask you to pick a date instead (Earth also takes a time and time zone); the date is saved and their sleep screens draw it. Features that need the real time as it passes are left out: the Clock accessory, the Today, Book Status, Book + Week, and Reading Year sleep screens, the daily reading goal and its countdown badge, and the header and reader clocks. A few things work slightly differently (Focus Session pauses while asleep, per-book stats and highlights aren't dated). [Full details](https://smashedllama.github.io/retroink/installation.html#x3-vs-x4).
 
-The X4 Pro and X4 Classic use a different chip (ESP32-S3) and are not supported by this build.
+The X4 Pro and X4 Classic use a different chip (ESP32-S3), so they aren't supported yet.
 
 ## What RetroInk adds
 

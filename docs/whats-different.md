@@ -11,7 +11,8 @@ Everything you love about [CrossInk](https://github.com/uxjulia/CrossInk), its r
 > Calendar ask you to pick a date instead, and the Clock accessory, the
 > reading-stats sleep screens, and daily reading goals are left out. A few
 > other things differ slightly too. See [X3 vs X4](./installation.md#x3-vs-x4)
-> for the full list and why.
+> for the full list and why. The X4 Pro and X4 Classic aren't supported
+> yet.
 
 ## Retro UI
 
