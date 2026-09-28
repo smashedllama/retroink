@@ -7,7 +7,8 @@ personal fork maintained by Julia, which is derived from
 [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader).
 CrossPoint Reader's original MIT copyright notice is preserved in `LICENSE`.
 RetroInk's modifications are also released under that MIT License.
-The first RetroInk release is based on CrossInk 1.5.0.
+RetroInk 0.5.1 and later are based on CrossInk 1.6.0; earlier releases were based on
+CrossInk 1.5.0.
 
 The bundled `freeink-sdk` is maintained by FreeInk and carries its own MIT
 license and third-party notices in `freeink-sdk/LICENSE` and

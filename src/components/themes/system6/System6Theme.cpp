@@ -1,5 +1,8 @@
 #include "System6Theme.h"
 
+#include "CrossPointSettings.h"
+#include "components/DesktopPattern.h"
+
 #include <GfxRenderer.h>
 #include <HalClock.h>
 #include <HalDisplay.h>
@@ -76,10 +79,9 @@ void frame(const GfxRenderer& r, Rect b) {
   r.drawRect(b.x + 2, b.y + 2, b.width - 4, b.height - 4);
 }
 void desktop(const GfxRenderer& r, int top, int bottom) {
-  // One-bit checkerboard, drawn into the existing buffer. No background bitmap.
-  for (int y = top; y < bottom; y += 2) {
-    for (int x = ((y / 2) & 1) * 2; x < r.getScreenWidth(); x += 4) r.fillRect(x, y, 2, std::min(2, bottom - y));
-  }
+  // One-bit pattern (Settings > Display > Desktop Pattern), drawn into the
+  // existing buffer. No background bitmap.
+  DesktopPattern::fill(r, 0, top, r.getScreenWidth(), bottom - top, SETTINGS.desktopPattern);
 }
 void macIcon(const GfxRenderer& r, int x, int y, int scale = 1, bool black = true) {
   r.drawRect(x, y, 24 * scale, 29 * scale, black);
@@ -208,6 +210,15 @@ void menuIcon(const GfxRenderer& r, UIIcon icon, int x, int y, bool black) {
       r.drawRect(x + 14, y + 1, 12, 12, black);
       r.drawRect(x + 1, y + 14, 12, 12, black);
       r.fillRect(x + 14, y + 14, 12, 12, black);
+      break;
+    }
+    case MarbleMazeIcon: {
+      // A little maze with a ball at the end of the path.
+      r.drawRect(x + 1, y + 1, 24, 24, black);
+      r.drawLine(x + 1, y + 9, x + 17, y + 9, black);
+      r.drawLine(x + 9, y + 17, x + 25, y + 17, black);
+      r.drawLine(x + 9, y + 17, x + 9, y + 25, black);
+      r.fillRect(x + 17, y + 20, 4, 4, black);
       break;
     }
     case CalendarIcon: {

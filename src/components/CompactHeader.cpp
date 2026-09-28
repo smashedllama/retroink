@@ -1,6 +1,7 @@
 #include "CompactHeader.h"
 
 #include <GfxRenderer.h>
+#include <HalGPIO.h>
 
 #include <algorithm>
 #include <string>
@@ -11,6 +12,7 @@
 
 namespace {
 constexpr int kHeaderHeight = 67;
+constexpr int kTouchHeaderHeightIncrease = 10;
 constexpr int kHeaderTopGap = 6;
 constexpr int kHeaderTitleLift = 5;
 constexpr int kHeaderBaselineLift = 2;
@@ -20,8 +22,12 @@ int visibleHeaderHeight(const ThemeMetrics& metrics) {
                                                                    : std::min(metrics.headerHeight, kHeaderHeight);
 }
 
+int headerHeight(const ThemeMetrics& metrics) {
+  return visibleHeaderHeight(metrics) + (gpio.hasTouch() ? kTouchHeaderHeightIncrease : 0);
+}
+
 int titleBaselineY(const GfxRenderer& renderer, const ThemeMetrics& metrics) {
-  const int availableH = visibleHeaderHeight(metrics) - metrics.batteryBarHeight;
+  const int availableH = headerHeight(metrics) - metrics.batteryBarHeight;
   const int titleLineHeight = renderer.getLineHeight(UI_12_FONT_ID);
   const int titleY =
       metrics.topPadding + metrics.batteryBarHeight + (availableH - titleLineHeight) / 2 - kHeaderTitleLift;
@@ -30,7 +36,7 @@ int titleBaselineY(const GfxRenderer& renderer, const ThemeMetrics& metrics) {
 }  // namespace
 
 namespace CompactHeader {
-int height(const ThemeMetrics& metrics) { return visibleHeaderHeight(metrics); }
+int height(const ThemeMetrics& metrics) { return headerHeight(metrics); }
 
 int headerBottomY(const ThemeMetrics& metrics) { return metrics.topPadding + height(metrics); }
 
@@ -40,10 +46,10 @@ void drawTitle(const GfxRenderer& renderer, const char* title, const bool showDa
   const auto& metrics = UITheme::getInstance().getMetrics();
   const int pageWidth = renderer.getScreenWidth();
   if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
-    GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, visibleHeaderHeight(metrics)}, title);
+    GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, headerHeight(metrics)}, title);
     return;
   }
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, visibleHeaderHeight(metrics)}, "");
+  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, headerHeight(metrics)}, "");
 
   const int titleX = metrics.contentSidePadding;
   const int batteryStartX = pageWidth - metrics.contentSidePadding - metrics.batteryWidth;

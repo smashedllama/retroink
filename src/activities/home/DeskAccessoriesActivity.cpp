@@ -11,6 +11,7 @@
 #include "DeskCalendarActivity.h"
 #include "EarthPhaseDeskActivity.h"
 #include "MoonPhaseDeskActivity.h"
+#include "MarbleMazeDeskActivity.h"
 #include "PuzzleDeskActivity.h"
 #include "SystemInfoDeskActivity.h"
 #include "components/TouchHeaderBackButton.h"
@@ -30,8 +31,8 @@ struct DeskEntry {
 constexpr DeskEntry kEntries[] = {
     {StrId::STR_FOCUS_SESSION, Hourglass, false},    {StrId::STR_MOON_PHASE, MoonPhaseIcon, false},
     {StrId::STR_EARTH_PHASE, EarthPhaseIcon, false}, {StrId::STR_DESK_CLOCK, ClockIcon, true},
-    {StrId::STR_PUZZLE, PuzzleIcon, false},          {StrId::STR_DESK_CALENDAR, CalendarIcon, false},
-    {StrId::STR_SYSTEM_INFO, SystemInfoIcon, false},
+    {StrId::STR_PUZZLE, PuzzleIcon, false},          {StrId::STR_MARBLE_MAZE, MarbleMazeIcon, false},
+    {StrId::STR_DESK_CALENDAR, CalendarIcon, false}, {StrId::STR_SYSTEM_INFO, SystemInfoIcon, false},
 };
 }  // namespace
 
@@ -69,6 +70,10 @@ void DeskAccessoriesActivity::activate() {
       break;
     case DeskAction::Puzzle:
       startActivityForResult(std::make_unique<PuzzleDeskActivity>(renderer, mappedInput),
+                             [this](const ActivityResult&) { requestUpdate(); });
+      break;
+    case DeskAction::MarbleMaze:
+      startActivityForResult(std::make_unique<MarbleMazeDeskActivity>(renderer, mappedInput),
                              [this](const ActivityResult&) { requestUpdate(); });
       break;
     case DeskAction::Calendar:

@@ -2,7 +2,7 @@
 
 **RetroInk is a classic monochrome desktop-inspired e-reader firmware by
 AltFlow, built on
-[CrossInk](https://github.com/uxjulia/CrossInk) 1.5.0 and
+[CrossInk](https://github.com/uxjulia/CrossInk) 1.6.0 and
 [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader).**
 
 RetroInk keeps CrossInk's reading, library, transfer, dictionary, synchronization,
@@ -30,7 +30,7 @@ The X4 Pro and X4 Classic use a different chip (ESP32-S3), so they aren't suppor
 ## What RetroInk adds
 
 - A dedicated RetroInk interface with large, readable System 6-inspired type.
-- Macintosh-style windows, menus, controls, dialogs, icons, and progress bars, covering every screen, not just a handful of them.
+- Macintosh-style windows, menus, controls, dialogs, icons, and progress bars, covering every screen, not just a handful of them, on a desktop texture you choose from sixteen classic Mac patterns.
 - A RetroInk boot sequence with an animated Macintosh glance.
 - New sleep screens: the themed "resting between chapters" default, three playful Mac-style dialogs, reading-stats screens (Today, Book Status, Book + Week Stats, Reading Year), and desk-accessory screens (Moon Phase, Earth, Desk Calendar), plus monochrome book-cover rendering.
 - An optional charging screen that appears automatically when you plug in and aren't actively reading.
@@ -38,7 +38,7 @@ The X4 Pro and X4 Classic use a different chip (ESP32-S3), so they aren't suppor
 - A Home screen with a progress bar on your current book, optional reading stats, and an OPDS Browser entry once you've added a server.
 - A Finder-style Library for large nested collections: automatic reading shelves (To Read, Reading, Finished, Favorites), your own custom shelves you create and name yourself, title/filename/author/recent sorts, A-Z jumps, and a choice of shelf or icon view.
 - A shelf-based way to browse the library on-device: books stand as spines on a shelf, Left/Right page through the current shelf, Up/Down switch straight to the next one, built in or custom, no menu in the way.
-- Desk Accessories in the classic Mac sense: Moon Phase (drawn from a real lunar photo, with days until the next phase), Earth (a day/night globe for your time zone), an analog/digital Clock with a ticking seconds display, the fifteen-tile Puzzle, Desk Calendar, and System Info. Moon Phase and Earth can show any date you pick.
+- Desk Accessories in the classic Mac sense: Moon Phase (drawn from a real lunar photo, with days until the next phase), Earth (a day/night globe for your time zone), an analog/digital Clock with a ticking seconds display, the fifteen-tile Puzzle, a tilt-controlled Marble Maze, Desk Calendar, and System Info. Moon Phase and Earth can show any date you pick.
 - Daily reading goals with a streak tracker and an in-reader countdown badge, plus a themed stats dashboard (Today, Reading Year, Book Status) when the System 6 theme is active.
 - Focus Session, a configurable reading timer from 5 minutes to 24 hours, with Wi-Fi off while it runs.
 - Adjustable status bar text size (Small, Medium, Large).

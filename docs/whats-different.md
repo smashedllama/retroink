@@ -20,6 +20,10 @@ Everything you love about [CrossInk](https://github.com/uxjulia/CrossInk), its r
 
 A full System 6 theme, not a palette swap: striped title bars, square controls, inverted-selection lists, and a checkerboard desktop texture cover every window, menu, dialog, and progress bar. The boot sequence is a small pixel-drawn Macintosh whose eyes shift left, right, then center across three redraws, and the default sleep screen is that same Mac, asleep, with "RetroInk is resting between chapters."
 
+Change the texture behind every window under **Settings > Display > Desktop Pattern**. There are sixteen classic Macintosh 8×8 patterns, from the original checker to Brick, Weave, Diagonal, Diamonds, and a plain white desktop. The choice also carries onto the boot and sleep screens.
+
+<img class="doc-screenshot" src="./images/retroink-desktop-patterns.png" alt="The sixteen desktop patterns: Checker, Gray 50%, Gray 25%, Gray 75%, Brick, Diagonal, Horizontal Lines, Vertical Lines, Weave, Grid, Diamonds, Scales, Dots, Polka, Stripes, and White" />
+
 None of it costs extra memory. The whole theme adds no additional state to the renderer, and every piece of chrome, windows, icons, the hourglass, drop-shadowed keycaps, is drawn with line and rectangle primitives straight into the existing single 1-bit framebuffer at render time. No second framebuffer, no decoded bitmaps, no stored animation frames. It's available as its own selectable theme in **Settings > Display > UI Theme**, so it doesn't change anyone's existing setup by default.
 
 Pick your sleep screen in **Settings > Display > Sleep Screen > Wallpaper**. Alongside CrossInk's cover, custom image, and page overlay options, RetroInk adds the reading-stats screens (Today, Book Status, Book + Week Stats with the book's cover and your week, and Reading Year), the desk-accessory screens (Moon Phase, Earth, and Desk Calendar), and three playful Mac-style dialogs:
@@ -91,6 +95,7 @@ Classic Macs had a menu of small utilities, the desk accessories. RetroInk has i
 - **Earth**, a day/night globe centred on your time zone, with the date, time, and zone it's showing.
 - **Clock**, an analog or digital desk clock with an optional seconds display. It keeps the reader awake while it's open, so it can sit on a desk.
 - **Puzzle**, the classic fifteen-tile slider. Your board and move count are saved after every move.
+- **Marble Maze**, a tabletop tilt maze. On the X3 you tilt the reader to roll the ball into the hole; on the X4, and alongside tilting on the X3, the buttons tilt the board. A new random maze every game.
 - **Desk Calendar**, a month view with today marked. Left and Right page through months.
 - **System Info**, firmware version, storage use, and battery level.
 
@@ -100,7 +105,15 @@ Classic Macs had a menu of small utilities, the desk accessories. RetroInk has i
   <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-desk-calendar.png" alt="Desk Calendar month view with the first of the month marked" /></div></div>
 </div>
 
+<div class="device-row">
+  <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-marble-maze.png" alt="Marble Maze: a random maze with the ball at the top left and the hole in the middle" /></div></div>
+</div>
+
 Press **Set Date** on Moon Phase or Earth to look at any other date; Earth also takes a time and a time zone. In the picker, the side buttons move between fields and the front buttons change the value (hold to scroll). Moon Phase, Earth, and Desk Calendar are also available as sleep screens.
+
+### How I built the Marble Maze
+
+The maze is carved fresh every game with a depth-first "recursive backtracker", which makes long winding corridors with exactly one route between any two cells, and a breadth-first search over it puts the hole in the cell farthest from the start. The ball is simple physics: tilt becomes acceleration, friction bleeds off speed, and each move is split into sub-pixel steps and checked against the walls one axis at a time, so it slides along a wall instead of sticking to it or tunnelling through. On the X3 the tilt comes from the accelerometer, re-levelled to whatever angle you're holding when the maze appears. The hard part was e-ink: it can't animate, so each frame repaints only a small window around the ball, and the X3's panel gets a half-length Fast waveform while the game is open to make those updates about twice as quick. A full-panel flash is saved for the moments you'd expect a pause anyway.
 
 ### How I built the Moon
 
@@ -158,7 +171,7 @@ RetroInk isn't purely additive. A few things from stock CrossInk work differentl
 <summary>RetroInk keeps all of this from CrossInk. Click to expand the full list.</summary>
 
 - New reader fonts: Lexend Deca and Bitter.
-- Unicode emoji and miscellaneous symbols support (a limited subset).
+- Miscellaneous symbol support; emoji show when you use a font from the SD card.
 - Reader font sizes: 10 pt, 12 pt, 14 pt, and 16 pt.
 - Strikethrough support, and thicker underlines for better visibility.
 - A custom Minimal theme and sleep screen option.
@@ -178,6 +191,11 @@ RetroInk isn't purely additive. A few things from stock CrossInk work differentl
 - Customizable Auto Page Turn Interval (5 to 120 seconds).
 - Safe book moves across the device, web file manager, and WebDAV, with reading-record recovery after a move made elsewhere.
 - Nearby file transfer, OPDS browsing, dictionary lookups, and Calibre wireless transfers.
+- Go to % and Go to Stable Page with a numeric keypad (hold Select to switch from the slider).
+- Rename books from the File Browser without losing progress, bookmarks, or clippings.
+- Custom boot screens from a BMP or a `/bootscreen` folder.
+- Quick Lock, assignable button combinations, and selectable keyboard layouts.
+- Separate top/bottom and left/right margins, and 0, 1, or 2 decimals for the status bar percentage.
 
 </details>
 

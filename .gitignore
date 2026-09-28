@@ -21,6 +21,7 @@ fs_/
 /site/.astro/
 /site/public/images/
 /site/public/catalog
+/site/public/logo.png
 /site/public/CNAME
 
 # scratchpad used as release notes for next crossink version

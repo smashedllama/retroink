@@ -1,9 +1,12 @@
 #include "SleepActivity.h"
 
+#include <BitmapHelpers.h>
+#include <BoardConfig.h>
 #include <Epub.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <HalClock.h>
+#include <HalDisplay.h>
 #include <HalGPIO.h>
 #include <HalPowerManager.h>
 #include <HalStorage.h>
@@ -12,9 +15,11 @@
 #include <Xtc.h>
 
 #include <algorithm>
-#include <cstdio>
+#include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <memory>
 #include <new>
 #include <string_view>
 
@@ -25,10 +30,13 @@
 #include "../reader/EpubReaderUtils.h"
 #include "../reader/TxtReaderActivity.h"
 #include "../reader/XtcReaderActivity.h"
+#include "AppCapabilities.h"
 #include "AppVersion.h"
 #include "CrossPointSettings.h"
 #include "components/DeskDate.h"
+#include "components/DesktopPattern.h"
 #include "CrossPointState.h"
+#include "ImageFolderIndex.h"
 #include "RecentBooksStore.h"
 #include "components/CalendarView.h"
 #include "components/ClockFormat.h"
@@ -135,7 +143,7 @@ void hideOverlayBatteryStrip(const GfxRenderer& renderer) {
 
 // Context passed through PNGdec's decode() user-pointer to the per-scanline draw callback.
 struct PngOverlayCtx {
-  const GfxRenderer* renderer;
+  GfxRenderer* renderer;
   int screenW;
   int screenH;
   int srcWidth;
@@ -253,7 +261,14 @@ int pngOverlayDraw(PNGDRAW* pDraw) {
       }
 
       if (alpha >= 128) {
-        ctx->renderer->drawPixel(outX, destY, gray < 128);  // true = black, false = white
+        const auto mode = ctx->renderer->getRenderMode();
+        if (mode == GfxRenderer::BW) {
+          ctx->renderer->drawPixel(outX, destY, gray < 128);  // true = black, false = white
+        } else {
+          const auto pixel =
+              grayPlanePixel(gray >> 6, mode == GfxRenderer::GRAYSCALE_MSB, ctx->renderer->grayPlanesAreAbsolute());
+          if (pixel.write) ctx->renderer->drawPixel(outX, destY, pixel.black);
+        }
       }
       // alpha < 128: transparent — leave the reader page pixel intact
     }
@@ -368,22 +383,34 @@ bool tryOpenSleepDirectory(FsFile& dir, std::string& sleepDir, const std::string
   return false;
 }
 
-bool openPreferredSleepDirectory(FsFile& dir, std::string& sleepDir) {
+bool resolvePreferredSleepDirectory(std::string& sleepDir) {
   sleepDir.clear();
 
-  if (tryOpenSleepDirectory(dir, sleepDir, APP_STATE.preferredSleepFolderPath)) {
+  const auto folderExists = [&sleepDir](const std::string& candidate) {
+    if (candidate.empty() || !Storage.exists(candidate.c_str())) return false;
+    sleepDir = candidate;
     return true;
-  }
+  };
+
+  if (folderExists(APP_STATE.preferredSleepFolderPath)) return true;
 
   if (!APP_STATE.preferredSleepFolderPath.empty()) {
     LOG_INF("SLP", "Preferred sleep folder missing, falling back: %s", APP_STATE.preferredSleepFolderPath.c_str());
   }
 
-  if (tryOpenSleepDirectory(dir, sleepDir, "/.sleep")) {
+  char defaultSleepDir[16];
+  if (FsHelpers::resolveRootDirectoryIgnoreCase("/.sleep", defaultSleepDir, sizeof(defaultSleepDir)) &&
+      folderExists(defaultSleepDir)) {
     return true;
   }
+  return FsHelpers::resolveRootDirectoryIgnoreCase("/sleep", defaultSleepDir, sizeof(defaultSleepDir)) &&
+         folderExists(defaultSleepDir);
+}
 
-  return tryOpenSleepDirectory(dir, sleepDir, "/sleep");
+bool openPreferredSleepDirectory(FsFile& dir, std::string& sleepDir) {
+  if (!resolvePreferredSleepDirectory(sleepDir)) return false;
+
+  return tryOpenSleepDirectory(dir, sleepDir, sleepDir);
 }
 
 bool selectPinnedSleepImage(SleepImageMode mode, SleepImageSelection& selection) {
@@ -422,11 +449,25 @@ bool selectRandomSleepImage(SleepImageMode mode, SleepImageSelection& selection,
                             bool bmpOnly = false) {
   FsFile dir;
   std::string sleepDir;
-  if (!openPreferredSleepDirectory(dir, sleepDir)) {
-    return false;
-  }
+  if (!resolvePreferredSleepDirectory(sleepDir)) return false;
 
   const bool allowPng = mode == SleepImageMode::Overlay && !bmpOnly;
+  ImageFolderIndex::Selection indexedSelection;
+  if (ImageFolderIndex::select(sleepDir, allowPng, validateBmpHeaders, APP_STATE.recentSleepImages,
+                               CrossPointState::SLEEP_RECENT_COUNT, APP_STATE.recentSleepPos, APP_STATE.recentSleepFill,
+                               std::min(APP_STATE.recentSleepFill, CrossPointState::SLEEP_RECENT_COUNT),
+                               indexedSelection)) {
+    selection.path = std::move(indexedSelection.path);
+    selection.isPng = indexedSelection.isPng;
+    APP_STATE.pushRecentSleep(indexedSelection.index);
+    APP_STATE.saveToFile();
+    return true;
+  }
+
+  // Cache creation is best-effort. Reopen the directory only for the legacy
+  // reservoir fallback when the cache could not be loaded or written.
+  if (!openPreferredSleepDirectory(dir, sleepDir)) return false;
+
   // Keep one reservoir for every candidate and one that excludes recent images.
   // This avoids holding the whole directory in RAM or opening every BMP just to
   // parse its header before picking one.
@@ -529,39 +570,59 @@ void SleepActivity::onEnter() {
       (fromTimeout &&
        SETTINGS.quickResumeSleepScreen == CrossPointSettings::QUICK_RESUME_SLEEP_SCREEN::QUICK_RESUME_AFTER_TIMEOUT);
 
+  // Sleep screens draw directly, outside ActivityManager's normal render path.
+  // Quick Resume retains the current screen, so preserve its Night Mode output;
+  // generated sleep screens continue to use their normal polarity.
+  display.setInverted(renderQuickResume && SETTINGS.screenInverted != 0);
+
   if (renderQuickResume) {
     return renderLastScreenSleepScreen();
   }
 
-  overlayBackgroundBufferStored =
-      SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::OVERLAY && renderer.storeBwBuffer();
+  const auto sleepScreen = SETTINGS.sleepScreen;
+  const bool sleepScreenUsesRecentBooks = sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::READING_STATS_SLEEP ||
+                                          sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::MINIMAL_SLEEP ||
+                                          sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::MINIMAL_STATS_SLEEP ||
+                                          sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::DASHBOARD_SLEEP;
+  const std::string& recentBookPath = currentBookPath.empty() ? APP_STATE.openEpubPath : currentBookPath;
+  if (sleepScreenUsesRecentBooks && !recentBookPath.empty()) {
+    RECENT_BOOKS.ensureLoaded();
+  }
 
+  overlayBackgroundBufferStored =
+      sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::OVERLAY && renderer.storeBwBuffer();
+
+  // X4 Pro and X4 Classic share a panel that can retain this high-contrast
+  // transient update beneath the final OEM-style sleep refresh. Render only
+  // the final sleep frame on that panel family.
+  const bool showSleepPopup = !BoardConfig::isX4Pro() && !CROSSINK_APP_DEVICE_X4CLASSIC;
   // Show the popup in the orientation that was visible before reader exit restores
   // global settings. Reset to portrait afterwards so sleep screen layout stays unchanged.
   if (APP_STATE.lastSleepFromReader) {
-    renderer.setOrientation(sleepPopupOrientation);
-    GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
+    if (showSleepPopup) {
+      renderer.setOrientation(sleepPopupOrientation);
+      GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
+    }
     renderer.setOrientation(GfxRenderer::Orientation::Portrait);
-  } else {
+  } else if (showSleepPopup) {
     GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
   }
 
   // A date-driven screen saved on a clockless device (the original X4) has
   // nothing to draw; use the default screen instead.
-  if (!halClock.isAvailable() && sleepScreenNeedsClock(SETTINGS.sleepScreen)) {
+  if (!halClock.isAvailable() && sleepScreenNeedsClock(sleepScreen)) {
     return renderDefaultSleepScreen();
   }
   // Moon, Earth, and Calendar need a date: the clock's, or on a clockless
   // device the one picked in the desk accessory. Nothing picked yet means
   // nothing to draw.
-  if (SETTINGS.sleepScreen == CrossPointSettings::MOON_PHASE_SLEEP ||
-      SETTINGS.sleepScreen == CrossPointSettings::EARTH_PHASE_SLEEP ||
-      SETTINGS.sleepScreen == CrossPointSettings::DESK_CALENDAR_SLEEP) {
+  if (sleepScreen == CrossPointSettings::MOON_PHASE_SLEEP || sleepScreen == CrossPointSettings::EARTH_PHASE_SLEEP ||
+      sleepScreen == CrossPointSettings::DESK_CALENDAR_SLEEP) {
     DeskDateTime shown;
     if (!DeskDate::current(shown)) return renderDefaultSleepScreen();
   }
 
-  switch (SETTINGS.sleepScreen) {
+  switch (sleepScreen) {
     case (CrossPointSettings::SLEEP_SCREEN_MODE::BLANK):
       return renderBlankSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::CUSTOM):
@@ -615,16 +676,21 @@ void SleepActivity::renderCustomSleepScreen() const {
 
     LOG_INF("SLP", "Loading custom sleep image: %s", selection.path.c_str());
     delay(100);
-    Bitmap bitmap(file, true);
+    // Use image-specific gray levels only when the panel accepts complete planes.
+    Bitmap bitmap(file, true,
+                  renderer.supportsAbsoluteGrayscale() &&
+                      SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER);
     const BmpReaderError parseResult = bitmap.parseHeaders();
     if (parseResult != BmpReaderError::Ok) {
       LOG_ERR("SLP", "Failed to parse custom sleep BMP %s: %s", selection.path.c_str(),
               Bitmap::errorToString(parseResult));
+      file.close();
       return false;
     }
 
-    renderBitmapSleepScreen(bitmap, SETTINGS.customSleepScreenFastMode != 0);
-    return true;
+    const bool success = renderBitmapSleepScreen(bitmap, SETTINGS.customSleepScreenFastMode != 0);
+    file.close();
+    return success;
   };
 
   SleepImageSelection selection;
@@ -648,13 +714,17 @@ void SleepActivity::renderCustomSleepScreen() const {
   // render a custom sleep screen instead of the default.
   FsFile file;
   if (Storage.openFileForRead("SLP", "/sleep.bmp", file)) {
-    Bitmap bitmap(file, true);
+    Bitmap bitmap(file, true,
+                  renderer.supportsAbsoluteGrayscale() &&
+                      SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER);
     if (bitmap.parseHeaders() == BmpReaderError::Ok) {
-      renderBitmapSleepScreen(bitmap, SETTINGS.customSleepScreenFastMode != 0);
-      return;
+      const bool success = renderBitmapSleepScreen(bitmap, SETTINGS.customSleepScreenFastMode != 0);
+      file.close();
+      if (success) return;
     }
   }
 
+  file.close();
   renderDefaultSleepScreen();
 }
 
@@ -692,17 +762,8 @@ void SleepActivity::renderDefaultSleepScreen() const {
 }
 
 namespace {
-// Same 2x2 checkerboard fill as RetroInkBoot's drawRetroInkDesktop() and
-// System6Theme's own desktop() -- both are file-local to their own
-// translation units, so this is a third small copy rather than a shared
-// export, matching how this exact pattern is already duplicated between
-// those two.
 void drawSystem6Desktop(const GfxRenderer& renderer, const int pageWidth, const int pageHeight) {
-  for (int y = 0; y < pageHeight; y += 2) {
-    for (int x = ((y / 2) & 1) * 2; x < pageWidth; x += 4) {
-      renderer.fillRect(x, y, 2, 2);
-    }
-  }
+  DesktopPattern::fill(renderer, 0, 0, pageWidth, pageHeight, SETTINGS.desktopPattern);
 }
 }  // namespace
 
@@ -911,11 +972,22 @@ void SleepActivity::renderDeskCalendarSleepScreen() const {
   renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
 }
 
-void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap, const bool forceFastNoGreyscale) const {
+bool SleepActivity::renderBitmapSleepScreen(Bitmap& bitmap, const bool forceFastNoGreyscale) const {
   int x, y;
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
   float cropX = 0, cropY = 0;
+
+  // Keep error diffusion on the screen-sized grid. Resampling an already
+  // dithered source makes the source pattern alias into regular seams.
+  if (SETTINGS.sleepScreenCoverMode == CrossPointSettings::SLEEP_SCREEN_COVER_MODE::FIT &&
+      (bitmap.getWidth() > pageWidth || bitmap.getHeight() > pageHeight)) {
+    const float scale = std::min(static_cast<float>(pageWidth) / bitmap.getWidth(),
+                                 static_cast<float>(pageHeight) / bitmap.getHeight());
+    const int targetWidth = static_cast<int>(std::floor((bitmap.getWidth() - 1) * scale)) + 1;
+    const int targetHeight = static_cast<int>(std::floor((bitmap.getHeight() - 1) * scale)) + 1;
+    bitmap.setDitheredOutputSize(targetWidth, targetHeight);
+  }
 
   if (bitmap.getWidth() > pageWidth || bitmap.getHeight() > pageHeight) {
     // image will scale, make sure placement is right
@@ -950,43 +1022,56 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap, const bool for
   const bool hasGreyscale = bitmap.hasGreyscale() && !forceFastNoGreyscale &&
                             SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER;
 
-  // The gray nudge needs a half-refresh base. Clear the full panel to white
-  // first in RetroInk, then leave the calibrated gray pipeline unchanged.
+  // The gray nudge needs a clean base. Clear the full panel to white first in
+  // RetroInk, where the checkerboard desktop otherwise ghosts through.
   if (hasGreyscale && SETTINGS.uiTheme == CrossPointSettings::SYSTEM6)
     renderer.displayBuffer(HalDisplay::FULL_REFRESH);
 
-  renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
+  if (!renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY)) return false;
 
   if (SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::INVERTED_BLACK_AND_WHITE) {
     renderer.invertScreen();
   }
 
-  if (hasGreyscale) {
-    // OEM grayscale pipeline base. Must stay HALF: the gray nudge LUT is
-    // calibrated against the pixel state the single-pass HALF waveform leaves
-    // behind. A FULL (GC) base parks pixels in a different charge state and
-    // the differential nudge then lands unevenly (blotchy noise in gray areas).
-    renderer.displayGrayscaleBase(HalDisplay::HALF_REFRESH);
-  } else {
+  if (!hasGreyscale) {
     renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+    return true;
   }
 
-  if (hasGreyscale) {
-    bitmap.rewindToData();
-    renderer.clearScreen(0x00);
-    renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
-    renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
-    renderer.copyGrayscaleLsbBuffers();
-
-    bitmap.rewindToData();
-    renderer.clearScreen(0x00);
-    renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
-    renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
-    renderer.copyGrayscaleMsbBuffers();
-
-    renderer.displayGrayBuffer(TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
-    renderer.setRenderMode(GfxRenderer::BW);
+  // Prefer the Direct waveform where the panel implements it: it folds the B/W
+  // base into the grayscale pass rather than pushing a separate base refresh
+  // first. Keep `absolute` on the Absolute probe alone so it matches what the
+  // callers pass to SleepCoverAssets and the Bitmap dither/level mode; Direct
+  // is only ever an upgrade on top of it, never a substitute.
+  const bool absolute = renderer.supportsAbsoluteGrayscale();
+  const bool direct = absolute && renderer.supportsDirectGrayscale();
+  if (absolute) {
+    if (!(direct ? renderer.displayDirectGrayscaleBase() : renderer.displayAbsoluteGrayscaleBase())) return false;
+  } else {
+    renderer.displayGrayscaleBase(HalDisplay::HALF_REFRESH);
   }
+
+  for (const auto mode : {GfxRenderer::GRAYSCALE_LSB, GfxRenderer::GRAYSCALE_MSB}) {
+    if (bitmap.rewindToData() != BmpReaderError::Ok) {
+      LOG_ERR("SLP", "Failed to rewind sleep image");
+      renderer.setRenderMode(GfxRenderer::BW);
+      return false;
+    }
+    // Absolute white margins must be present in both complete planes.
+    renderer.clearScreen(absolute ? 0xFF : 0x00);
+    renderer.setRenderMode(mode);
+    if (!renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY)) {
+      renderer.setRenderMode(GfxRenderer::BW);
+      return false;
+    }
+    if (mode == GfxRenderer::GRAYSCALE_LSB)
+      renderer.copyGrayscaleLsbBuffers();
+    else
+      renderer.copyGrayscaleMsbBuffers();
+  }
+  renderer.displayGrayBuffer(TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+  renderer.setRenderMode(GfxRenderer::BW);
+  return true;
 }
 
 void SleepActivity::renderCoverSleepScreen() const {
@@ -1005,10 +1090,12 @@ void SleepActivity::renderCoverSleepScreen() const {
     return (this->*renderNoCoverSleepScreen)();
   }
 
+  const bool absolute = renderer.supportsAbsoluteGrayscale() &&
+                        SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER;
   bool cropped = SETTINGS.sleepScreenCoverMode == CrossPointSettings::SLEEP_SCREEN_COVER_MODE::CROP;
-  std::string coverBmpPath = SleepCoverAssets::cachedCoverPathFor(path, cropped);
-  if (coverBmpPath.empty() && SleepCoverAssets::prepareFullCoverForPath(path, cropped, &renderer)) {
-    coverBmpPath = SleepCoverAssets::cachedCoverPathFor(path, cropped);
+  std::string coverBmpPath = SleepCoverAssets::cachedCoverPathFor(path, cropped, absolute);
+  if (coverBmpPath.empty() && SleepCoverAssets::prepareFullCoverForPath(path, cropped, &renderer, absolute)) {
+    coverBmpPath = SleepCoverAssets::cachedCoverPathFor(path, cropped, absolute);
   }
   if (coverBmpPath.empty()) {
     return (this->*renderNoCoverSleepScreen)();
@@ -1016,14 +1103,16 @@ void SleepActivity::renderCoverSleepScreen() const {
 
   FsFile file;
   if (Storage.openFileForRead("SLP", coverBmpPath, file)) {
-    Bitmap bitmap(file);
+    Bitmap bitmap(file, absolute, absolute);
     if (bitmap.parseHeaders() == BmpReaderError::Ok) {
       LOG_DBG("SLP", "Rendering sleep cover: %s", coverBmpPath.c_str());
-      renderBitmapSleepScreen(bitmap);
-      return;
+      const bool success = renderBitmapSleepScreen(bitmap);
+      file.close();
+      if (success) return;
     }
   }
 
+  file.close();
   return (this->*renderNoCoverSleepScreen)();
 }
 
@@ -1267,7 +1356,9 @@ void SleepActivity::renderOverlaySleepScreen() const {
       LOG_DBG("SLP", "BMP overlay not found: %s", filename.c_str());
       return OverlayDrawResult::NotFound;
     }
-    Bitmap bitmap(file, true);
+    // Keep dithering off here: error diffusion can make nominally white
+    // transparent pixels visible over the preserved reader page.
+    Bitmap bitmap(file);
     const BmpReaderError parseResult = bitmap.parseHeaders();
     if (parseResult != BmpReaderError::Ok) {
       LOG_ERR("SLP", "BMP overlay header parse failed for %s: %s", filename.c_str(),
@@ -1300,6 +1391,8 @@ void SleepActivity::renderOverlaySleepScreen() const {
     return OverlayDrawResult::Drawn;
   };
 
+  bool pngOverlayGrayscaleDisplayed = false;
+  bool pngOverlayFallbackMustUseDefault = false;
   auto tryDrawPngOverlay = [&](const std::string& filename) -> OverlayDrawResult {
     if (!Storage.exists(filename.c_str())) {
       LOG_DBG("SLP", "PNG overlay not found: %s", filename.c_str());
@@ -1323,7 +1416,7 @@ void SleepActivity::renderOverlaySleepScreen() const {
               static_cast<unsigned>(MIN_FREE_HEAP), filename.c_str());
       return OverlayDrawResult::Failed;
     }
-    PNG* png = new (std::nothrow) PNG();
+    auto png = std::unique_ptr<PNG>(new (std::nothrow) PNG());
     if (!png) {
       LOG_ERR("SLP", "Failed to allocate PNG overlay decoder for %s", filename.c_str());
       return OverlayDrawResult::Failed;
@@ -1331,7 +1424,6 @@ void SleepActivity::renderOverlaySleepScreen() const {
 
     int rc = png->open(filename.c_str(), pngSleepOpen, pngSleepClose, pngSleepRead, pngSleepSeek, pngOverlayDraw);
     if (rc != PNG_SUCCESS) {
-      delete png;
       LOG_ERR("SLP", "PNG overlay open failed for %s: %d", filename.c_str(), rc);
       return OverlayDrawResult::Failed;
     }
@@ -1358,16 +1450,67 @@ void SleepActivity::renderOverlaySleepScreen() const {
     ctx.yScale = yScale;
     ctx.lastDstY = -1;
     ctx.transparentColor = -2;  // will be resolved on first draw callback (after tRNS is parsed)
-    ctx.pngObj = png;
+    ctx.pngObj = png.get();
 
     LOG_INF("SLP", "Drawing PNG overlay: %s", filename.c_str());
     rc = png->decode(&ctx, 0);
     png->close();
-    delete png;
     if (rc != PNG_SUCCESS) {
       LOG_ERR("SLP", "PNG overlay decode failed for %s: %d", filename.c_str(), rc);
       return OverlayDrawResult::Failed;
     }
+
+    const bool absolute = renderer.supportsAbsoluteGrayscale();
+    if (!absolute) return OverlayDrawResult::Drawn;
+    if (!(renderer.supportsDirectGrayscale() ? renderer.displayDirectGrayscaleBase()
+                                             : renderer.displayAbsoluteGrayscaleBase())) {
+      return OverlayDrawResult::Drawn;
+    }
+
+    // Absolute gray planes preserve the reader page underneath transparent PNG
+    // pixels while rewriting each opaque pixel at its exact four-level tone.
+    bool lsbCopied = false;
+    const auto grayscaleFallback = [&]() {
+      renderer.setRenderMode(GfxRenderer::BW);
+      if (lsbCopied) {
+        renderer.clearScreen();
+        pngOverlayFallbackMustUseDefault = true;
+      }
+      return lsbCopied ? OverlayDrawResult::Failed : OverlayDrawResult::Drawn;
+    };
+    for (const auto mode : {GfxRenderer::GRAYSCALE_LSB, GfxRenderer::GRAYSCALE_MSB}) {
+      png.reset();
+      png = std::unique_ptr<PNG>(new (std::nothrow) PNG());
+      if (!png) {
+        LOG_ERR("SLP", "Failed to allocate PNG grayscale decoder for %s", filename.c_str());
+        return grayscaleFallback();
+      }
+      rc = png->open(filename.c_str(), pngSleepOpen, pngSleepClose, pngSleepRead, pngSleepSeek, pngOverlayDraw);
+      if (rc != PNG_SUCCESS) {
+        LOG_ERR("SLP", "PNG grayscale open failed for %s: %d", filename.c_str(), rc);
+        return grayscaleFallback();
+      }
+
+      ctx.pngObj = png.get();
+      ctx.lastDstY = -1;
+      ctx.transparentColor = -2;
+      renderer.setRenderMode(mode);
+      rc = png->decode(&ctx, 0);
+      png->close();
+      if (rc != PNG_SUCCESS) {
+        LOG_ERR("SLP", "PNG grayscale decode failed for %s: %d", filename.c_str(), rc);
+        return grayscaleFallback();
+      }
+      if (mode == GfxRenderer::GRAYSCALE_LSB) {
+        renderer.copyGrayscaleLsbBuffers();
+        lsbCopied = true;
+      } else {
+        renderer.copyGrayscaleMsbBuffers();
+      }
+    }
+    renderer.displayGrayBuffer(TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+    renderer.setRenderMode(GfxRenderer::BW);
+    pngOverlayGrayscaleDisplayed = true;
     return OverlayDrawResult::Drawn;
   };
 
@@ -1384,7 +1527,8 @@ void SleepActivity::renderOverlaySleepScreen() const {
   if (selectPinnedSleepImage(SleepImageMode::Overlay, selection)) {
     trySelectedOverlay(selection);
   }
-  if (!overlayDrawn && selectRandomSleepImage(SleepImageMode::Overlay, selection)) {
+  if (!overlayDrawn && !pngOverlayFallbackMustUseDefault &&
+      selectRandomSleepImage(SleepImageMode::Overlay, selection)) {
     trySelectedOverlay(selection);
   }
 
@@ -1393,19 +1537,19 @@ void SleepActivity::renderOverlaySleepScreen() const {
   // valid PNG can fail on C3 devices. Try another folder image before using
   // the root/default fallback: use BMP-only after a PNG failure, or validate
   // BMP headers after a failed BMP selection.
-  if (!overlayDrawn && overlayCandidateFailed && !selection.path.empty() &&
+  if (!overlayDrawn && !pngOverlayFallbackMustUseDefault && overlayCandidateFailed && !selection.path.empty() &&
       selectRandomSleepImage(SleepImageMode::Overlay, selection,
                              /*validateBmpHeaders=*/!selection.isPng,
                              /*bmpOnly=*/selection.isPng)) {
     trySelectedOverlay(selection);
   }
 
-  if (!overlayDrawn) {
+  if (!overlayDrawn && !pngOverlayFallbackMustUseDefault) {
     const OverlayDrawResult result = tryDrawOverlay("/sleep.bmp");
     overlayDrawn = result == OverlayDrawResult::Drawn;
     overlayCandidateFailed = overlayCandidateFailed || result == OverlayDrawResult::Failed;
   }
-  if (!overlayDrawn) {
+  if (!overlayDrawn && !pngOverlayFallbackMustUseDefault) {
     const OverlayDrawResult result = tryDrawPngOverlay("/sleep.png");
     overlayDrawn = result == OverlayDrawResult::Drawn;
     overlayCandidateFailed = overlayCandidateFailed || result == OverlayDrawResult::Failed;
@@ -1426,6 +1570,7 @@ void SleepActivity::renderOverlaySleepScreen() const {
   }
 
   renderer.setOrientation(savedOrientation);
+  if (pngOverlayGrayscaleDisplayed) return;
   // The grayscale re-render has no mask for the overlay image. If an overlay was
   // drawn, keep the composited BW frame intact instead of painting page glyphs
   // over the sleep image.

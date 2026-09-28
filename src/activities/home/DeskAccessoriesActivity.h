@@ -7,8 +7,8 @@
 // plus the newer desk-accessory screens (Moon Phase, Earth, Clock, Puzzle,
 // Desk Calendar, System Info), all nested here instead of flat in the Home menu.
 class DeskAccessoriesActivity final : public Activity {
-  enum class DeskAction : uint8_t { FocusTimer, MoonPhase, Earth, Clock, Puzzle, Calendar, SystemInfo };
-  static constexpr int kMaxItems = 7;
+  enum class DeskAction : uint8_t { FocusTimer, MoonPhase, Earth, Clock, Puzzle, MarbleMaze, Calendar, SystemInfo };
+  static constexpr int kMaxItems = 8;
 
   // Visible entries in display order. Clock is left out on hardware without
   // a clock chip, such as the original X4, since it has nothing to show

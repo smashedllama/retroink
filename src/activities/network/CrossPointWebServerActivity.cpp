@@ -76,6 +76,9 @@ int barsForRssi(int rssi, int currentBars) {
 
 void CrossPointWebServerActivity::onEnter() {
   Activity::onEnter();
+  // Build or refresh the compact on-disk font index before Wi-Fi starts. The
+  // C3 has substantially more contiguous heap here than while serving HTTP.
+  sdFontSystem.ensureRegistry();
   sdFontSystem.releaseForNetwork(renderer);
 
   LOG_DBG("WEBACT", "Free heap at onEnter: %d bytes", ESP.getFreeHeap());
@@ -165,6 +168,11 @@ void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) 
   }
   LOG_DBG("WEBACT", "Network mode selected: %s", modeName);
 
+  if (mode == NetworkMode::USB_DRIVE) {
+    activityManager.goToUsbDrive();
+    return;
+  }
+
   networkMode = mode;
   isApMode = (mode == NetworkMode::CREATE_HOTSPOT);
 
@@ -193,6 +201,9 @@ void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) 
         break;
       case NetworkMode::CREATE_HOTSPOT:
         activityManager.goToHotspotFileTransfer(returnBookPath);
+        break;
+      case NetworkMode::USB_DRIVE:
+        activityManager.goToUsbDrive();
         break;
       case NetworkMode::SYNC_OBSIDIAN:
       case NetworkMode::NEARBY_STATS_SYNC:
@@ -656,7 +667,7 @@ void CrossPointWebServerActivity::renderServerRunning() const {
     renderer.drawCenteredText(SMALL_FONT_ID, startY, hostnameUrl.c_str(), true);
   }
 
-  const auto labels = mappedInput.mapLabels(tr(STR_EXIT), "", "", "");
+  const auto labels = mappedInput.mapLabels(mappedInput.withBackArrow(tr(STR_EXIT)), "", "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 }
 

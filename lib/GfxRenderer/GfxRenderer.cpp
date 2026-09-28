@@ -25,6 +25,8 @@ uint8_t resolveSdCardStyle(const SdCardFont& font, const EpdFontFamily::Style st
 
 int32_t resolveSdCardAdvanceFP(const SdCardFont& sdFont, const EpdFontFamily& font, const uint32_t cp,
                                const EpdFontFamily::Style style, const uint8_t styleIdx) {
+  if (utf8IsVariationSelector(cp)) return 0;
+
   uint16_t advanceFP = sdFont.getAdvance(cp, styleIdx);
   if (advanceFP != 0 || utf8IsCombiningMark(cp)) {
     return advanceFP;
@@ -206,6 +208,7 @@ bool GfxRenderer::collectSdCardFontShapedRtlCodepoints(const char* utf8Text, uin
     const auto* p = reinterpret_cast<const unsigned char*>(shaped);
     uint32_t cp = 0;
     while ((cp = utf8NextCodepoint(&p))) {
+      if (utf8IsVariationSelector(cp)) continue;
       if (std::find(codepoints, codepoints + cpCount, cp) != codepoints + cpCount) continue;
       if (cpCount >= capacity) {
         truncated = true;
@@ -673,6 +676,7 @@ static void drawSyntheticGreekGlyphRotated90CW(const GfxRenderer& renderer, cons
 static void renderCharScaled(const GfxRenderer& renderer, GfxRenderer::RenderMode renderMode,
                              const EpdFontFamily& fontFamily, const uint32_t cp, int cursorX, int cursorY,
                              const bool pixelState, const EpdFontFamily::Style style) {
+  if (renderer.grayPlanesAreAbsolute()) renderMode = GfxRenderer::BW;
   const EpdGlyph* glyph = fontFamily.getGlyph(cp, style);
   if (!glyph) return;
 
@@ -740,6 +744,7 @@ static void renderCharScaled(const GfxRenderer& renderer, GfxRenderer::RenderMod
 static void renderCharSmallCaps(const GfxRenderer& renderer, GfxRenderer::RenderMode renderMode,
                                 const EpdFontFamily& fontFamily, const uint32_t cp, int cursorX, int cursorY,
                                 const bool pixelState, const EpdFontFamily::Style style) {
+  if (renderer.grayPlanesAreAbsolute()) renderMode = GfxRenderer::BW;
   const EpdGlyph* glyph = fontFamily.getGlyph(cp, style);
   if (!glyph) return;
 
@@ -804,6 +809,7 @@ template <TextRotation rotation = TextRotation::None>
 static void renderCharImpl(const GfxRenderer& renderer, GfxRenderer::RenderMode renderMode,
                            const EpdFontFamily& fontFamily, const uint32_t cp, int cursorX, int cursorY,
                            const bool pixelState, const EpdFontFamily::Style style) {
+  if (renderer.grayPlanesAreAbsolute()) renderMode = GfxRenderer::BW;
   const auto glyphData = fontFamily.getGlyphData(cp, style);
   const EpdGlyph* glyph = glyphData.glyph;
   const EpdFontData* fontData = glyphData.fontData;
@@ -936,6 +942,10 @@ bool GfxRenderer::isPixelBlack(const int x, const int y) const {
 }
 
 void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
+  if (textClipActive_ && (x < textClipLeft_ || x >= textClipRight_ || y < textClipTop_ || y >= textClipBottom_)) {
+    return;
+  }
+
   int phyX = 0;
   int phyY = 0;
 
@@ -1058,6 +1068,7 @@ int GfxRenderer::getTextWidth(const int fontId, const char* text, const EpdFontF
     }
     const auto& font = fontIt->second;
     while (uint32_t cp = utf8NextCodepoint(reinterpret_cast<const uint8_t**>(&textCursor))) {
+      if (utf8IsVariationSelector(cp)) continue;
       widthFP += resolveSdCardAdvanceFP(*sdIt->second, font, cp, style, styleIdx);
     }
     return fp4::toPixel(widthFP);
@@ -1078,6 +1089,20 @@ void GfxRenderer::drawCenteredText(const int fontId, const int y, const char* te
                                    const EpdFontFamily::Style style, const BidiUtils::BidiBaseDir baseDir) const {
   const int x = (getScreenWidth() - getTextWidth(fontId, text, style, baseDir)) / 2;
   drawText(fontId, x, y, text, black, style, baseDir);
+}
+
+void GfxRenderer::beginTextClip(const int x, const int y, const int width, const int height) const {
+  assert(!textClipActive_ && "nested GfxRenderer text clips are not supported");
+  textClipActive_ = true;
+  textClipLeft_ = x;
+  textClipTop_ = y;
+  textClipRight_ = x + std::max(0, width);
+  textClipBottom_ = y + std::max(0, height);
+}
+
+void GfxRenderer::endTextClip() const {
+  assert(textClipActive_ && "GfxRenderer text clip ended without begin");
+  textClipActive_ = false;
 }
 
 void GfxRenderer::drawText(const int fontId, const int x, const int y, const char* text, const bool black,
@@ -1119,6 +1144,8 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y, const cha
   uint32_t prevCp = 0;
   bool prevScaledSmallCap = false;
   while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t**>(&textCursor)))) {
+    if (utf8IsVariationSelector(cp)) continue;
+
     if (utf8IsCombiningMark(cp) || BidiUtils::isTransparentMark(cp)) {
       const EpdGlyph* combiningGlyph = font.getGlyph(cp, style);
       if (!combiningGlyph) continue;
@@ -1472,10 +1499,16 @@ void GfxRenderer::fillRectImpl(const int x, const int y, const int width, const 
   // Clip in logical space.
   const int screenW = getScreenWidth();
   const int screenH = getScreenHeight();
-  const int lx0 = std::max(0, x);
-  const int ly0 = std::max(0, y);
-  const int lx1 = std::min(screenW, x + width);
-  const int ly1 = std::min(screenH, y + height);
+  int lx0 = std::max(0, x);
+  int ly0 = std::max(0, y);
+  int lx1 = std::min(screenW, x + width);
+  int ly1 = std::min(screenH, y + height);
+  if (textClipActive_) {
+    lx0 = std::max(lx0, textClipLeft_);
+    ly0 = std::max(ly0, textClipTop_);
+    lx1 = std::min(lx1, textClipRight_);
+    ly1 = std::min(ly1, textClipBottom_);
+  }
   if (lx0 >= lx1 || ly0 >= ly1) return;
 
   // Rotate the two opposing logical corners into physical-framebuffer space.
@@ -1959,13 +1992,12 @@ void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const in
   }
 }
 
-void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, const int maxWidth, const int maxHeight,
+bool GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, const int maxWidth, const int maxHeight,
                              const float cropX, const float cropY) const {
-  if (fontCacheManager_ && fontCacheManager_->isScanning()) return;
+  if (fontCacheManager_ && fontCacheManager_->isScanning()) return false;
   // For 1-bit bitmaps, use optimized 1-bit rendering path (no crop support for 1-bit)
   if (bitmap.is1Bit() && cropX == 0.0f && cropY == 0.0f) {
-    drawBitmap1Bit(bitmap, x, y, maxWidth, maxHeight);
-    return;
+    return drawBitmap1Bit(bitmap, x, y, maxWidth, maxHeight);
   }
 
   float scale = 1.0f;
@@ -1995,13 +2027,13 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
   }
 
   BitmapScratchLock scratchLock(*this);
-  if (!scratchLock.isLocked()) return;
+  if (!scratchLock.isLocked()) return false;
 
   // Calculate output row size (2 bits per pixel, packed into bytes)
   // IMPORTANT: Use int, not uint8_t, to avoid overflow for images > 1020 pixels wide
   const int outputRowSize = (bitmap.getWidth() + 3) / 4;
   if (!ensureBitmapScratchBuffers(outputRowSize, bitmap.getRowBytes())) {
-    return;
+    return false;
   }
   auto* outputRow = bitmapScratchOutputRow_;
   auto* rowBytes = bitmapScratchRowBytes_;
@@ -2014,16 +2046,13 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
       screenY = std::floor(screenY * scale);
     }
     screenY += y;  // the offset should not be scaled
-    if (screenY >= getScreenHeight()) {
-      break;
-    }
 
     if (bitmap.readNextRow(outputRow, rowBytes) != BmpReaderError::Ok) {
       LOG_ERR("GFX", "Failed to read row %d from bitmap", bmpY);
-      return;
+      return false;
     }
 
-    if (screenY < 0) {
+    if (screenY < 0 || screenY >= getScreenHeight()) {
       continue;
     }
 
@@ -2049,13 +2078,19 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
 
       if (renderMode == BW && val < 3) {
         drawPixel(screenX, screenY);
-      } else if (renderMode == GRAYSCALE_MSB && (val == 1 || val == 2)) {
-        drawPixel(screenX, screenY, false);
-      } else if (renderMode == GRAYSCALE_LSB && val == 1) {
-        drawPixel(screenX, screenY, false);
+      } else if (renderMode == GRAYSCALE_LSB || renderMode == GRAYSCALE_MSB) {
+        const auto pixel = grayPlanePixel(val, renderMode == GRAYSCALE_MSB, absoluteGrayPlanes);
+        if (pixel.write) drawPixel(screenX, screenY, pixel.black);
       }
     }
   }
+
+  const int sourceWidth = bitmap.getWidth() - cropPixX * 2;
+  const int sourceHeight = bitmap.getHeight() - cropPixY * 2;
+  const int renderedWidth = isScaled ? static_cast<int>(std::floor((sourceWidth - 1) * scale)) + 1 : sourceWidth;
+  const int renderedHeight = isScaled ? static_cast<int>(std::floor((sourceHeight - 1) * scale)) + 1 : sourceHeight;
+  preserveImagePolarity(x, y, renderedWidth, renderedHeight);
+  return true;
 }
 
 void GfxRenderer::drawBitmapDithered(const Bitmap& bitmap, const int x, const int y, const int maxWidth,
@@ -2104,7 +2139,7 @@ void GfxRenderer::drawBitmapDithered(const Bitmap& bitmap, const int x, const in
   }
 }
 
-void GfxRenderer::drawBitmap1Bit(const Bitmap& bitmap, const int x, const int y, const int maxWidth,
+bool GfxRenderer::drawBitmap1Bit(const Bitmap& bitmap, const int x, const int y, const int maxWidth,
                                  const int maxHeight) const {
   float scale = 1.0f;
   bool isScaled = false;
@@ -2118,12 +2153,12 @@ void GfxRenderer::drawBitmap1Bit(const Bitmap& bitmap, const int x, const int y,
   }
 
   BitmapScratchLock scratchLock(*this);
-  if (!scratchLock.isLocked()) return;
+  if (!scratchLock.isLocked()) return false;
 
   // For 1-bit BMP, output is still 2-bit packed (for consistency with readNextRow)
   const int outputRowSize = (bitmap.getWidth() + 3) / 4;
   if (!ensureBitmapScratchBuffers(outputRowSize, bitmap.getRowBytes())) {
-    return;
+    return false;
   }
   auto* outputRow = bitmapScratchOutputRow_;
   auto* rowBytes = bitmapScratchRowBytes_;
@@ -2132,7 +2167,7 @@ void GfxRenderer::drawBitmap1Bit(const Bitmap& bitmap, const int x, const int y,
     // Read rows sequentially using readNextRow
     if (bitmap.readNextRow(outputRow, rowBytes) != BmpReaderError::Ok) {
       LOG_ERR("GFX", "Failed to read row %d from 1-bit bitmap", bmpY);
-      return;
+      return false;
     }
 
     // Calculate screen Y based on whether BMP is top-down or bottom-up
@@ -2165,6 +2200,18 @@ void GfxRenderer::drawBitmap1Bit(const Bitmap& bitmap, const int x, const int y,
       // White pixels (val == 3) are not drawn (leave background)
     }
   }
+
+  const int renderedWidth =
+      isScaled ? static_cast<int>(std::floor((bitmap.getWidth() - 1) * scale)) + 1 : bitmap.getWidth();
+  const int renderedHeight =
+      isScaled ? static_cast<int>(std::floor((bitmap.getHeight() - 1) * scale)) + 1 : bitmap.getHeight();
+  preserveImagePolarity(x, y, renderedWidth, renderedHeight);
+  return true;
+}
+
+void GfxRenderer::preserveImagePolarity(const int x, const int y, const int width, const int height) const {
+  if (renderMode != BW || !display.isInverted() || _stripActive) return;
+  invertRect(x, y, width, height);
 }
 
 void GfxRenderer::drawPerspectiveBitmap(const Bitmap& bitmap, const int x, const int y, const int w, const int hL,
@@ -2222,6 +2269,14 @@ void GfxRenderer::drawPerspectiveBitmap(const Bitmap& bitmap, const int x, const
           drawPixel(screenX, screenY, false);
         }
       }
+    }
+  }
+
+  if (renderMode == BW && display.isInverted() && !_stripActive) {
+    for (int dx = 0; dx < w; ++dx) {
+      const int colH = (w == 1) ? hL : (hL + (hR - hL) * dx / (w - 1));
+      const int colTop = (hMax - colH) / 2;
+      invertRect(x + dx, y + colTop, 1, colH);
     }
   }
 }
@@ -2749,7 +2804,7 @@ int GfxRenderer::getTextAdvanceX(const int fontId, const char* text, const EpdFo
     uint32_t lastCp = 0;
     bool lastScaledSmallCap = false;
     while (uint32_t cp = utf8NextCodepoint(reinterpret_cast<const uint8_t**>(&text))) {
-      if (BidiUtils::isTransparentMark(cp)) {
+      if (utf8IsVariationSelector(cp) || BidiUtils::isTransparentMark(cp)) {
         continue;
       }
       const bool scaledSmallCap = isSmallCapsLowercase(style, cp);
@@ -2796,7 +2851,7 @@ int GfxRenderer::getTextAdvanceX(const int fontId, const char* text, const EpdFo
   const auto& font = fontIt->second;
   while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t**>(&text)))) {
     // RTL vowel marks (niqqud/harakat) are zero-advance overlays in drawText — no width.
-    if (BidiUtils::isTransparentMark(cp)) {
+    if (utf8IsVariationSelector(cp) || BidiUtils::isTransparentMark(cp)) {
       continue;
     }
     if (utf8IsCombiningMark(cp)) {
@@ -2932,6 +2987,8 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x, const int y
   uint32_t cp;
   uint32_t prevCp = 0;
   while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t**>(&text)))) {
+    if (utf8IsVariationSelector(cp)) continue;
+
     // RTL vowel marks (Hebrew niqqud, Arabic harakat) ride the combining-mark
     // path: zero-advance overlays on the preceding base glyph (applyBidiVisual
     // emits base-then-marks per UAX#9 L3). anchorFor pins position-sensitive
@@ -3036,6 +3093,7 @@ size_t GfxRenderer::getBufferSize() const { return frameBufferSize; }
 // void GfxRenderer::grayscaleRevert() const { display.grayscaleRevert(); }
 
 void GfxRenderer::displayGrayscaleBase(HalDisplay::RefreshMode fallback, const bool turnOffScreen) const {
+  absoluteGrayPlanes = false;
   display.displayGrayscaleBase(fallback, fadingFix || turnOffScreen);
 }
 
@@ -3065,12 +3123,22 @@ void GfxRenderer::copyGrayscaleMsbBuffers() const { display.copyGrayscaleMsbBuff
 
 void GfxRenderer::displayGrayBuffer(const bool turnOffScreen) const {
   display.displayGrayBuffer(fadingFix || turnOffScreen);
+  absoluteGrayPlanes = false;
 }
 
 void GfxRenderer::writeGrayscalePlaneStrip(bool lsbPlane, const uint8_t* scratch, int yStart, int numRows) const {
   // Guard the uint16_t casts below: a negative would wrap to a huge length.
   assert(yStart >= 0 && numRows > 0 && yStart <= static_cast<int>(panelHeight) - numRows);
   display.writeGrayscalePlaneStrip(lsbPlane, scratch, static_cast<uint16_t>(yStart), static_cast<uint16_t>(numRows));
+}
+
+bool GfxRenderer::shouldSkipImageBlanking() const {
+#ifdef SIMULATOR
+  // The simulator has no UC8179 waveform/state model.
+  return false;
+#else
+  return display.shouldSkipImageBlanking();
+#endif
 }
 
 bool GfxRenderer::supportsStripGrayscale() const { return display.supportsStripGrayscale(); }
@@ -3187,4 +3255,52 @@ void GfxRenderer::getOrientedViewableTRBL(int* outTop, int* outRight, int* outBo
       *outLeft = VIEWABLE_MARGIN_TOP;
       break;
   }
+}
+
+bool GfxRenderer::supportsAbsoluteGrayscale() const {
+#ifdef SIMULATOR
+  return false;
+#else
+  return display.grayscaleCapabilities(HalDisplay::GrayscaleMode::Absolute).supported();
+#endif
+}
+
+bool GfxRenderer::supportsDirectGrayscale() const {
+#ifdef SIMULATOR
+  return false;
+#else
+  return display.grayscaleCapabilities(HalDisplay::GrayscaleMode::Direct).supported();
+#endif
+}
+
+bool GfxRenderer::displayAbsoluteGrayscaleBase(HalDisplay::RefreshMode fallback) const {
+  absoluteGrayPlanes = false;
+#ifdef SIMULATOR
+  return false;
+#else
+  if (!display.displayGrayscaleBase(HalDisplay::GrayscaleMode::Absolute, fallback, fadingFix)) return false;
+  absoluteGrayPlanes = true;
+  return true;
+#endif
+}
+
+bool GfxRenderer::displayDirectGrayscaleBase(HalDisplay::RefreshMode fallback) const {
+  absoluteGrayPlanes = false;
+#ifdef SIMULATOR
+  return false;
+#else
+  if (!display.displayGrayscaleBase(HalDisplay::GrayscaleMode::Direct, fallback, fadingFix)) return false;
+  // Direct uploads complete planes, so grayPlanePixel() must use the absolute
+  // encoding rather than overlay masks.
+  absoluteGrayPlanes = true;
+  return true;
+#endif
+}
+
+void GfxRenderer::setRenderMode(RenderMode mode) {
+  if (mode == BW && absoluteGrayPlanes) {
+    display.cleanupGrayscaleBuffers(nullptr);
+    absoluteGrayPlanes = false;
+  }
+  renderMode = mode;
 }

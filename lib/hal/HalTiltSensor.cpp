@@ -13,6 +13,26 @@ bool HalTiltSensor::readGyro(float& gx, float& gy, float& gz) const {
   return true;
 }
 
+bool HalTiltSensor::readAccel(float& ax, float& ay, float& az) const {
+  if (!_available || !_isAwake) return false;
+  Imu::Sample sample;
+  if (!_sdkImu.read(sample)) return false;
+  ax = sample.ax;
+  ay = sample.ay;
+  az = sample.az;
+  return true;
+}
+
+void HalTiltSensor::setHoldAwake(const bool hold) {
+  _holdAwake = hold;
+  if (!_available) return;
+  if (hold && !_isAwake) {
+    _isAwake = wake();
+  } else if (!hold && _isAwake) {
+    _isAwake = !deepSleep();
+  }
+}
+
 void HalTiltSensor::begin() {
 #ifdef FORCE_TILT_SENSOR_AVAILABLE
   _available = true;
@@ -74,6 +94,11 @@ bool HalTiltSensor::deepSleep() {
 void HalTiltSensor::update(const uint8_t enabled, const uint8_t direction, const uint8_t orientation,
                            const bool inReader) {
   if (!_available) {
+    return;
+  }
+
+  if (_holdAwake) {
+    if (!_isAwake) _isAwake = wake();
     return;
   }
 

@@ -4,6 +4,9 @@
 
 class HalDisplay {
  public:
+  using GrayscaleMode = freeink::GrayscaleMode;
+  using GrayscaleCapabilities = freeink::GrayscaleCapabilities;
+  GrayscaleCapabilities grayscaleCapabilities(GrayscaleMode mode = GrayscaleMode::Overlay) const;
   // Constructor with pin configuration
   HalDisplay();
 
@@ -17,9 +20,13 @@ class HalDisplay {
     FAST_REFRESH   // Fast refresh using custom LUT
   };
 
-  // seamless keeps retained panel content through silent boots. fastSplash
-  // permits RetroInk's animated boot screen to use fast waveforms rather than
-  // X3's automatic first-paint FULL promotion. Both skip initial resync.
+  bool displayGrayscaleBase(GrayscaleMode mode, RefreshMode fallback, bool turnOffScreen = false);
+
+  // Pass seamless=true on any path where the panel already shows the
+  // content it should after begin() returns (silent reboot's popup,
+  // sleep-wake with a restored buffer). fastSplash permits RetroInk's animated
+  // boot screen to use fast waveforms rather than X3's automatic first-paint
+  // FULL promotion. Both skip the wakeup-gated requestResync().
   void begin(bool seamless = false, bool fastSplash = false);
 
   // Display dimensions
@@ -37,6 +44,12 @@ class HalDisplay {
 
   void displayBuffer(RefreshMode mode = RefreshMode::FAST_REFRESH, bool turnOffScreen = false);
   void displayWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool turnOffScreen = false);
+  // Persistently invert panel output while leaving framebuffer drawing in its
+  // normal logical colors.
+  void setInverted(bool inverted);
+  // Shorter Fast waveform while a rapidly animated screen is open (X3 only;
+  // no effect on other panels).
+  void setAnimationWaveform(bool on);
   // Non-blocking refresh (shadow-free): starts the panel waveform and returns
   // while the panel refreshes on its own. The framebuffer must stay untouched
   // until waitRefreshComplete(), and the caller must rebuild the differential
@@ -52,6 +65,7 @@ class HalDisplay {
   // base pass. X3 has a dedicated grayscale waveform and must stay blocking.
   bool supportsAsyncGrayscaleBase() const;
   void refreshDisplay(RefreshMode mode = RefreshMode::FAST_REFRESH, bool turnOffScreen = false);
+  bool isInverted() const;
 
   // Power management
   void deepSleep();
@@ -93,6 +107,8 @@ class HalDisplay {
   // straight to the controller; supportsStripGrayscale() gates the path. See
   // EInkDisplay::writeGrayscalePlaneStrip.
   void writeGrayscalePlaneStrip(bool lsbPlane, const uint8_t* rows, uint16_t yStart, uint16_t numRows);
+  // Firmware policy for the reader's extra white-image refresh.
+  bool shouldSkipImageBlanking() const;
   bool supportsStripGrayscale() const;
 
   // Runtime geometry passthrough

@@ -69,7 +69,8 @@ ConfirmActionRects getScanConfirmActionRects(const int x, const int w, const int
   constexpr int gap = 16;
   constexpr int buttonH = 60;
   const int buttonW = (w - gap) / 2;
-  return {Rect{x, buttonsTop, buttonW, buttonH}, Rect{x + buttonW + gap, buttonsTop, buttonW, buttonH}};
+  // Back on the left and Scan Now on the right, matching the hint bar below.
+  return {Rect{x + buttonW + gap, buttonsTop, buttonW, buttonH}, Rect{x, buttonsTop, buttonW, buttonH}};
 }
 
 bool containsPoint(const Rect& rect, const int x, const int y) {
@@ -607,7 +608,8 @@ void RetroInkLibraryActivity::loop() {
     finish(); return;
   }
   if (awaitingScanConfirmation_) {
-    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) { confirmAndBeginScan(); return; }
+    // Far-right front button, labelled Scan in the hint bar.
+    if (mappedInput.wasReleased(MappedInputManager::Button::Right)) { confirmAndBeginScan(); return; }
     int x = 0, y = 0;
     if (mappedInput.wasScreenTapped(x, y)) {
       Rect scanNowRect, backRect;
@@ -691,8 +693,10 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
     computeScanConfirmActionRects(scanNowRect, backRect);
     drawConfirmButton(renderer, scanNowRect, tr(STR_LIBRARY_SCAN_NOW));
     drawConfirmButton(renderer, backRect, tr(STR_BACK));
-    const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_LIBRARY_SCAN_NOW_SHORT), "", "");
+    const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", tr(STR_LIBRARY_SCAN_NOW_SHORT));
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+    renderer.displayBuffer();
+    return;
   } else if (catalog_.isScanning()) {
     renderer.drawCenteredText(UI_12_FONT_ID, top + 35, tr(STR_LIBRARY_SCAN), true, EpdFontFamily::BOLD);
     const uint32_t scanned = catalog_.scannedCount();

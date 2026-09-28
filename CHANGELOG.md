@@ -1,3 +1,59 @@
+## [RetroInk 0.5.1] - 2026-09-28
+
+RetroInk is now built on CrossInk 1.6.0 (previously 1.5.0), bringing in everything from CrossInk 1.5.1 and 1.6.0 alongside all of RetroInk's own features. All 28 languages are still included, and the firmware is smaller than before (96.8% of flash, down from 99.1%), mainly because CrossInk's built-in reader fonts no longer carry emoji.
+
+### Added
+
+- Marble Maze joins Desk Accessories, next to Puzzle: a tabletop tilt maze. A new random maze every game, with the ball starting top-left and the hole in the cell farthest along the path. On the X3, tilt the reader to roll the ball; the angle you hold it at when the maze appears counts as level. The front buttons tilt left and right and the side buttons tilt up and down, which is the only control on the X4 (no motion sensor) and works alongside tilting on the X3. Select starts a new maze, and finishing shows your time. The reader stays awake while a game is running. If tilting ever feels reversed, hold Select for a second to redo the direction setup.
+- The X3 panel gets a shorter Fast waveform while Marble Maze is open, roughly twice as many ball updates per second. It is supplied by RetroInk through the SDK's waveform hook and only active inside the game, so reading is unaffected. Playing never triggers a full-panel flash; a deeper refresh runs only when a maze starts or ends.
+- Desktop Pattern (Settings > Display) chooses the texture behind every RetroInk window, and on the boot and sleep screens. Sixteen classic Macintosh 8x8 patterns: Checker (the original look, still the default), Gray 50%, Gray 25%, Gray 75%, Brick, Diagonal, Horizontal Lines, Vertical Lines, Weave, Grid, Diamonds, Scales, Dots, Polka, Stripes, and White. The setting is also in web settings. Dense patterns such as Gray 50%, Gray 75%, and Grid ghost a little more on e-ink and make the button hints harder to read.
+
+### Changed
+
+- On the X3, the reading status bar text now defaults to Medium. The X3 fits more pixels into a smaller screen than the X4, so Small was hard to read. X3 readers still on Small are moved to Medium once; choosing Small again afterwards sticks. Change it under Settings > Reader > Customize Status Bar > Text Size.
+
+### Fixed
+
+- The Library's scan screen showed the Library's Actions, Prev, and Next buttons instead of its own. It now shows Back on the far left and Scan on the far right, and its on-screen Back and Scan Now buttons are in the same order.
+
+### Added (from CrossInk)
+
+- Go to % and Go to Stable Page have a numeric keypad for typing an exact destination. Hold Select to switch from the slider to the keypad.
+- Files can be renamed from the File Browser, keeping reading progress, bookmarks, clippings, and recents linked.
+- Custom boot screens: pick a BMP in the File Browser, or rotate through images in a `/bootscreen` folder. Without one, RetroInk's animated Mac boot is unchanged.
+- Quick Lock, assignable button combinations, and Previous Page and Nearby Position Sync shortcuts.
+- Selectable keyboard layouts, and Wi-Fi passwords are visible while typing.
+- Separate Top/Bottom and Left/Right screen margins, adjustable up to 200 pixels.
+- The status bar's book percentage can show whole numbers, one decimal, or two decimals.
+- Screen refresh can be set to Never, and Night Mode is available in Display settings.
+- Hidden folders can be created from the web file manager by starting the name with a dot.
+
+### Changed (from CrossInk)
+
+- EPUB rendering: ordered lists show their numbers, hidden content stays hidden, paragraphs no longer gain a fake first-line indent, larger stylesheets and tables work better, and mixed-direction, Arabic, and Persian text render correctly.
+- Many progressive JPEGs that showed up blank now render, and PNG grayscale is cleaner.
+- Chapter layout frees memory first, reducing low-memory failures on the X3 and X4.
+- SD card reads are faster, and SD fonts recover more safely from errors.
+- KOReader Sync keeps exact positions and no longer flashes the screen repeatedly during network changes.
+- Dictionary lookup can select part of a hyphenated word and returns to the book cleanly.
+- Clipping highlights stay aligned after font changes and no longer mark stray single words.
+- The web EPUB optimizer accepts books with standard font obfuscation and can keep cover art in color.
+- Mark Finished moves to the reader menu's settings section.
+- Font menus and the web portal load one font family's details at a time, which prevents crashes with larger font collections, and web pages reuse cached content after checking for firmware updates.
+- Rapid page turns skip anti-aliasing and image loading until the final page, so intermediate turns are faster.
+
+### Fixed (from CrossInk)
+
+- OPDS downloads follow secure redirects without sending your catalog login to the download host, and OPDS Wi-Fi selection and search stay awake while you type.
+- Calibre Wireless returns Home with one clean refresh, and Home from Customize Status Bar goes back a menu instead of leaving the reader.
+- Saved highlights keep custom-font glyphs, KOReader Sync handles UTF-8 text, and end-of-book selection stays consistent while the page redraws.
+- Per-book reading stats are written to a backup file first.
+- Importing CrossPoint settings keeps tap and swipe modes without carrying over a stale touchscreen lock.
+
+### Removed (from CrossInk)
+
+- Emoji and hand-gesture symbols in the built-in reader fonts. Fonts loaded from the SD card still show emoji.
+
 ## [RetroInk 0.4.7] - 2026-09-28
 
 ### Fixed

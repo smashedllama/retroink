@@ -34,6 +34,7 @@ class HalTiltSensor {
   bool _hadActivity = false;       // Non-consuming flag for sleep timer
   bool _inTilt = false;            // Currently tilted past threshold
   bool _isAwake = false;           // Tracks power state
+  bool _holdAwake = false;         // Kept awake by a screen outside the reader
   unsigned long _initMs = 0;       // Timestamp of sensor init
   unsigned long _lastTiltMs = 0;   // Debounce / cooldown
   unsigned long _wakeMs = 0;       // Timestamp of last wake() for stabilization
@@ -65,6 +66,13 @@ class HalTiltSensor {
 
   // True if an IMU is present on this device
   bool isAvailable() const { return _available; }
+
+  // Holds the IMU awake outside the reader for a screen that reads it directly
+  // (the Marble Maze desk accessory). While held, update() skips its tilt
+  // page-turn gestures so the game's own tilting never turns a page.
+  void setHoldAwake(bool hold);
+  // Acceleration in g on the board's own axes; false if unavailable or asleep.
+  bool readAccel(float& ax, float& ay, float& az) const;
 
   // Poll the accelerometer and update tilt gesture state.
   void update(const uint8_t enabled, const uint8_t direction, const uint8_t orientation, const bool inReader);

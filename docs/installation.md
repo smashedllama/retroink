@@ -52,6 +52,8 @@ X4 rather than shown broken:
 
 - **Focus Session** times correctly while the reader is awake, but pauses if
   the reader sleeps mid-session.
+- **Marble Maze** has no motion sensor to tilt with on the X4, so the buttons
+  tilt the board instead.
 - **Per-book stats** show a single screen without date-based figures, and
   started/finished dates can't be edited.
 - **Highlights and stats backups** aren't dated: highlights have no
