@@ -1,6 +1,7 @@
 #pragma once
 
 #include "activities/Activity.h"
+#include "components/DeskDate.h"
 #include "components/MoonPhase.h"
 
 // A System-6 moon phase desk accessory, rendered from a real embedded lunar
@@ -18,6 +19,11 @@
 class MoonPhaseDeskActivity final : public Activity {
   float phaseFraction_ = 0.0f;
   bool dateAvailable_ = false;
+  DeskDateTime shown_;
+  // On a clockless device with no saved date, the picker opens before
+  // anything else; cancelling it leaves the accessory.
+  bool pickerPending_ = false;
+  bool exitPending_ = false;
   char dateText_[40] = {};
   // Non-owning -- points at the module-level cache entry (see the .cpp),
   // which outlives this Activity instance so a later re-visit can reuse it.
@@ -31,6 +37,9 @@ class MoonPhaseDeskActivity final : public Activity {
   // this math between them risks the two disagreeing on where the disc
   // actually goes.
   void computeDiscGeometry(int& diameter, int& cx, int& cy) const;
+  // Recomputes the phase and caption for shown_ and picks up a cached disc.
+  void applyShownDate();
+  void openPicker();
 
  public:
   MoonPhaseDeskActivity(GfxRenderer& renderer, MappedInputManager& input)

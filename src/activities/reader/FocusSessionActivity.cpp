@@ -102,12 +102,6 @@ bool saveFocusState(const uint32_t duration, const uint32_t remaining, const uin
   return okay;
 }
 
-void frame(const GfxRenderer& r, const int x, const int y, const int w, const int h) {
-  r.fillRect(x + 3, y + 3, w, h);
-  r.fillRect(x, y, w, h, false);
-  r.drawRect(x, y, w, h);
-  r.drawRect(x + 2, y + 2, w - 4, h - 4);
-}
 }  // namespace
 
 FocusSessionActivity::FocusSessionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, const uint16_t minutes,
@@ -255,7 +249,9 @@ void FocusSessionActivity::render(RenderLock&&) {
   const int w = renderer.getScreenWidth() - x * 2;
   const int y = metrics.topPadding + metrics.headerHeight + 9;
   const int h = renderer.getScreenHeight() - y - metrics.buttonHintsHeight - 12;
-  frame(renderer, x, y, w, h);
+  // No frame drawn here: the System 6 header already draws the window body
+  // down to the button hints, so a panel of our own stacked a second window
+  // inside the first. x/y/w/h still lay out the countdown and grid.
   const uint32_t remaining = remainingSeconds();
   lastDrawnRemaining_ = remaining;
   if (completed_) {

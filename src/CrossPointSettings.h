@@ -677,17 +677,16 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   int getRefreshFrequency() const;
 };
 
-// Sleep screens built around today's date or time. Hardware without a clock
-// chip (the original X4) cannot show them, so they are left out of its picker
-// and fall back to the default sleep screen if one is still saved.
+// Sleep screens built around today's reading. Hardware without a clock chip
+// (the original X4) cannot show them, so they are left out of its picker and
+// fall back to the default sleep screen if one is still saved. Moon Phase,
+// Earth, and Desk Calendar are not listed: without a clock they draw the date
+// picked in their desk accessory (see DeskDate.h).
 inline bool sleepScreenNeedsClock(const uint8_t mode) {
   switch (mode) {
     case CrossPointSettings::READING_STATS_SLEEP:
     case CrossPointSettings::BOOK_WEEK_STATS_SLEEP:
     case CrossPointSettings::DASHBOARD_SLEEP:
-    case CrossPointSettings::MOON_PHASE_SLEEP:
-    case CrossPointSettings::EARTH_PHASE_SLEEP:
-    case CrossPointSettings::DESK_CALENDAR_SLEEP:
       return true;
     default:
       return false;

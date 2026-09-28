@@ -50,18 +50,18 @@ extern GfxRenderer renderer;
 extern MappedInputManager mappedInputManager;
 
 namespace {
-// Desk Accessories below Focus Timer, in menu order. The clock-driven ones
-// are only listed on hardware with a clock chip, so the expected order
-// depends on halClock (the simulator has none, like an original X4).
+// Desk Accessories below Focus Timer, in menu order. Clock is only listed on
+// hardware with a clock chip, so the expected order depends on halClock (the
+// simulator has none, like an original X4).
 struct SmokeDeskAccessory {
   const char* capture;  // String literals: queueStep stores the pointer.
   const char* activity;
   bool needsClock;
 };
 constexpr SmokeDeskAccessory kSmokeDeskAccessories[] = {
-    {"Desk Accessory Moon Phase", "MoonPhaseDesk", true},  {"Desk Accessory Earth", "EarthPhaseDesk", true},
+    {"Desk Accessory Moon Phase", "MoonPhaseDesk", false}, {"Desk Accessory Earth", "EarthPhaseDesk", false},
     {"Desk Accessory Clock", "ClockDesk", true},            {"Desk Accessory Puzzle", "PuzzleDesk", false},
-    {"Desk Accessory Calendar", "DeskCalendar", true},      {"Desk Accessory System Info", "SystemInfoDesk", false},
+    {"Desk Accessory Calendar", "DeskCalendar", false},     {"Desk Accessory System Info", "SystemInfoDesk", false},
 };
 
 int visibleDeskAccessoryCount() {
@@ -112,6 +112,8 @@ enum class SmokeStep : uint8_t {
   DeskAccessoryCheckConfirmPress,
   DeskAccessoryCheckConfirmRelease,
   DeskAccessoryCheckVerify,
+  DeskAccessoryPickerPress,
+  DeskAccessoryPickerRelease,
   DeskAccessoryCheckBackRelease,
   DeskAccessoryCheckReturnVerify,
   DeskAccessoryCheckUpPress,
@@ -903,6 +905,9 @@ class SimulatorSmokeTest {
         // here, then navigate back Up to Focus Timer to continue the
         // original flow unchanged.
         if (!activityManager.isCurrentActivityNamed("DeskAccessories")) fail("Desk Accessories did not open");
+        // Start without a picked date so a clockless run always exercises the
+        // date picker.
+        Storage.remove("/.crosspoint/desk_date.bin");
         deskAccessoryCheckIndex = 0;
         step = SmokeStep::DeskAccessoryCheckDownPress;
         break;
@@ -932,6 +937,12 @@ class SimulatorSmokeTest {
       }
 
       case SmokeStep::DeskAccessoryCheckVerify: {
+        // Without a clock, the first date accessory opens the date picker
+        // before anything else; accept its default and carry on.
+        if (activityManager.isCurrentActivityNamed("DeskDatePicker")) {
+          queueStep("Desk Date Picker", SmokeStep::DeskAccessoryPickerPress);
+          break;
+        }
         if (!activityManager.isCurrentActivityNamed(visibleDeskAccessory(deskAccessoryCheckIndex).activity)) {
           fail("Desk accessory did not open");
         }
@@ -939,6 +950,16 @@ class SimulatorSmokeTest {
         step = SmokeStep::DeskAccessoryCheckBackRelease;
         break;
       }
+
+      case SmokeStep::DeskAccessoryPickerPress:
+        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Confirm);
+        step = SmokeStep::DeskAccessoryPickerRelease;
+        break;
+
+      case SmokeStep::DeskAccessoryPickerRelease:
+        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Confirm);
+        queueStep(visibleDeskAccessory(deskAccessoryCheckIndex).capture, SmokeStep::DeskAccessoryCheckVerify);
+        break;
 
       case SmokeStep::DeskAccessoryCheckBackRelease:
         mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Back);

@@ -1,3 +1,15 @@
+## [RetroInk 0.4.5] - 2026-09-27
+
+### Added
+
+- Moon Phase and Earth have a date picker (Set Date) for looking at another date. They still open on today, and so do their sleep screens. The side buttons move between fields and the front buttons change the value, holding to scroll. Earth also takes a time and a time zone.
+- On the original X4, which has no clock chip, Moon Phase, Earth, and Desk Calendar are back. The picker opens first, and the date you set is saved: each accessory reopens on it, Set Date starts from it, and the Moon Phase, Earth, and Desk Calendar sleep screens draw it.
+- Moon Phase shows how long until the next principal phase, such as "Full Moon in 3 days", on the accessory and its sleep screen.
+
+### Fixed
+
+- Focus Session drew a second window inside its own, both on the menu and while the timer runs.
+
 ## [RetroInk 0.4.4] - 2026-09-27
 
 ### Changed

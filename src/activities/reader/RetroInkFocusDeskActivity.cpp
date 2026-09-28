@@ -149,8 +149,9 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
   const int w = renderer.getScreenWidth() - 2 * x;
   const int top = metrics.topPadding + metrics.headerHeight + 14;
   const int bottom = renderer.getScreenHeight() - metrics.buttonHintsHeight - 14;
-  renderer.drawRect(x, top, w, bottom - top);
-  renderer.drawRect(x + 2, top + 2, w - 4, bottom - top - 4);
+  // No frame drawn here: the System 6 header already draws the window body
+  // down to the button hints, so a frame of our own stacked a second window
+  // inside the first.
   char value[32];
   if (editor_ == Editor::None) {
     if (showsGoal()) {

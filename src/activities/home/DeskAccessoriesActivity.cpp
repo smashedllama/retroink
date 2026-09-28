@@ -28,9 +28,9 @@ struct DeskEntry {
 
 // Indexed by DeskAction.
 constexpr DeskEntry kEntries[] = {
-    {StrId::STR_FOCUS_SESSION, Hourglass, false},    {StrId::STR_MOON_PHASE, MoonPhaseIcon, true},
-    {StrId::STR_EARTH_PHASE, EarthPhaseIcon, true},  {StrId::STR_DESK_CLOCK, ClockIcon, true},
-    {StrId::STR_PUZZLE, PuzzleIcon, false},          {StrId::STR_DESK_CALENDAR, CalendarIcon, true},
+    {StrId::STR_FOCUS_SESSION, Hourglass, false},    {StrId::STR_MOON_PHASE, MoonPhaseIcon, false},
+    {StrId::STR_EARTH_PHASE, EarthPhaseIcon, false}, {StrId::STR_DESK_CLOCK, ClockIcon, true},
+    {StrId::STR_PUZZLE, PuzzleIcon, false},          {StrId::STR_DESK_CALENDAR, CalendarIcon, false},
     {StrId::STR_SYSTEM_INFO, SystemInfoIcon, false},
 };
 }  // namespace

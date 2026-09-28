@@ -26,22 +26,28 @@ keeps the date and time even while the reader is asleep or switched off. The
 original X4 has no clock chip at all, so it has no idea what day or time it
 is, and there's nothing for the firmware to read.
 
-A number of RetroInk features are built on knowing today's date. X4 testers
-confirmed they don't work without a clock, so on an X4 they're left out
-rather than shown broken:
+A number of RetroInk features are built on knowing today's date. On an X4
+they work in one of two ways.
 
-- **Desk Accessories:** Clock, Moon Phase, Earth, and Desk Calendar. Focus
-  Session, Puzzle, and System Info are still there.
-- **Sleep screens:** Today, Book + Week, Reading Year, Moon Phase, Earth, and
-  Desk Calendar. If one of these was already chosen, the default sleep screen
-  is used instead.
+**Pick a date instead.** Moon Phase, Earth, and Desk Calendar ask for a date
+the first time you open them. Press **Set Date** to change it any time: the
+side buttons move between fields and the front buttons change the value. Earth
+also takes a time and a time zone. The date you pick is saved, so each
+accessory reopens on it, the picker starts from it next time, and the Moon
+Phase, Earth, and Desk Calendar sleep screens draw it.
+
+**Left out.** These need the real time as it passes, so they're hidden on an
+X4 rather than shown broken:
+
+- **Clock** in Desk Accessories.
+- **Sleep screens:** Today, Book + Week, and Reading Year. If one of these was
+  already chosen, the default sleep screen is used instead.
 - **Daily reading goal:** the goal and the reader countdown badge, since the
   goal resets each calendar day.
 - **Clocks:** the header and reader clocks and the date and time settings.
-  These were already hidden on the X4.
 
 Everything else works the same on both: reading, the Library, Focus
-Session, per-book stats, all-time totals, transfers, and syncing.
+Session, Puzzle, per-book stats, all-time totals, transfers, and syncing.
 
 ## Install via the web flash tool (easiest)
 

@@ -51,6 +51,26 @@ float phaseFraction(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uin
   return static_cast<float>(phase);
 }
 
+const char* nextPrincipalPhase(const float fraction, int& daysUntil) {
+  static constexpr StrId kPrincipal[] = {StrId::STR_MOON_FIRST_QUARTER, StrId::STR_MOON_FULL,
+                                         StrId::STR_MOON_LAST_QUARTER, StrId::STR_MOON_NEW};
+  // A phase counts as passed once we're within a few hours of it, so the
+  // day of a full moon points at the last quarter rather than "in 0 days".
+  constexpr double kPassedDays = 0.25;
+  const double f = std::clamp(static_cast<double>(fraction), 0.0, 1.0);
+  // Five targets so a fraction just short of 1.0 (the new moon itself) rolls
+  // on to the following first quarter.
+  for (int i = 0; i < 5; ++i) {
+    const double days = ((i + 1) * 0.25 - f) * kSynodicMonthDays;
+    if (days > kPassedDays) {
+      daysUntil = std::max(1, static_cast<int>(std::lround(days)));
+      return I18n::getInstance().get(kPrincipal[i % 4]);
+    }
+  }
+  daysUntil = 1;
+  return I18n::getInstance().get(StrId::STR_MOON_FIRST_QUARTER);
+}
+
 const char* phaseName(float fraction) {
   const int bucket = static_cast<int>(std::floor(fraction * 8.0f + 0.5f)) % 8;
   switch (bucket) {

@@ -21,6 +21,10 @@ float phaseFraction(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uin
 // One of the 8 classic phase names (New Moon, Waxing Crescent, ... Waning Crescent).
 const char* phaseName(float fraction);
 
+// The next of the four principal phases (New Moon, First Quarter, Full Moon,
+// Last Quarter) after this fraction, and whole days until it (at least 1).
+const char* nextPrincipalPhase(float fraction, int& daysUntil);
+
 // Illuminated percentage, 0-100, for display alongside the disc.
 int illuminationPercent(float fraction);
 

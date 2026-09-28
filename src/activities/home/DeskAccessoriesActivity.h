@@ -10,9 +10,9 @@ class DeskAccessoriesActivity final : public Activity {
   enum class DeskAction : uint8_t { FocusTimer, MoonPhase, Earth, Clock, Puzzle, Calendar, SystemInfo };
   static constexpr int kMaxItems = 7;
 
-  // Visible entries in display order. Clock-driven accessories (Moon Phase,
-  // Earth, Clock, Desk Calendar) are left out on hardware without a clock
-  // chip, such as the original X4, since they have nothing to show there.
+  // Visible entries in display order. Clock is left out on hardware without
+  // a clock chip, such as the original X4, since it has nothing to show
+  // there; Moon Phase, Earth, and Desk Calendar ask for a date instead.
   DeskAction items_[kMaxItems] = {};
   int itemCount_ = 0;
   int selected_ = 0;

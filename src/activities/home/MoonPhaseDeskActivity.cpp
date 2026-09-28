@@ -10,7 +10,7 @@
 #include <cstring>
 #include <memory>
 
-#include "components/ClockFormat.h"
+#include "DeskDatePickerActivity.h"
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -47,38 +47,56 @@ const MoonPhase::DiscTexture& getOrBuildTexture(const int radius, const float fr
 }
 }  // namespace
 
+void MoonPhaseDeskActivity::applyShownDate() {
+  texture_ = nullptr;
+  buildState_ = BuildState::NotStarted;
+  uint16_t year;
+  uint8_t month, day, hour, minute;
+  DeskDate::toUtc(shown_, year, month, day, hour, minute);
+  phaseFraction_ = MoonPhase::phaseFraction(year, month, day, hour, minute);
+  DeskDate::formatDate(shown_, dateText_, sizeof(dateText_));
+
+  // A cache hit is instant, so skip the placeholder tick entirely and just
+  // show the real thing right away -- the placeholder is only useful when a
+  // build is actually about to happen.
+  int diameter, cx, cy;
+  computeDiscGeometry(diameter, cx, cy);
+  const int radius = diameter / 2;
+  auto& cached = cachedTexture();
+  if (cached && cachedRadius() == radius && std::fabs(cachedFraction() - phaseFraction_) <= 0.0005f) {
+    texture_ = cached.get();
+    buildState_ = BuildState::Ready;
+  }
+}
+
 void MoonPhaseDeskActivity::onEnter() {
   Activity::onEnter();
   previousOrientation_ = renderer.getOrientation();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
-  dateAvailable_ = false;
   dateText_[0] = '\0';
-  texture_ = nullptr;
-  buildState_ = BuildState::NotStarted;
-  if (halClock.isAvailable()) {
-    uint16_t year;
-    uint8_t month, day, hour, minute;
-    if (halClock.getDateTime(year, month, day, hour, minute)) {
-      phaseFraction_ = MoonPhase::phaseFraction(year, month, day, hour, minute);
-      dateAvailable_ = formatLocalDate(dateText_, sizeof(dateText_));
-    }
-  }
-
-  // A cache hit is instant, so skip the placeholder tick entirely and just
-  // show the real thing right away -- the placeholder is only useful when a
-  // build is actually about to happen.
-  if (dateAvailable_) {
-    int diameter, cx, cy;
-    computeDiscGeometry(diameter, cx, cy);
-    const int radius = diameter / 2;
-    auto& cached = cachedTexture();
-    if (cached && cachedRadius() == radius && std::fabs(cachedFraction() - phaseFraction_) <= 0.0005f) {
-      texture_ = cached.get();
-      buildState_ = BuildState::Ready;
-    }
-  }
+  exitPending_ = false;
+  dateAvailable_ = DeskDate::current(shown_);
+  pickerPending_ = !dateAvailable_;
+  if (dateAvailable_) applyShownDate();
   requestUpdate();
+}
+
+void MoonPhaseDeskActivity::openPicker() {
+  const DeskDateTime start = dateAvailable_ ? shown_ : DeskDate::fallback();
+  startActivityForResult(std::make_unique<DeskDatePickerActivity>(renderer, mappedInput, StrId::STR_MOON_PHASE,
+                                                                  DeskDatePickerActivity::Fields::DateOnly, start),
+                         [this](const ActivityResult& result) {
+                           DeskDateTime picked;
+                           if (!result.isCancelled && DeskDate::loadSaved(picked)) {
+                             shown_ = picked;
+                             dateAvailable_ = true;
+                             applyShownDate();
+                           } else if (!dateAvailable_) {
+                             exitPending_ = true;
+                           }
+                           requestUpdate();
+                         });
 }
 
 void MoonPhaseDeskActivity::onExit() {
@@ -97,7 +115,8 @@ void MoonPhaseDeskActivity::computeDiscGeometry(int& diameter, int& cx, int& cy)
 
   const int nameLineHeight = renderer.getLineHeight(UI_12_FONT_ID);
   const int captionLineHeight = renderer.getLineHeight(UI_10_FONT_ID);
-  const int captionY = bottom - captionLineHeight - 12;
+  const int nextY = bottom - captionLineHeight - 12;
+  const int captionY = nextY - captionLineHeight - 2;
   const int nameY = captionY - nameLineHeight - 4;
 
   diameter = std::min(frameW - 20, (nameY - top) - 12);
@@ -110,8 +129,17 @@ void MoonPhaseDeskActivity::loop() {
     finish();
     return;
   }
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back) || exitPending_) {
     finish();
+    return;
+  }
+  if (pickerPending_) {
+    pickerPending_ = false;
+    openPicker();
+    return;
+  }
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    openPicker();
     return;
   }
   if (buildState_ == BuildState::Awaiting) {
@@ -152,10 +180,10 @@ void MoonPhaseDeskActivity::render(RenderLock&&) {
   // body all the way down to the button hints, grow box and all. Drawing
   // another one on top stacked a second window inside the first -- most
   // visible where its corner cut across the grow box.
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_DESK_SET_DATE), "", "");
 
   if (!dateAvailable_) {
-    renderer.drawCenteredText(UI_10_FONT_ID, top + (bottom - top) / 2, dateUnavailableMessage());
+    renderer.drawCenteredText(UI_10_FONT_ID, top + (bottom - top) / 2, tr(STR_DESK_PICK_DATE));
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
@@ -169,10 +197,20 @@ void MoonPhaseDeskActivity::render(RenderLock&&) {
   std::snprintf(caption + std::strlen(caption), sizeof(caption) - std::strlen(caption), "   %s", dateText_);
   const int nameLineHeight = renderer.getLineHeight(UI_12_FONT_ID);
   const int captionLineHeight = renderer.getLineHeight(UI_10_FONT_ID);
-  const int captionY = bottom - captionLineHeight - 12;
+  const int nextY = bottom - captionLineHeight - 12;
+  const int captionY = nextY - captionLineHeight - 2;
   const int nameY = captionY - nameLineHeight - 4;
   renderer.drawCenteredText(UI_12_FONT_ID, nameY, MoonPhase::phaseName(phaseFraction_), true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(UI_10_FONT_ID, captionY, caption);
+  int daysUntil = 1;
+  const char* nextPhase = MoonPhase::nextPrincipalPhase(phaseFraction_, daysUntil);
+  char nextText[48];
+  if (daysUntil == 1) {
+    std::snprintf(nextText, sizeof(nextText), tr(STR_MOON_NEXT_PHASE_ONE_DAY), nextPhase);
+  } else {
+    std::snprintf(nextText, sizeof(nextText), tr(STR_MOON_NEXT_PHASE), nextPhase, daysUntil);
+  }
+  renderer.drawCenteredText(UI_10_FONT_ID, nextY, nextText);
 
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 

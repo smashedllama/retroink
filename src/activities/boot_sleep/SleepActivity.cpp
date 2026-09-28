@@ -27,6 +27,7 @@
 #include "../reader/XtcReaderActivity.h"
 #include "AppVersion.h"
 #include "CrossPointSettings.h"
+#include "components/DeskDate.h"
 #include "CrossPointState.h"
 #include "RecentBooksStore.h"
 #include "components/CalendarView.h"
@@ -550,6 +551,15 @@ void SleepActivity::onEnter() {
   if (!halClock.isAvailable() && sleepScreenNeedsClock(SETTINGS.sleepScreen)) {
     return renderDefaultSleepScreen();
   }
+  // Moon, Earth, and Calendar need a date: the clock's, or on a clockless
+  // device the one picked in the desk accessory. Nothing picked yet means
+  // nothing to draw.
+  if (SETTINGS.sleepScreen == CrossPointSettings::MOON_PHASE_SLEEP ||
+      SETTINGS.sleepScreen == CrossPointSettings::EARTH_PHASE_SLEEP ||
+      SETTINGS.sleepScreen == CrossPointSettings::DESK_CALENDAR_SLEEP) {
+    DeskDateTime shown;
+    if (!DeskDate::current(shown)) return renderDefaultSleepScreen();
+  }
 
   switch (SETTINGS.sleepScreen) {
     case (CrossPointSettings::SLEEP_SCREEN_MODE::BLANK):
@@ -703,15 +713,15 @@ void SleepActivity::renderMoonPhaseSleepScreen() const {
   drawSystem6Desktop(renderer, pageWidth, pageHeight);
 
   float fraction = 0.0f;
-  bool haveDate = false;
   char dateText[40] = {};
-  if (halClock.isAvailable()) {
+  DeskDateTime shown;
+  const bool haveDate = DeskDate::current(shown);
+  if (haveDate) {
     uint16_t year;
     uint8_t month, day, hour, minute;
-    if (halClock.getDateTime(year, month, day, hour, minute)) {
-      fraction = MoonPhase::phaseFraction(year, month, day, hour, minute);
-      haveDate = formatLocalDate(dateText, sizeof(dateText));
-    }
+    DeskDate::toUtc(shown, year, month, day, hour, minute);
+    fraction = MoonPhase::phaseFraction(year, month, day, hour, minute);
+    DeskDate::formatDate(shown, dateText, sizeof(dateText));
   }
 
   // A System6 window (double border, pinstriped title bar with a knocked-
@@ -752,7 +762,8 @@ void SleepActivity::renderMoonPhaseSleepScreen() const {
   // caption reserved at the foot, not a small decorative accent.
   const int nameLineHeight = renderer.getLineHeight(UI_12_FONT_ID);
   const int captionLineHeight = renderer.getLineHeight(UI_10_FONT_ID);
-  const int captionY = contentBottom - captionLineHeight;
+  const int nextY = contentBottom - captionLineHeight;
+  const int captionY = nextY - captionLineHeight - 2;
   const int nameY = captionY - nameLineHeight - 4;
   const int diameter = std::min(windowWidth - 24, (nameY - contentTop) - 10);
   const int cx = pageWidth / 2;
@@ -766,6 +777,15 @@ void SleepActivity::renderMoonPhaseSleepScreen() const {
   std::snprintf(caption + std::strlen(caption), sizeof(caption) - std::strlen(caption), "   %s", dateText);
   renderer.drawCenteredText(UI_12_FONT_ID, nameY, MoonPhase::phaseName(fraction), true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(UI_10_FONT_ID, captionY, caption);
+  int daysUntil = 1;
+  const char* nextPhase = MoonPhase::nextPrincipalPhase(fraction, daysUntil);
+  char nextText[48];
+  if (daysUntil == 1) {
+    std::snprintf(nextText, sizeof(nextText), tr(STR_MOON_NEXT_PHASE_ONE_DAY), nextPhase);
+  } else {
+    std::snprintf(nextText, sizeof(nextText), tr(STR_MOON_NEXT_PHASE), nextPhase, daysUntil);
+  }
+  renderer.drawCenteredText(UI_10_FONT_ID, nextY, nextText);
 
   renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
 }
@@ -776,16 +796,20 @@ void SleepActivity::renderEarthPhaseSleepScreen() const {
   renderer.clearScreen();
   drawSystem6Desktop(renderer, pageWidth, pageHeight);
 
-  bool haveDate = false;
-  char dateText[40] = {};
+  char dateText[64] = {};
   float declination = 0.0f, subsolarLon = 0.0f;
-  if (halClock.isAvailable()) {
+  DeskDateTime shown;
+  const bool haveDate = DeskDate::current(shown);
+  if (haveDate) {
     uint16_t year;
     uint8_t month, day, hour, minute;
-    if (halClock.getDateTime(year, month, day, hour, minute)) {
-      EarthPhase::subsolar(year, month, day, hour, minute, declination, subsolarLon);
-      haveDate = formatLocalDate(dateText, sizeof(dateText));
-    }
+    DeskDate::toUtc(shown, year, month, day, hour, minute);
+    EarthPhase::subsolar(year, month, day, hour, minute, declination, subsolarLon);
+    char date[32], time[16], zone[16];
+    DeskDate::formatDate(shown, date, sizeof(date));
+    DeskDate::formatTime(shown, time, sizeof(time));
+    DeskDate::formatZone(shown.zoneQ, zone, sizeof(zone));
+    std::snprintf(dateText, sizeof(dateText), "%s  %s %s", date, time, zone);
   }
 
   // Same window chrome as the Moon Phase and Desk Calendar sleep screens, so
@@ -825,8 +849,8 @@ void SleepActivity::renderEarthPhaseSleepScreen() const {
   const int cx = pageWidth / 2;
   const int cy = contentTop + (captionY - contentTop) / 2;
 
-  const EarthPhase::DiscTexture texture(diameter / 2, EarthPhase::centerLonForUtcOffsetQ(SETTINGS.clockUtcOffsetQ),
-                                        declination, subsolarLon);
+  const EarthPhase::DiscTexture texture(diameter / 2, EarthPhase::centerLonForUtcOffsetQ(shown.zoneQ), declination,
+                                        subsolarLon);
   EarthPhase::draw(renderer, cx, cy, texture);
   renderer.drawCenteredText(UI_10_FONT_ID, captionY, dateText);
 
@@ -839,17 +863,13 @@ void SleepActivity::renderDeskCalendarSleepScreen() const {
   renderer.clearScreen();
   drawSystem6Desktop(renderer, pageWidth, pageHeight);
 
-  bool todayKnown = false;
   int todayYear = 0, todayMonth = 0, todayDay = 0;
-  if (halClock.isAvailable()) {
-    uint16_t year;
-    uint8_t month, day, hour, minute;
-    if (halClock.getDateTime(year, month, day, hour, minute)) {
-      todayKnown = true;
-      todayYear = year;
-      todayMonth = month;
-      todayDay = day;
-    }
+  DeskDateTime shown;
+  const bool todayKnown = DeskDate::current(shown);
+  if (todayKnown) {
+    todayYear = shown.year;
+    todayMonth = shown.month;
+    todayDay = shown.day;
   }
 
   // Same System6 window chrome as the Moon Phase sleep screen, so the two

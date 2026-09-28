@@ -10,7 +10,7 @@
 #include <memory>
 
 #include "CrossPointSettings.h"
-#include "components/ClockFormat.h"
+#include "DeskDatePickerActivity.h"
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -49,21 +49,39 @@ const EarthPhase::DiscTexture& getOrBuild(const int radius, const uint32_t slot,
 }
 }  // namespace
 
-uint32_t EarthPhaseDeskActivity::currentSlot() {
-  uint16_t year = 0;
-  uint8_t month = 0, day = 0, hour = 0, minute = 0;
-  if (!halClock.isAvailable() || !halClock.getDateTime(year, month, day, hour, minute)) return 0;
-  const uint32_t minutes = ((static_cast<uint32_t>(year) * 366 + month * 31 + day) * 24 + hour) * 60 + minute;
-  return minutes / kSlotMinutes;
+uint32_t EarthPhaseDeskActivity::slotFor(const DeskDateTime& value) {
+  uint16_t year;
+  uint8_t month, day, hour, minute;
+  DeskDate::toUtc(value, year, month, day, hour, minute);
+  const uint32_t minutes = ((static_cast<uint32_t>(year - 1900) * 372 + month * 31 + day) * 24 + hour) * 60 + minute;
+  return (minutes / kSlotMinutes) * 128 + value.zoneQ;
 }
 
-bool EarthPhaseDeskActivity::readClock() {
-  uint16_t year = 0;
-  uint8_t month = 0, day = 0, hour = 0, minute = 0;
-  if (!halClock.isAvailable() || !halClock.getDateTime(year, month, day, hour, minute)) return false;
+void EarthPhaseDeskActivity::applyShownDate() {
+  texture_ = nullptr;
+  buildState_ = BuildState::NotStarted;
+  uint16_t year;
+  uint8_t month, day, hour, minute;
+  DeskDate::toUtc(shown_, year, month, day, hour, minute);
   EarthPhase::subsolar(year, month, day, hour, minute, declination_, subsolarLon_);
-  centerLon_ = EarthPhase::centerLonForUtcOffsetQ(SETTINGS.clockUtcOffsetQ);
-  return formatLocalDate(dateText_, sizeof(dateText_));
+  centerLon_ = EarthPhase::centerLonForUtcOffsetQ(shown_.zoneQ);
+  renderedSlot_ = slotFor(shown_);
+
+  char date[32], time[16], zone[16];
+  DeskDate::formatDate(shown_, date, sizeof(date));
+  DeskDate::formatTime(shown_, time, sizeof(time));
+  DeskDate::formatZone(shown_.zoneQ, zone, sizeof(zone));
+  std::snprintf(dateText_, sizeof(dateText_), "%s  %s %s", date, time, zone);
+
+  // A cache hit is instant, so skip the placeholder entirely and show the real
+  // globe straight away -- the placeholder only earns its keep before a build.
+  int diameter, cx, cy;
+  computeDiscGeometry(diameter, cx, cy);
+  auto& cached = cachedTexture();
+  if (cached && cachedRadius() == diameter / 2 && cachedSlot() == renderedSlot_) {
+    texture_ = cached.get();
+    buildState_ = BuildState::Ready;
+  }
 }
 
 void EarthPhaseDeskActivity::onEnter() {
@@ -71,25 +89,31 @@ void EarthPhaseDeskActivity::onEnter() {
   previousOrientation_ = renderer.getOrientation();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
-  texture_ = nullptr;
-  buildState_ = BuildState::NotStarted;
   dateText_[0] = '\0';
-  dateAvailable_ = readClock();
-  renderedSlot_ = currentSlot();
-
-  // A cache hit is instant, so skip the placeholder entirely and show the real
-  // globe straight away -- the placeholder only earns its keep before a build.
-  if (dateAvailable_) {
-    int diameter, cx, cy;
-    computeDiscGeometry(diameter, cx, cy);
-    const int radius = diameter / 2;
-    auto& cached = cachedTexture();
-    if (cached && cachedRadius() == radius && cachedSlot() == renderedSlot_) {
-      texture_ = cached.get();
-      buildState_ = BuildState::Ready;
-    }
-  }
+  exitPending_ = false;
+  dateAvailable_ = DeskDate::current(shown_);
+  followingClock_ = dateAvailable_ && halClock.isAvailable() && SETTINGS.clockDateHasBeenSynced;
+  pickerPending_ = !dateAvailable_;
+  if (dateAvailable_) applyShownDate();
   requestUpdate();
+}
+
+void EarthPhaseDeskActivity::openPicker() {
+  const DeskDateTime start = dateAvailable_ ? shown_ : DeskDate::fallback();
+  startActivityForResult(std::make_unique<DeskDatePickerActivity>(renderer, mappedInput, StrId::STR_EARTH_PHASE,
+                                                                  DeskDatePickerActivity::Fields::DateTimeZone, start),
+                         [this](const ActivityResult& result) {
+                           DeskDateTime picked;
+                           if (!result.isCancelled && DeskDate::loadSaved(picked)) {
+                             shown_ = picked;
+                             dateAvailable_ = true;
+                             followingClock_ = false;
+                             applyShownDate();
+                           } else if (!dateAvailable_) {
+                             exitPending_ = true;
+                           }
+                           requestUpdate();
+                         });
 }
 
 void EarthPhaseDeskActivity::onExit() {
@@ -119,8 +143,17 @@ void EarthPhaseDeskActivity::loop() {
     finish();
     return;
   }
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back) || exitPending_) {
     finish();
+    return;
+  }
+  if (pickerPending_) {
+    pickerPending_ = false;
+    openPicker();
+    return;
+  }
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    openPicker();
     return;
   }
 
@@ -135,11 +168,11 @@ void EarthPhaseDeskActivity::loop() {
     return;
   }
 
-  if (buildState_ == BuildState::Ready && dateAvailable_ && currentSlot() != renderedSlot_) {
-    renderedSlot_ = currentSlot();
-    readClock();
-    buildState_ = BuildState::NotStarted;
-    texture_ = nullptr;
+  DeskDateTime now;
+  if (buildState_ == BuildState::Ready && followingClock_ && DeskDate::current(now) &&
+      slotFor(now) != renderedSlot_) {
+    shown_ = now;
+    applyShownDate();
     requestUpdate();
   }
 }
@@ -166,10 +199,10 @@ void EarthPhaseDeskActivity::render(RenderLock&&) {
   // body all the way down to the button hints, grow box and all. Drawing
   // another one on top stacked a second window inside the first -- most
   // visible where its corner cut across the grow box.
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_DESK_SET_DATE), "", "");
 
   if (!dateAvailable_) {
-    renderer.drawCenteredText(UI_10_FONT_ID, top + (bottom - top) / 2, dateUnavailableMessage());
+    renderer.drawCenteredText(UI_10_FONT_ID, top + (bottom - top) / 2, tr(STR_DESK_PICK_DATE));
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;

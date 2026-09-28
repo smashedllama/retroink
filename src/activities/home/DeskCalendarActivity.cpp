@@ -5,34 +5,54 @@
 #include <I18n.h>
 
 #include <algorithm>
+#include <memory>
 #include <cstdio>
 
+#include "DeskDatePickerActivity.h"
 #include "components/CalendarView.h"
+#include "components/DeskDate.h"
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+
+void DeskCalendarActivity::showToday() {
+  DeskDateTime today;
+  todayKnown_ = DeskDate::current(today);
+  if (!todayKnown_) return;
+  todayYear_ = today.year;
+  todayMonth_ = today.month;
+  todayDay_ = today.day;
+  viewYear_ = today.year;
+  viewMonth_ = today.month;
+}
 
 void DeskCalendarActivity::onEnter() {
   Activity::onEnter();
   previousOrientation_ = renderer.getOrientation();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
-  todayKnown_ = false;
   viewYear_ = 2026;
   viewMonth_ = 1;
-  if (halClock.isAvailable()) {
-    uint16_t year;
-    uint8_t month, day, hour, minute;
-    if (halClock.getDateTime(year, month, day, hour, minute)) {
-      todayKnown_ = true;
-      todayYear_ = year;
-      todayMonth_ = month;
-      todayDay_ = day;
-      viewYear_ = year;
-      viewMonth_ = month;
-    }
-  }
+  exitPending_ = false;
+  picksDate_ = !halClock.isAvailable();
+  showToday();
+  pickerPending_ = picksDate_ && !todayKnown_;
   requestUpdate();
+}
+
+void DeskCalendarActivity::openPicker() {
+  DeskDateTime start;
+  if (!DeskDate::current(start)) start = DeskDate::fallback();
+  startActivityForResult(std::make_unique<DeskDatePickerActivity>(renderer, mappedInput, StrId::STR_DESK_CALENDAR,
+                                                                  DeskDatePickerActivity::Fields::DateOnly, start),
+                         [this](const ActivityResult& result) {
+                           if (!result.isCancelled) {
+                             showToday();
+                           } else if (!todayKnown_) {
+                             exitPending_ = true;
+                           }
+                           requestUpdate();
+                         });
 }
 
 void DeskCalendarActivity::onExit() {
@@ -58,8 +78,17 @@ void DeskCalendarActivity::loop() {
     finish();
     return;
   }
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back) || exitPending_) {
     finish();
+    return;
+  }
+  if (pickerPending_) {
+    pickerPending_ = false;
+    openPicker();
+    return;
+  }
+  if (picksDate_ && mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    openPicker();
     return;
   }
   if (mappedInput.wasReleased(MappedInputManager::Button::Left)) {
@@ -100,7 +129,8 @@ void DeskCalendarActivity::render(RenderLock&&) {
   CalendarView::draw(renderer, Rect{left, top, gridWidth, bottom - top}, viewYear_, viewMonth_, todayKnown_,
                      todayYear_, todayMonth_, todayDay_);
 
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), picksDate_ ? tr(STR_DESK_SET_DATE) : "",
+                                            tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   renderer.displayBuffer();
 }

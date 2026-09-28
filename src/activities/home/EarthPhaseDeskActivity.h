@@ -1,6 +1,7 @@
 #pragma once
 
 #include "activities/Activity.h"
+#include "components/DeskDate.h"
 #include "components/EarthPhase.h"
 
 // A day/night Earth globe desk accessory, centred on the user's timezone.
@@ -15,7 +16,13 @@
 // the desk clock's old periodic refresh so irritating.
 class EarthPhaseDeskActivity final : public Activity {
   bool dateAvailable_ = false;
-  char dateText_[40] = {};
+  char dateText_[64] = {};
+  DeskDateTime shown_;
+  // True while showing "now" on a device with a clock, so the globe keeps
+  // moving; false once the user has picked a date to look at.
+  bool followingClock_ = false;
+  bool pickerPending_ = false;
+  bool exitPending_ = false;
   float centerLon_ = 0.0f;
   float declination_ = 0.0f;
   float subsolarLon_ = 0.0f;
@@ -32,10 +39,13 @@ class EarthPhaseDeskActivity final : public Activity {
   // Shared by render() (to place the disc) and loop() (to know what radius to
   // build at), so the two cannot disagree about where the globe goes.
   void computeDiscGeometry(int& diameter, int& cx, int& cy) const;
-  // Reads the clock into centerLon_/declination_/subsolarLon_/dateText_.
-  // Returns false when the RTC has never been set.
-  bool readClock();
-  static uint32_t currentSlot();
+  // Recomputes the sun position, centre and caption for shown_, and picks up
+  // a cached globe when one matches.
+  void applyShownDate();
+  void openPicker();
+  // Identifies the globe for a date: its ten-minute slot plus the zone,
+  // which sets the longitude the globe is centred on.
+  static uint32_t slotFor(const DeskDateTime& value);
 
  public:
   EarthPhaseDeskActivity(GfxRenderer& renderer, MappedInputManager& input)
