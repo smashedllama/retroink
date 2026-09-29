@@ -193,9 +193,8 @@ void DeskCalendarActivity::render(RenderLock&&) {
   // another one on top stacked a second window inside the first -- most
   // visible where its corner cut across the grow box.
   CalendarView::Markers markers;
-  if (hasEvents_) {
-    markers.eventMask = events_.monthMask(viewYear_, viewMonth_);
-    }
+  markers.selectedDay = selectedDay_;
+  if (hasEvents_) markers.eventMask = events_.monthMask(viewYear_, viewMonth_);
   CalendarView::draw(renderer, grid, viewYear_, viewMonth_, todayKnown_, todayYear_, todayMonth_, todayDay_, markers);
 
   if (hasEvents_) {

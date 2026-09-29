@@ -973,6 +973,7 @@ void SleepActivity::renderDeskCalendarSleepScreen() const {
   int gridBottom = contentBottom;
   if (hasEvents) gridBottom -= (contentBottom - contentTop) / 4 + 8;
   CalendarView::Markers markers;
+  markers.selectedDay = todayDay;  // no cursor on a sleep screen: today wears the filled badge
   if (hasEvents) markers.eventMask = events.monthMask(todayYear, todayMonth);
   CalendarView::draw(renderer, Rect{left, contentTop, gridWidth, gridBottom - contentTop}, todayYear, todayMonth,
                      todayKnown, todayYear, todayMonth, todayDay, markers);

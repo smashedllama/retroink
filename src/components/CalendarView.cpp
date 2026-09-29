@@ -136,24 +136,21 @@ void draw(const GfxRenderer& renderer, const Rect rect, const int year, const in
       std::snprintf(dayText, sizeof(dayText), "%d", day);
       const int textWidth = renderer.getTextWidth(headerFont, dayText);
       const int textX = cellX + (colWidth - textWidth) / 2;
+      // The filled badge is the day being looked at; the double ring marks
+      // today. Both together read as a filled badge with a white ring inside.
+      const bool isSelected = day == markers.selectedDay;
+      const Rect badge{cellX + 2, cellY - 4, colWidth - 4, rowHeight - 6};
+      if (isSelected) renderer.fillRect(badge.x, badge.y, badge.width, badge.height, true);
       if (isToday) {
-        // A double-bordered badge rather than a flat fill, so today reads
-        // like a pinned marker, not just an inverted rectangle.
-        const Rect badge{cellX + 2, cellY - 4, colWidth - 4, rowHeight - 6};
-        renderer.fillRect(badge.x, badge.y, badge.width, badge.height, true);
-        renderer.drawRect(badge.x + 2, badge.y + 2, badge.width - 4, badge.height - 4, false);
-        renderer.drawText(headerFont, textX, cellY, dayText, false, EpdFontFamily::BOLD);
-      } else {
-        renderer.drawText(headerFont, textX, cellY, dayText);
+        if (!isSelected) renderer.drawRect(badge.x, badge.y, badge.width, badge.height);
+        renderer.drawRect(badge.x + 3, badge.y + 3, badge.width - 6, badge.height - 6, !isSelected);
       }
+      renderer.drawText(headerFont, textX, cellY, dayText, !isSelected, isSelected || isToday ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR);
       if (day <= 31 && (markers.eventMask & (1u << (day - 1)))) {
-        // A small square under the number; white on today's black badge.
+        // A small square under the number; white on the filled badge.
         const int dotX = cellX + colWidth / 2 - 2;
         const int dotY = cellY + renderer.getLineHeight(headerFont);
-        renderer.fillRect(dotX, dotY, 5, 5, !isToday);
-      }
-      if (day == markers.selectedDay) {
-        renderer.drawRect(cellX + 1, cellY - 6, colWidth - 2, rowHeight - 2);
+        renderer.fillRect(dotX, dotY, 5, 5, !isSelected);
       }
       ++day;
     }
