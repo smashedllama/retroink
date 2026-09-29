@@ -157,10 +157,12 @@ void draw(const GfxRenderer& renderer, const Rect rect, const int year, const in
   }
 }
 
+int agendaLineHeight(const GfxRenderer& renderer) { return renderer.getLineHeight(UI_10_FONT_ID) + 6; }
+
 size_t drawAgenda(const GfxRenderer& renderer, const Rect rect, const ics::Calendar& calendar,
                   const std::vector<size_t>& indices, const bool showDate) {
   const int font = UI_10_FONT_ID;
-  const int lineHeight = renderer.getLineHeight(font) + 6;
+  const int lineHeight = agendaLineHeight(renderer);
   size_t drawn = 0;
   int y = rect.y;
   for (const size_t index : indices) {

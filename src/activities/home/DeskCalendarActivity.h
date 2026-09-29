@@ -28,6 +28,16 @@ class DeskCalendarActivity final : public Activity {
   int selectedDay_ = 0;  // 1-31 within the viewed month, 0 = none
 
   OptionPopup optionPopup_;
+  // The selected day's list scrolls when it has more events than fit: by
+  // swiping on touch readers, or with the buttons after Options > Scroll Events.
+  int agendaScroll_ = 0;    // index of the first event shown
+  int agendaTotal_ = 0;     // events on the selected day (set by render)
+  int agendaVisible_ = 0;   // events that fit (set by render)
+  bool scrollMode_ = false;
+
+  bool agendaOverflows() const { return agendaTotal_ > agendaVisible_; }
+  void scrollAgenda(int delta);
+  Rect agendaRect() const;
 
   void moveSelection(int deltaDays);
   void openOptions();

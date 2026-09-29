@@ -29,6 +29,9 @@ void draw(const GfxRenderer& renderer, Rect rect, int year, int month, bool toda
 // or 0 if the point is not on a day.
 int dayAt(const GfxRenderer& renderer, Rect rect, int year, int month, int x, int y);
 
+// Height of one agenda line, for working out how many fit in a rect.
+int agendaLineHeight(const GfxRenderer& renderer);
+
 // A list of events, one per line ("9:00 AM  Dentist", "All day  Holiday"),
 // as many as fit in `rect`. With `showDate` each line starts with the month
 // and day instead, for the upcoming list. Returns how many lines were drawn.
