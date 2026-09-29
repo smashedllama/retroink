@@ -158,4 +158,8 @@ class CrossPointWebServer {
   void handlePostObsidianConfig();
   void handlePostObsidianSync() const;
   void handlePostObsidianBackfill() const;
+  // Desk Calendar feed handlers
+  void handleGetCalendarConfig() const;
+  void handlePostCalendarConfig();
+  void handlePostCalendarSync() const;
 };

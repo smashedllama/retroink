@@ -62,6 +62,8 @@ class CrossPointWebServerActivity final : public Activity {
   // Set while connecting WiFi on behalf of NetworkMode::SYNC_OBSIDIAN, so
   // onWifiSelectionComplete() runs a sync instead of starting the web server.
   bool pendingObsidianSync = false;
+  // Same, for NetworkMode::SYNC_CALENDAR.
+  bool pendingCalendarSync = false;
 
   void renderServerRunning() const;
   void renderHeader() const;
@@ -76,6 +78,8 @@ class CrossPointWebServerActivity final : public Activity {
   void exitToOrigin();
   void beginObsidianSync();
   void performObsidianSync();
+  void beginCalendarSync();
+  void performCalendarSync();
   void showObsidianSetupGuide();
 
  public:

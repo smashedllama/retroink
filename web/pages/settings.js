@@ -675,6 +675,94 @@ let allSettings = [];
     }
   }
 
+  // --- Desk Calendar feed ---
+  // A calendar's secret iCal address, downloaded on demand into the Desk
+  // Calendar. The address is write-only here: it is never read back.
+  let calendarConfig = {enabled:false, hasUrl:false, hasSynced:false};
+
+  function renderCalendarSection() {
+    const container = document.getElementById('calendar-container');
+    const c = calendarConfig;
+    container.innerHTML = '<div class="card"><h2>Desk Calendar</h2>' +
+      '<p style="color:var(--label-color);">Shows events from your Google, Apple (iCloud) or Outlook calendar in the Desk Calendar. ' +
+      'Paste the calendar\'s iCal (.ics) link below, then press Sync Now, or use Sync Calendar in the File Transfer menu on the device.</p>' +
+      '<div class="setting-row">' +
+        '<span class="setting-name">Enabled</span>' +
+        '<span class="setting-control"><input type="checkbox" id="cal-enabled"' + (c.enabled ? ' checked' : '') + '></span>' +
+      '</div>' +
+      '<div class="setting-row">' +
+        '<span class="setting-name">Calendar link</span>' +
+        '<span class="setting-control"><input type="password" id="cal-url" placeholder="' + (c.hasUrl ? '(saved, paste a new one to replace)' : 'https://... or webcal://...') + '"></span>' +
+      '</div>' +
+      '<p class="setting-hint">Google: Calendar settings, Integrate calendar, "Secret address in iCal format". ' +
+      'Apple: share the calendar as a Public Calendar and copy the link. Outlook: Settings, Shared calendars, Publish a calendar, ICS link. ' +
+      'Anyone with the link can read the calendar, so keep it private.</p>' +
+      '<div class="opds-actions">' +
+        '<button class="btn-small btn-save-server" onclick="saveCalendarConfig()">Save</button>' +
+        '<button class="btn-small" onclick="syncCalendarNow()">Sync Now</button>' +
+        (c.hasUrl ? '<button class="btn-small" onclick="clearCalendarLink()">Remove Link</button>' : '') +
+      '</div>' +
+      '<p style="color:var(--label-color);">' + (c.hasSynced ? 'Calendar data is on the SD card.' : 'Nothing synced yet.') + '</p>' +
+    '</div>';
+  }
+
+  async function loadCalendarConfig() {
+    try {
+      const resp = await fetch('/api/calendar');
+      if (!resp.ok) throw new Error('Failed to load');
+      calendarConfig = await resp.json();
+      renderCalendarSection();
+    } catch (e) {
+      console.error('Calendar config load error:', e);
+    }
+  }
+
+  async function postCalendarConfig(data, okMessage) {
+    try {
+      const resp = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      showMessage(okMessage, false);
+      await loadCalendarConfig();
+    } catch (e) {
+      showMessage('Error: ' + e.message, true);
+    }
+  }
+
+  async function saveCalendarConfig() {
+    const data = {enabled: document.getElementById('cal-enabled').checked};
+    const url = document.getElementById('cal-url').value.trim();
+    if (url) {
+      if (!/^(https?|webcal):\/\//i.test(url)) {
+        showMessage('The calendar link should start with https:// or webcal://', true);
+        return;
+      }
+      data.url = url;
+      data.enabled = true;  // pasting a link means sync it
+    }
+    await postCalendarConfig(data, 'Calendar settings saved!');
+  }
+
+  async function clearCalendarLink() {
+    if (!confirm('Remove the saved calendar link? Events already synced stay until the next sync.')) return;
+    await postCalendarConfig({enabled: false, url: ''}, 'Calendar link removed.');
+  }
+
+  async function syncCalendarNow() {
+    showMessage('Syncing calendar...', false);
+    try {
+      const resp = await fetch('/api/calendar/sync', {method: 'POST'});
+      const result = await resp.json();
+      showMessage(result.message || (result.ok ? 'Synced' : 'Sync failed'), !result.ok);
+      await loadCalendarConfig();
+    } catch (e) {
+      showMessage('Error: ' + e.message, true);
+    }
+  }
+
   // Sequential, not concurrent: the device's web server handles one client
   // connection at a time, and three simultaneous fetches on page load can
   // stall long enough to delay or interrupt a response.
@@ -683,4 +771,5 @@ let allSettings = [];
     await loadWifiNetworks();
     await loadOpdsServers();
     await loadObsidianConfig();
+    await loadCalendarConfig();
   })();

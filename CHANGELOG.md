@@ -1,3 +1,9 @@
+## [Unreleased]
+
+### Added
+
+- **Calendar sync.** Give the reader your Google, Apple (iCloud) or Outlook calendar link once (File Transfer web page > Settings > Desk Calendar), then update it any time with **File Transfer > Sync Calendar**. The Desk Calendar shows a small square under every day with an event, the side buttons or a tap pick a day, and that day's events are listed under the grid. The Desk Calendar sleep screen adds the same squares and a short Upcoming list. Repeating events, all-day and multi-day events, skipped dates and moved or cancelled occurrences are handled. Events are stored on the SD card. See [Calendar Sync](./docs/calendar-sync.md).
+
 ## [RetroInk 0.5.3] - 2026-09-29
 
 ### Fixed

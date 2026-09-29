@@ -14,6 +14,8 @@
 #include "ObsidianPendingQueue.h"
 #include "ObsidianSyncClient.h"
 #include "ObsidianSyncStore.h"
+#include "calendar/CalendarFeedStore.h"
+#include "calendar/CalendarSync.h"
 #include "SdCardFontSystem.h"
 #include "SilentRestart.h"
 #include "WifiSelectionActivity.h"
@@ -161,6 +163,8 @@ void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) 
     modeName = "Create Hotspot";
   } else if (mode == NetworkMode::SYNC_OBSIDIAN) {
     modeName = "Sync to Obsidian";
+  } else if (mode == NetworkMode::SYNC_CALENDAR) {
+    modeName = "Sync Calendar";
   } else if (mode == NetworkMode::NEARBY_STATS_SYNC) {
     modeName = "Sync Stats";
   } else if (mode == NetworkMode::NEARBY_BOOK_RECEIVE) {
@@ -180,6 +184,10 @@ void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) 
     // A one-shot action, not a "start file transfer" mode, so it runs the
     // same way regardless of networkBootReady, like the nearby-device modes.
     beginObsidianSync();
+    return;
+  }
+  if (mode == NetworkMode::SYNC_CALENDAR) {
+    beginCalendarSync();
     return;
   }
   if (mode == NetworkMode::NEARBY_STATS_SYNC) {
@@ -206,6 +214,7 @@ void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) 
         activityManager.goToUsbDrive();
         break;
       case NetworkMode::SYNC_OBSIDIAN:
+      case NetworkMode::SYNC_CALENDAR:
       case NetworkMode::NEARBY_STATS_SYNC:
       case NetworkMode::NEARBY_BOOK_RECEIVE:
         break;
@@ -275,6 +284,11 @@ void CrossPointWebServerActivity::onWifiSelectionComplete(const bool connected) 
       performObsidianSync();
       return;
     }
+    if (pendingCalendarSync) {
+      pendingCalendarSync = false;
+      performCalendarSync();
+      return;
+    }
 
     // Start mDNS for hostname resolution
     restartMdns(AP_HOSTNAME, "WEBACT");
@@ -284,6 +298,7 @@ void CrossPointWebServerActivity::onWifiSelectionComplete(const bool connected) 
   } else {
     // User cancelled - go back to mode selection
     pendingObsidianSync = false;
+    pendingCalendarSync = false;
     state = WebServerActivityState::MODE_SELECTION;
 
     startActivityForResult(std::make_unique<NetworkModeSelectionActivity>(renderer, mappedInput),
@@ -356,6 +371,57 @@ void CrossPointWebServerActivity::performObsidianSync() {
     return;
   }
 
+  exitToOrigin();
+}
+
+void CrossPointWebServerActivity::beginCalendarSync() {
+  const CalendarFeedConfig& cfg = CALENDAR_FEED.getConfig();
+  if (!cfg.enabled || cfg.url.empty()) {
+    {
+      RenderLock lock(*this);
+      BookActions::drawToast(renderer, tr(STR_CALENDAR_NOT_CONFIGURED));
+    }
+    delay(2500);
+    exitToOrigin();
+    return;
+  }
+
+  pendingCalendarSync = true;
+  isApMode = false;
+
+  WiFi.mode(WIFI_STA);
+  state = WebServerActivityState::WIFI_SELECTION;
+  startActivityForResult(std::make_unique<WifiSelectionActivity>(renderer, mappedInput),
+                         [this](const ActivityResult& result) {
+                           if (!result.isCancelled) {
+                             const auto& wifi = std::get<WifiResult>(result.data);
+                             connectedIP = wifi.ip;
+                             connectedSSID = wifi.ssid;
+                           }
+                           onWifiSelectionComplete(!result.isCancelled);
+                         });
+}
+
+void CrossPointWebServerActivity::performCalendarSync() {
+  {
+    RenderLock lock(*this);
+    BookActions::drawToast(renderer, tr(STR_CALENDAR_SYNCING));
+  }
+  size_t count = 0;
+  bool truncated = false;
+  const CalendarSync::Result result = CalendarSync::run(&count, &truncated);
+
+  char message[64];
+  if (result == CalendarSync::Result::Ok) {
+    snprintf(message, sizeof(message), "%s (%u)", tr(STR_CALENDAR_SYNCED), static_cast<unsigned>(count));
+  } else {
+    snprintf(message, sizeof(message), "%s", CalendarSync::resultText(result));
+  }
+  {
+    RenderLock lock(*this);
+    BookActions::drawToast(renderer, message);
+  }
+  delay(2000);
   exitToOrigin();
 }
 

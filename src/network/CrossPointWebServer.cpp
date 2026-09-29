@@ -28,6 +28,8 @@
 #include "ObsidianPendingQueue.h"
 #include "ObsidianSyncClient.h"
 #include "ObsidianSyncStore.h"
+#include "calendar/CalendarFeedStore.h"
+#include "calendar/CalendarSync.h"
 #include "clippings/ObsidianBackfill.h"
 #include "OpdsServerStore.h"
 #include "QuickActions.h"
@@ -420,6 +422,10 @@ void CrossPointWebServer::begin() {
   server->on("/api/obsidian", HTTP_POST, [this] { handlePostObsidianConfig(); });
   server->on("/api/obsidian/sync", HTTP_POST, [this] { handlePostObsidianSync(); });
   server->on("/api/obsidian/backfill", HTTP_POST, [this] { handlePostObsidianBackfill(); });
+  // Desk Calendar feed endpoints
+  server->on("/api/calendar", HTTP_GET, [this] { handleGetCalendarConfig(); });
+  server->on("/api/calendar", HTTP_POST, [this] { handlePostCalendarConfig(); });
+  server->on("/api/calendar/sync", HTTP_POST, [this] { handlePostCalendarSync(); });
 
   server->onNotFound([this] { handleNotFound(); });
 
@@ -2669,6 +2675,65 @@ void CrossPointWebServer::handlePostObsidianSync() const {
   doc["droppedPermanently"] = static_cast<uint32_t>(dropped);
   doc["message"] = message;
 
+  String output;
+  serializeJson(doc, output);
+  server->send(200, "application/json", output);
+}
+
+// ---- Desk Calendar feed API ----
+
+void CrossPointWebServer::handleGetCalendarConfig() const {
+  const CalendarFeedConfig& cfg = CALENDAR_FEED.getConfig();
+  JsonDocument doc;
+  doc["enabled"] = cfg.enabled;
+  // The calendar address works like a password, so it is never sent back.
+  doc["hasUrl"] = !cfg.url.empty();
+  doc["hasSynced"] = CalendarSync::hasStored();
+  String output;
+  serializeJson(doc, output);
+  server->send(200, "application/json", output);
+}
+
+void CrossPointWebServer::handlePostCalendarConfig() {
+  if (!server->hasArg("plain")) {
+    server->send(400, "text/plain", "Missing JSON body");
+    return;
+  }
+  JsonDocument doc;
+  const DeserializationError err = deserializeJson(doc, server->arg("plain"));
+  if (err) {
+    server->send(400, "text/plain", String("Invalid JSON: ") + err.c_str());
+    return;
+  }
+
+  CalendarFeedConfig cfg = CALENDAR_FEED.getConfig();
+  cfg.enabled = doc["enabled"] | cfg.enabled;
+  // Only replace the stored link when one was sent; the page omits it when
+  // other fields are re-saved. An empty string clears it.
+  if (doc["url"].is<const char*>() || doc["url"].is<std::string>()) {
+    cfg.url = doc["url"] | std::string("");
+  }
+  if (!CALENDAR_FEED.setConfig(cfg)) {
+    server->send(500, "text/plain", "Failed to save calendar settings");
+    return;
+  }
+  server->send(200, "text/plain", "OK");
+}
+
+void CrossPointWebServer::handlePostCalendarSync() const {
+  size_t count = 0;
+  bool truncated = false;
+  const CalendarSync::Result result = CalendarSync::run(&count, &truncated);
+
+  std::string message = CalendarSync::resultText(result);
+  if (result == CalendarSync::Result::Ok) {
+    message += " (" + std::to_string(count) + (count == 1 ? " entry" : " entries") + ")";
+    if (truncated) message += ". The calendar is large, so some events were left out.";
+  }
+  JsonDocument doc;
+  doc["ok"] = result == CalendarSync::Result::Ok;
+  doc["count"] = static_cast<uint32_t>(count);
+  doc["message"] = message;
   String output;
   serializeJson(doc, output);
   server->send(200, "application/json", output);

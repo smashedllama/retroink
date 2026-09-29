@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdio>
 
+#include "DeskDate.h"
 #include "fontIds.h"
 #include "themes/BaseTheme.h"
 
@@ -42,20 +43,52 @@ StrId weekdayStrId(const int weekday) {
                               StrId::STR_STATS_THU, StrId::STR_STATS_FRI, StrId::STR_STATS_SAT};
   return ids[std::clamp(weekday, 0, 6)];
 }
+
+constexpr int kBannerTopOffset = 12;
+constexpr int kBannerHeight = 32;
+
+struct GridLayout {
+  int left, gridWidth, gridTop, colWidth, rowHeight, firstWeekday, numDays, numRows;
+};
+
+GridLayout layoutFor(const Rect rect, const int year, const int month) {
+  GridLayout g;
+  g.left = rect.x;
+  g.gridWidth = rect.width;
+  g.gridTop = rect.y + kBannerTopOffset + kBannerHeight + 18;
+  g.colWidth = g.gridWidth / 7;
+  g.firstWeekday = dayOfWeek(year, month, 1);
+  g.numDays = daysInMonth(year, month);
+  g.numRows = (g.firstWeekday + g.numDays + 6) / 7;
+  g.rowHeight = std::max(24, (rect.y + rect.height - g.gridTop) / (g.numRows + 1));
+  return g;
+}
 }  // namespace
 
+int dayAt(const GfxRenderer&, const Rect rect, const int year, const int month, const int x, const int y) {
+  const GridLayout g = layoutFor(rect, year, month);
+  if (x < g.left || x >= g.left + g.colWidth * 7) return 0;
+  // Day rows start one row below the weekday header; a cell's text sits at
+  // its top, and the badge reaches 4px above it.
+  const int row = (y - (g.gridTop + g.rowHeight - 4)) / g.rowHeight;
+  if (y < g.gridTop + g.rowHeight - 4 || row >= g.numRows) return 0;
+  const int col = (x - g.left) / g.colWidth;
+  const int day = row * 7 + col - g.firstWeekday + 1;
+  return day >= 1 && day <= g.numDays ? day : 0;
+}
+
 void draw(const GfxRenderer& renderer, const Rect rect, const int year, const int month, const bool todayKnown,
-         const int todayYear, const int todayMonth, const int todayDay) {
-  const int left = rect.x;
-  const int gridWidth = rect.width;
+         const int todayYear, const int todayMonth, const int todayDay, const Markers& markers) {
   const int top = rect.y;
-  const int bottom = rect.y + rect.height;
+  const GridLayout grid = layoutFor(rect, year, month);
+  const int left = grid.left;
+  const int gridWidth = grid.gridWidth;
 
   // Pinstriped title banner for the month/year, the same knocked-out-label-
   // on-pinstripes treatment System6 uses for its own window/menu title bars,
   // instead of the month just being a line of centered text.
-  const int bannerTop = top + 12;
-  const int bannerHeight = 32;
+  const int bannerTop = top + kBannerTopOffset;
+  const int bannerHeight = kBannerHeight;
   // Single-bordered: this banner already sits inside the screen's own
   // double-line window frame, and a second double border a few pixels in
   // stacked four near-parallel lines across the top of the grid.
@@ -71,12 +104,12 @@ void draw(const GfxRenderer& renderer, const Rect rect, const int year, const in
   renderer.drawText(UI_12_FONT_ID, titleX, bannerTop + (bannerHeight - renderer.getLineHeight(UI_12_FONT_ID)) / 2,
                     monthYear, true, EpdFontFamily::BOLD);
 
-  const int gridTop = bannerTop + bannerHeight + 18;
-  const int colWidth = gridWidth / 7;
-  const int firstWeekday = dayOfWeek(year, month, 1);
-  const int numDays = daysInMonth(year, month);
-  const int numRows = (firstWeekday + numDays + 6) / 7;
-  const int rowHeight = std::max(24, (bottom - gridTop) / (numRows + 1));
+  const int gridTop = grid.gridTop;
+  const int colWidth = grid.colWidth;
+  const int firstWeekday = grid.firstWeekday;
+  const int numDays = grid.numDays;
+  const int numRows = grid.numRows;
+  const int rowHeight = grid.rowHeight;
 
   const int headerFont = UI_10_FONT_ID;
   for (int col = 0; col < 7; ++col) {
@@ -113,9 +146,50 @@ void draw(const GfxRenderer& renderer, const Rect rect, const int year, const in
       } else {
         renderer.drawText(headerFont, textX, cellY, dayText);
       }
+      if (day <= 31 && (markers.eventMask & (1u << (day - 1)))) {
+        // A small square under the number; white on today's black badge.
+        const int dotX = cellX + colWidth / 2 - 2;
+        const int dotY = cellY + renderer.getLineHeight(headerFont);
+        renderer.fillRect(dotX, dotY, 5, 5, !isToday);
+      }
+      if (day == markers.selectedDay) {
+        renderer.drawRect(cellX + 1, cellY - 6, colWidth - 2, rowHeight - 2);
+      }
       ++day;
     }
   }
+}
+
+size_t drawAgenda(const GfxRenderer& renderer, const Rect rect, const ics::Calendar& calendar,
+                  const std::vector<size_t>& indices, const bool showDate) {
+  const int font = UI_10_FONT_ID;
+  const int lineHeight = renderer.getLineHeight(font) + 6;
+  size_t drawn = 0;
+  int y = rect.y;
+  for (const size_t index : indices) {
+    if (y + lineHeight > rect.y + rect.height) break;
+    const ics::Occurrence& o = calendar.occurrences[index];
+    char lead[24];
+    if (showDate) {
+      int yy, mm, dd;
+      ics::civilFromDays(o.day, yy, mm, dd);
+      std::snprintf(lead, sizeof(lead), "%s %d", I18n::getInstance().get(monthNameStrId(mm)), dd);
+    } else if (o.allDay()) {
+      std::snprintf(lead, sizeof(lead), "%s", tr(STR_CALENDAR_ALL_DAY));
+    } else {
+      DeskDateTime t;
+      t.hour = static_cast<uint8_t>(o.startMinute / 60);
+      t.minute = static_cast<uint8_t>(o.startMinute % 60);
+      DeskDate::formatTime(t, lead, sizeof(lead));
+    }
+    const int leadWidth = std::max(renderer.getTextWidth(font, lead) + 12, rect.width / 4);
+    renderer.drawText(font, rect.x, y, lead, true, EpdFontFamily::BOLD);
+    const std::string title = renderer.truncatedText(font, calendar.title(o), rect.width - leadWidth);
+    renderer.drawText(font, rect.x + leadWidth, y, title.c_str());
+    y += lineHeight;
+    ++drawn;
+  }
+  return drawn;
 }
 
 }  // namespace CalendarView

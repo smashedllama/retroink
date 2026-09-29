@@ -38,6 +38,7 @@
 #include "CrossPointState.h"
 #include "ImageFolderIndex.h"
 #include "RecentBooksStore.h"
+#include "calendar/CalendarSync.h"
 #include "components/CalendarView.h"
 #include "components/ClockFormat.h"
 #include "components/EarthPhase.h"
@@ -966,8 +967,27 @@ void SleepActivity::renderDeskCalendarSleepScreen() const {
 
   const int left = wx + 20;
   const int gridWidth = windowWidth - 40;
-  CalendarView::draw(renderer, Rect{left, contentTop, gridWidth, contentBottom - contentTop}, todayYear, todayMonth,
-                     todayKnown, todayYear, todayMonth, todayDay);
+  // A synced calendar adds event dots and a short "Upcoming" list under the grid.
+  ics::Calendar events;
+  const bool hasEvents = CalendarSync::loadStored(events);
+  int gridBottom = contentBottom;
+  if (hasEvents) gridBottom -= (contentBottom - contentTop) / 4 + 8;
+  CalendarView::Markers markers;
+  if (hasEvents) markers.eventMask = events.monthMask(todayYear, todayMonth);
+  CalendarView::draw(renderer, Rect{left, contentTop, gridWidth, gridBottom - contentTop}, todayYear, todayMonth,
+                     todayKnown, todayYear, todayMonth, todayDay, markers);
+  if (hasEvents) {
+    const int listTop = gridBottom + 4;
+    renderer.drawLine(left, listTop, left + gridWidth, listTop, 2, true);
+    std::vector<size_t> upcoming;
+    events.upcoming(ics::daysFromCivil(todayYear, todayMonth, todayDay), 8, upcoming);
+    const Rect listRect{left, listTop + 8, gridWidth, contentBottom - listTop - 8};
+    if (upcoming.empty()) {
+      renderer.drawText(UI_10_FONT_ID, listRect.x, listRect.y, tr(STR_CALENDAR_NO_EVENTS));
+    } else {
+      CalendarView::drawAgenda(renderer, listRect, events, upcoming, true);
+    }
+  }
 
   renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
 }
