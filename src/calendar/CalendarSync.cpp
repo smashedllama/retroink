@@ -5,7 +5,10 @@
 
 #include <strings.h>
 
+#include <Arduino.h>
+
 #include <algorithm>
+#include <memory>
 #include <cstring>
 
 #include "CalendarFeedStore.h"
@@ -38,20 +41,27 @@ const char* resultText(const Result result) {
     case Result::Ok:
       return "Calendar synced";
     case Result::NotConfigured:
-      return "Calendar link isn't set up";
+      return "No calendar link set up yet";
     case Result::NoDate:
-      return "Set the date in Desk Calendar first";
+      return "Set the date first (Options)";
     case Result::Network:
       return "Couldn't reach the calendar";
     case Result::NotCalendar:
-      return "That link isn't a calendar feed";
+      return "That link isn't a calendar";
     case Result::WriteFailed:
       return "Couldn't save to the SD card";
   }
   return "Calendar sync failed";
 }
 
-Result run(size_t* eventCount, bool* truncated) {
+namespace {
+std::string g_detail;
+}  // namespace
+
+std::string lastFailureDetail() { return g_detail; }
+
+Result run(size_t* eventCount, bool* truncated, const ProgressFn& progress) {
+  g_detail.clear();
   const CalendarFeedConfig& cfg = CALENDAR_FEED.getConfig();
   const std::string url = normalizeUrl(cfg.url);
   if (!cfg.enabled || url.empty()) return Result::NotConfigured;
@@ -64,18 +74,59 @@ Result run(size_t* eventCount, bool* truncated) {
   options.windowStartDay = today - kDaysBefore;
   options.windowEndDay = today + kDaysAfter;
   options.utcOffsetMinutes = (static_cast<int>(std::min(now.zoneQ, DeskDate::kMaxZoneQ)) - 48) * 15;
-  ics::Parser parser(options);
 
-  const auto error = HttpDownloader::streamUrl(url, [&parser](const uint8_t* data, const size_t len) {
-    parser.feed(data, len);
-    return true;
-  });
-  LOG_DBG("CAL", "Feed download result %d, events seen %u", static_cast<int>(error),
-          static_cast<unsigned>(parser.eventsSeen()));
+  // Feeds are often chunked, so the size is usually unknown up front. With no
+  // size, the bar eases toward the end so it still shows movement.
+  constexpr size_t kTypicalFeedBytes = 300 * 1024;
+  size_t knownTotal = 0;
+  size_t received = 0;
+  int lastPercent = -1;
+  uint32_t lastReportMs = 0;
+  auto report = [&](const bool force) {
+    if (!progress) return;
+    int percent = knownTotal > 0 ? static_cast<int>(std::min<size_t>(99, received * 100 / knownTotal))
+                                 : static_cast<int>(95 * received / (received + kTypicalFeedBytes));
+    const uint32_t nowMs = millis();
+    if (!force && (percent - lastPercent < 3 || nowMs - lastReportMs < 700)) return;
+    lastPercent = percent;
+    lastReportMs = nowMs;
+    progress(percent);
+  };
+
+  // A second try over the other TLS stack, on a fresh parser, covers servers
+  // the first stack cannot talk to.
+  const HttpDownloader::Transport transports[] = {HttpDownloader::Transport::ESP_HTTP,
+                                                  HttpDownloader::Transport::WOLFSSL};
+  std::unique_ptr<ics::Parser> parser;
+  HttpDownloader::DownloadError error = HttpDownloader::HTTP_ERROR;
+  for (const auto transport : transports) {
+    parser = std::make_unique<ics::Parser>(options);
+    received = 0;
+    knownTotal = 0;
+    lastPercent = -1;
+    report(true);
+    error = HttpDownloader::streamUrl(
+        url,
+        [&](const uint8_t* data, const size_t len) {
+          parser->feed(data, len);
+          received += len;
+          report(false);
+          return true;
+        },
+        [&](const size_t, const size_t total) { knownTotal = total; }, "", "",
+        HttpDownloader::DownloadOptions(false, false, nullptr, 0, transport));
+    LOG_DBG("CAL", "Feed download (%s) result %d, %u bytes, %u events seen",
+            transport == HttpDownloader::Transport::ESP_HTTP ? "esp" : "wolfssl", static_cast<int>(error),
+            static_cast<unsigned>(received), static_cast<unsigned>(parser->eventsSeen()));
+    if (error == HttpDownloader::OK) break;
+    if (g_detail.empty()) g_detail = HttpDownloader::lastFailure();
+  }
   if (error != HttpDownloader::OK) return Result::Network;
-  if (!parser.sawCalendar()) return Result::NotCalendar;
+  g_detail.clear();
+  if (!parser->sawCalendar()) return Result::NotCalendar;
+  if (progress) progress(100);
 
-  ics::Calendar calendar = parser.finish();
+  ics::Calendar calendar = parser->finish();
   calendar.syncedDay = today;
   const std::string blob = ics::serialize(calendar);
 

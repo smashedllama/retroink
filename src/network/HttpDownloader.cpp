@@ -32,7 +32,20 @@ constexpr uint32_t DOWNLOAD_IDLE_TIMEOUT_MS = 30000;
 constexpr size_t DEFAULT_DOWNLOAD_BUFFER_SIZE = 2048;
 constexpr uint8_t MAX_REDIRECTS = 5;
 
+// What went wrong last, kept so callers can tell the user something more
+// useful than "failed". Requests run one at a time, so plain statics do.
+char g_failurePhase[40] = "";
+int g_failureTls = 0;
+int g_failureStatus = 0;
+
+void resetFailure() {
+  g_failurePhase[0] = '\0';
+  g_failureTls = 0;
+  g_failureStatus = 0;
+}
+
 void logNetworkState(const char* phase) {
+  if (g_failurePhase[0] == '\0') snprintf(g_failurePhase, sizeof(g_failurePhase), "%s", phase);
   LOG_DBG("HTTP", "%s: heap free=%u maxAlloc=%u wifi=%d rssi=%d", phase, ESP.getFreeHeap(), ESP.getMaxAllocHeap(),
           static_cast<int>(WiFi.status()), WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0);
 }
@@ -124,6 +137,7 @@ void logTlsError(esp_http_client_handle_t client, const char* phase) {
   const esp_err_t err = esp_http_client_get_and_clear_last_tls_error(client, &tlsError, &tlsFlags);
   if (err != ESP_OK || tlsError != 0 || tlsFlags != 0) {
     const int tlsCode = tlsError < 0 ? -tlsError : tlsError;
+    g_failureTls = tlsCode != 0 ? tlsCode : tlsFlags;
     LOG_ERR("HTTP", "%s TLS error: err=%s mbedtls=0x%x flags=0x%x", phase, esp_err_to_name(err), tlsCode, tlsFlags);
   }
 }
@@ -227,6 +241,7 @@ HttpDownloader::DownloadError runGetWolfSsl(const std::string& url, const std::s
     const bool isResumeResponse = sink.resumeOffset > 0 && status == 206;
     if (status != 200 && !isResumeResponse) {
       LOG_ERR("HTTP", "Unexpected status: %d", status);
+      g_failureStatus = status;
       return HttpDownloader::HTTP_ERROR;
     }
     if (http.callbackAborted()) {
@@ -294,6 +309,8 @@ HttpDownloader::DownloadError runGetDefault(const std::string& url, const std::s
 
     int64_t responseLength = esp_http_client_fetch_headers(client);
     const int status = esp_http_client_get_status_code(client);
+    if (status != 200) g_failureStatus = status;
+    if (responseLength < 0) logTlsError(client, "Fetch headers failure");
     if (responseLength < 0) {
       LOG_ERR("HTTP", "Fetch headers failed: %lld", static_cast<long long>(responseLength));
       logNetworkState("Fetch headers failure");
@@ -474,6 +491,20 @@ bool HttpDownloader::fetchUrl(const std::string& url, const DataCallback& onData
   return streamUrl(url, onData, nullptr, username, password) == OK;
 }
 
+std::string HttpDownloader::lastFailure() {
+  std::string out = g_failurePhase;
+  char extra[24];
+  if (g_failureStatus != 0) {
+    snprintf(extra, sizeof(extra), "%sHTTP %d", out.empty() ? "" : ", ", g_failureStatus);
+    out += extra;
+  }
+  if (g_failureTls != 0) {
+    snprintf(extra, sizeof(extra), "%sTLS 0x%x", out.empty() ? "" : ", ", g_failureTls);
+    out += extra;
+  }
+  return out;
+}
+
 HttpDownloader::DownloadError HttpDownloader::streamUrl(const std::string& url, const DataCallback& onData,
                                                         ProgressCallback progress, const std::string& username,
                                                         const std::string& password, DownloadOptions options) {
@@ -485,6 +516,7 @@ HttpDownloader::DownloadError HttpDownloader::streamUrl(const std::string& url, 
     return HTTP_ERROR;
   }
 
+  resetFailure();
   Sink sink;
   sink.write = onData;
   sink.progress = std::move(progress);

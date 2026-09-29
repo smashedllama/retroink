@@ -2729,6 +2729,9 @@ void CrossPointWebServer::handlePostCalendarSync() const {
   if (result == CalendarSync::Result::Ok) {
     message += " (" + std::to_string(count) + (count == 1 ? " entry" : " entries") + ")";
     if (truncated) message += ". The calendar is large, so some events were left out.";
+  } else if (result == CalendarSync::Result::Network || result == CalendarSync::Result::NotCalendar) {
+    const std::string detail = CalendarSync::lastFailureDetail();
+    if (!detail.empty()) message += " (" + detail + ")";
   }
   JsonDocument doc;
   doc["ok"] = result == CalendarSync::Result::Ok;

@@ -53,6 +53,12 @@ class HttpDownloader {
   };
 
   /**
+   * A short description of why the last request failed ("Open failure,
+   * TLS 0x2700", "HTTP 403"), for showing to the user. Empty after a success.
+   */
+  static std::string lastFailure();
+
+  /**
    * Fetch text content from a URL with optional credentials.
    */
   static bool fetchUrl(const std::string& url, std::string& outContent, const std::string& username = "",

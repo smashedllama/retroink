@@ -377,17 +377,17 @@ void CrossPointWebServerActivity::performObsidianSync() {
 void CrossPointWebServerActivity::beginCalendarSync() {
   const CalendarFeedConfig& cfg = CALENDAR_FEED.getConfig();
   if (!cfg.enabled || cfg.url.empty()) {
-    {
-      RenderLock lock(*this);
-      BookActions::drawToast(renderer, tr(STR_CALENDAR_NOT_CONFIGURED));
-    }
-    delay(2500);
+    showCalendarPopup(tr(STR_CALENDAR_NOT_CONFIGURED), 2200);
+    showCalendarPopup(tr(STR_CALENDAR_NOT_CONFIGURED_HINT), 2600);
     exitToOrigin();
     return;
   }
 
   pendingCalendarSync = true;
   isApMode = false;
+  // Frees the reader font's memory for the TLS session, as Calibre does. Leaving
+  // this activity restarts the device, which reloads it.
+  sdFontSystem.releaseLoadedFont(renderer);
 
   WiFi.mode(WIFI_STA);
   state = WebServerActivityState::WIFI_SELECTION;
@@ -402,26 +402,46 @@ void CrossPointWebServerActivity::beginCalendarSync() {
                          });
 }
 
-void CrossPointWebServerActivity::performCalendarSync() {
+void CrossPointWebServerActivity::showCalendarPopup(const char* message, const unsigned long holdMs) {
   {
     RenderLock lock(*this);
-    BookActions::drawToast(renderer, tr(STR_CALENDAR_SYNCING));
+    renderer.clearScreen();
+    GUI.drawPopup(renderer, message);
+  }
+  delay(holdMs);
+}
+
+void CrossPointWebServerActivity::performCalendarSync() {
+  Rect layout;
+  {
+    RenderLock lock(*this);
+    renderer.clearScreen();
+    layout = GUI.drawPopup(renderer, tr(STR_CALENDAR_SYNCING));
+    GUI.fillPopupProgress(renderer, layout, 0);
   }
   size_t count = 0;
   bool truncated = false;
-  const CalendarSync::Result result = CalendarSync::run(&count, &truncated);
+  const CalendarSync::Result result =
+      CalendarSync::run(&count, &truncated, [this, &layout](const int percent) {
+        RenderLock lock(*this);
+        GUI.fillPopupProgress(renderer, layout, percent);
+      });
 
-  char message[64];
   if (result == CalendarSync::Result::Ok) {
+    {
+      RenderLock lock(*this);
+      GUI.fillPopupProgress(renderer, layout, 100);
+    }
+    delay(400);
+    char message[48];
     snprintf(message, sizeof(message), "%s (%u)", tr(STR_CALENDAR_SYNCED), static_cast<unsigned>(count));
+    showCalendarPopup(message, 2000);
+    if (truncated) showCalendarPopup(tr(STR_CALENDAR_SOME_LEFT_OUT), 2400);
   } else {
-    snprintf(message, sizeof(message), "%s", CalendarSync::resultText(result));
+    showCalendarPopup(CalendarSync::resultText(result), 2200);
+    const std::string detail = CalendarSync::lastFailureDetail();
+    if (!detail.empty()) showCalendarPopup(detail.c_str(), 3000);
   }
-  {
-    RenderLock lock(*this);
-    BookActions::drawToast(renderer, message);
-  }
-  delay(2000);
   exitToOrigin();
 }
 

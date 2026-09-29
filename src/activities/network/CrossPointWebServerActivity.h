@@ -80,6 +80,7 @@ class CrossPointWebServerActivity final : public Activity {
   void performObsidianSync();
   void beginCalendarSync();
   void performCalendarSync();
+  void showCalendarPopup(const char* message, unsigned long holdMs);
   void showObsidianSetupGuide();
 
  public:
