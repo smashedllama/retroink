@@ -443,28 +443,48 @@ OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(ProgressCallback onProgres
     }
   }
 
-  HttpDownloader::DownloadOptions downloadOptions;
-  downloadOptions.shouldCancel = isCancellationRequested;
   // wolfSSL currently has no CA bundle, so only use it when the trusted release
   // manifest supplied a digest that pins the firmware bytes. Older HTTPS
   // releases without a digest retain the verified esp_http_client path.
-  if (hasManifestSha256) downloadOptions.transport = HttpDownloader::Transport::WOLFSSL;
+  const auto transport =
+      hasManifestSha256 ? HttpDownloader::Transport::WOLFSSL : HttpDownloader::Transport::ESP_HTTP;
+
+  // A large SD write can fail partway (a card timeout, for instance). The
+  // partial file is kept and the download resumed from where it stopped rather
+  // than starting the 6 MB over, and the whole staged file is still checked
+  // against the manifest digest below, so a bad resume can never be flashed.
+  constexpr int kMaxStagingAttempts = 3;
   LOG_INF("OTA", "Staging firmware download: url=%s heap=%u maxAlloc=%u", otaUrl.c_str(), ESP.getFreeHeap(),
           ESP.getMaxAllocHeap());
-  const auto transferResult = HttpDownloader::downloadToFile(
-      otaUrl, OTA_STAGE_PATH,
-      [&](const size_t downloaded, const size_t total) {
-        if (stagingWork == 0 && total > 0) {
-          stagingWork = total;
-          totalSize = stagingWork * 2;
-          installCtx.totalSize = totalSize;
-        }
-        processedSize = downloaded;
-        notifyOtaProgress(&installCtx, false);
-      },
-      nullptr, "", "", std::move(downloadOptions));
+  HttpDownloader::DownloadError transferResult = HttpDownloader::HTTP_ERROR;
+  for (int attempt = 1; attempt <= kMaxStagingAttempts; ++attempt) {
+    HttpDownloader::DownloadOptions downloadOptions(/*preservePartial=*/true, /*resumePartial=*/attempt > 1,
+                                                    isCancellationRequested);
+    downloadOptions.transport = transport;
+    transferResult = HttpDownloader::downloadToFile(
+        otaUrl, OTA_STAGE_PATH,
+        [&](const size_t downloaded, const size_t total) {
+          if (stagingWork == 0 && total > 0) {
+            stagingWork = total;
+            totalSize = stagingWork * 2;
+            installCtx.totalSize = totalSize;
+          }
+          processedSize = downloaded;
+          notifyOtaProgress(&installCtx, false);
+        },
+        nullptr, "", "", std::move(downloadOptions));
+    if (transferResult == HttpDownloader::OK || transferResult == HttpDownloader::ABORTED ||
+        isCancellationRequested()) {
+      break;
+    }
+    LOG_ERR("OTA", "Staging attempt %d/%d failed after %zu bytes (SD used=%llu total=%llu heap=%u)", attempt,
+            kMaxStagingAttempts, processedSize, static_cast<unsigned long long>(Storage.usedBytes()),
+            static_cast<unsigned long long>(Storage.totalBytes()), ESP.getFreeHeap());
+    if (attempt < kMaxStagingAttempts) delay(750);
+  }
 
   if (transferResult != HttpDownloader::OK) {
+    Storage.remove(OTA_STAGE_PATH);
     if (transferResult == HttpDownloader::ABORTED || isCancellationRequested()) {
       LOG_INF("OTA", "Update cancelled");
       return CANCELLED_ERROR;

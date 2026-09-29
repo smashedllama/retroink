@@ -1,3 +1,10 @@
+## [RetroInk 0.5.3] - 2026-09-29
+
+### Fixed
+
+- Updating from Settings > System > Check for Updates could fail with "Update failed" partway through the download on the X3. The update is saved to the SD card before it is installed, and a write to the card failed about a third of the way in. The update now keeps the partial file and resumes from where it stopped, up to three attempts, instead of giving up. The finished file is still checked against its published checksum before anything is installed, so a resumed download can never install a damaged file. If it still fails, it now logs the attempt number and the card's used and total space.
+- If you are on 0.5.1 or 0.5.2 and the update fails, install 0.5.3 once from the SD card (copy the `.bin` onto the card, then Settings > System > SD Card Firmware Update). Updates from 0.5.3 onward use the fix.
+
 ## [RetroInk 0.5.2] - 2026-09-28
 
 ### Added
