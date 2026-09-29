@@ -9,6 +9,7 @@
 #include <cstdio>
 
 #include "DeskDatePickerActivity.h"
+#include "DeskDayActivity.h"
 #include "activities/network/CrossPointWebServerActivity.h"
 #include "calendar/CalendarSync.h"
 #include "components/CalendarView.h"
@@ -75,8 +76,6 @@ void DeskCalendarActivity::pageMonth(const int delta) {
     viewYear_ += 1;
   }
   viewYear_ = std::clamp(viewYear_, 1970, 2100);
-  agendaScroll_ = 0;
-  scrollMode_ = false;
   // A month change lands on today's day in today's month, otherwise the 1st.
   selectedDay_ = (todayKnown_ && viewYear_ == todayYear_ && viewMonth_ == todayMonth_) ? todayDay_ : 1;
   requestUpdate();
@@ -90,15 +89,6 @@ void DeskCalendarActivity::moveSelection(const int deltaDays) {
   viewYear_ = y;
   viewMonth_ = m;
   selectedDay_ = d;
-  agendaScroll_ = 0;
-  requestUpdate();
-}
-
-void DeskCalendarActivity::scrollAgenda(const int delta) {
-  const int maxScroll = std::max(0, agendaTotal_ - agendaVisible_);
-  const int next = std::clamp(agendaScroll_ + delta, 0, maxScroll);
-  if (next == agendaScroll_) return;
-  agendaScroll_ = next;
   requestUpdate();
 }
 
@@ -122,15 +112,29 @@ Rect DeskCalendarActivity::gridRect() const {
   return Rect{frameX + 16, top, pageWidth - 2 * frameX - 32, bottom - top};
 }
 
+void DeskCalendarActivity::openDayView() {
+  daySeen_ = ics::daysFromCivil(viewYear_, viewMonth_, std::max(selectedDay_, 1));
+  startActivityForResult(std::make_unique<DeskDayActivity>(renderer, mappedInput, events_, &daySeen_),
+                         [this](const ActivityResult&) {
+                           // The month follows wherever the day view ended up.
+                           int y, m, d;
+                           ics::civilFromDays(daySeen_, y, m, d);
+                           viewYear_ = y;
+                           viewMonth_ = m;
+                           selectedDay_ = d;
+                           requestUpdate();
+                         });
+}
+
 void DeskCalendarActivity::openOptions() {
-  enum class Choice { Sync, Scroll, SetDate };
+  enum class Choice { Sync, DayView, SetDate };
   std::vector<std::string> options;
   std::vector<Choice> choices;
   options.emplace_back(tr(STR_SYNC_CALENDAR));
   choices.push_back(Choice::Sync);
-  if (agendaOverflows()) {
-    options.emplace_back(tr(STR_CALENDAR_SCROLL_EVENTS));
-    choices.push_back(Choice::Scroll);
+  if (hasEvents_ && selectedDay_ > 0) {
+    options.emplace_back(tr(STR_CALENDAR_DAY_VIEW));
+    choices.push_back(Choice::DayView);
   }
   // Without a clock chip the date is picked by hand, so it lives here too.
   if (picksDate_) {
@@ -147,8 +151,8 @@ void DeskCalendarActivity::openOptions() {
             std::make_unique<CrossPointWebServerActivity>(renderer, mappedInput, NetworkMode::SYNC_CALENDAR),
             [this](const ActivityResult&) { requestUpdate(); });
         break;
-      case Choice::Scroll:
-        scrollMode_ = true;
+      case Choice::DayView:
+        openDayView();
         break;
       case Choice::SetDate:
         pickerPending_ = true;
@@ -163,35 +167,9 @@ void DeskCalendarActivity::loop() {
     optionPopup_.handleInput(mappedInput, [this] { requestUpdate(); });
     return;
   }
-  if (scrollMode_) {
-    using B = MappedInputManager::Button;
-    if (mappedInput.wasReleased(B::Back) || mappedInput.wasReleased(B::Confirm)) {
-      scrollMode_ = false;
-      requestUpdate();
-    } else if (mappedInput.wasReleased(B::Left) || mappedInput.wasReleased(B::Up) ||
-               mappedInput.wasReleased(B::PageBack)) {
-      scrollAgenda(-1);
-    } else if (mappedInput.wasReleased(B::Right) || mappedInput.wasReleased(B::Down) ||
-               mappedInput.wasReleased(B::PageForward)) {
-      scrollAgenda(1);
-    }
-    return;
-  }
   if (TouchHeaderBackButton::wasTapped(mappedInput, renderer)) {
     finish();
     return;
-  }
-  if (hasEvents_ && agendaOverflows()) {
-    // Swipe up shows later events, like scrolling any list.
-    const auto swipe = mappedInput.wasSwipe();
-    if (swipe == MappedInputManager::SwipeDir::Up) {
-      scrollAgenda(std::max(1, agendaVisible_));
-      return;
-    }
-    if (swipe == MappedInputManager::SwipeDir::Down) {
-      scrollAgenda(-std::max(1, agendaVisible_));
-      return;
-    }
   }
   if (mappedInput.wasReleased(MappedInputManager::Button::Back) || exitPending_) {
     finish();
@@ -230,8 +208,7 @@ void DeskCalendarActivity::loop() {
     const int day = CalendarView::dayAt(renderer, gridRect(), viewYear_, viewMonth_, tapX, tapY);
     if (day != 0) {
       selectedDay_ = day;
-      agendaScroll_ = 0;
-      requestUpdate();
+          requestUpdate();
     }
   }
 }
@@ -271,38 +248,31 @@ void DeskCalendarActivity::render(RenderLock&&) {
     const int total = static_cast<int>(indices.size());
     if (total == 0) {
       renderer.drawText(UI_10_FONT_ID, agenda.x, agenda.y, tr(STR_CALENDAR_NO_EVENTS));
+    } else if (total <= capacity) {
+      agendaTotal_ = total;
+      agendaVisible_ = total;
+      CalendarView::drawAgenda(renderer, agenda, events_, indices, false);
     } else {
-      // When the day has more events than fit, the last line becomes a
-      // "3-5 / 9" position marker.
-      const int visible = total > capacity ? std::max(1, capacity - 1) : total;
+      // More than fit: the last line says how many are hidden, and Options >
+      // Day View shows them all.
+      const int visible = std::max(1, capacity - 1);
       agendaTotal_ = total;
       agendaVisible_ = visible;
-      agendaScroll_ = std::clamp(agendaScroll_, 0, std::max(0, total - visible));
-      const std::vector<size_t> shown(indices.begin() + agendaScroll_, indices.begin() + agendaScroll_ + visible);
+      const std::vector<size_t> shown(indices.begin(), indices.begin() + visible);
       CalendarView::drawAgenda(renderer, agenda, events_, shown, false);
-      if (total > visible) {
-        char position[40];
-        std::snprintf(position, sizeof(position), "%d-%d / %d", agendaScroll_ + 1, agendaScroll_ + visible, total);
-        renderer.drawText(UI_10_FONT_ID, agenda.x, agenda.y + visible * lineHeight, position, true,
-                          EpdFontFamily::BOLD);
-        // Small triangles at the right edge show which way there is more.
-        const int arrowY = agenda.y + visible * lineHeight + 4;
-        const int downX = agenda.x + agenda.width - 20;
-        const int upX = downX - 24;
-        if (agendaScroll_ + visible < total) {
-          for (int r = 0; r < 6; ++r) renderer.drawLine(downX + r, arrowY + r, downX + 12 - r, arrowY + r);
-        }
-        if (agendaScroll_ > 0) {
-          for (int r = 0; r < 6; ++r) renderer.drawLine(upX + r, arrowY + 5 - r, upX + 12 - r, arrowY + 5 - r);
-        }
-      }
+      char more[48];
+      std::snprintf(more, sizeof(more), tr(STR_CALENDAR_MORE), total - visible);
+      const int moreY = agenda.y + visible * lineHeight;
+      renderer.drawText(UI_10_FONT_ID, agenda.x, moreY, more, true, EpdFontFamily::BOLD);
+      const char* hint = tr(STR_CALENDAR_DAY_VIEW);
+      const std::string hintText = std::string(tr(STR_CALENDAR_OPTIONS)) + " > " + hint;
+      const int hintWidth = renderer.getTextWidth(UI_10_FONT_ID, hintText.c_str());
+      renderer.drawText(UI_10_FONT_ID, agenda.x + agenda.width - hintWidth, moreY, hintText.c_str());
     }
   }
 
-  const auto labels = scrollMode_
-                          ? mappedInput.mapLabels(tr(STR_DONE), "", tr(STR_DIR_UP), tr(STR_DIR_DOWN))
-                          : mappedInput.mapLabels(tr(STR_BACK), tr(STR_CALENDAR_OPTIONS), tr(STR_DIR_LEFT),
-                                                  tr(STR_DIR_RIGHT));
+  const auto labels =
+      mappedInput.mapLabels(tr(STR_BACK), tr(STR_CALENDAR_OPTIONS), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   if (optionPopup_.processRender(renderer, mappedInput)) return;
   renderer.displayBuffer();

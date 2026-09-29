@@ -192,3 +192,11 @@ TEST(IcsParse, OccurrenceCapSetsTruncated) {
   EXPECT_EQ(c.occurrences.size(), 10u);
   EXPECT_TRUE(c.truncated);
 }
+
+TEST(IcsParse, LongTitleKeptToAHundredBytes) {
+  const std::string longTitle(150, 'x');
+  const auto c = parse(wrap("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20261001T100000\r\nSUMMARY:" + longTitle + "\r\nEND:VEVENT\r\n"),
+                       D(2026, 9, 1), D(2026, 12, 1));
+  ASSERT_EQ(c.occurrences.size(), 1u);
+  EXPECT_EQ(std::string(c.title(c.occurrences[0])).size(), 100u);
+}

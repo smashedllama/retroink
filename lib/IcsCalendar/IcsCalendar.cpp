@@ -49,7 +49,7 @@ int daysInMonth(const int year, const int month) {
 namespace {
 
 constexpr size_t kMaxLogicalLine = 1200;
-constexpr size_t kMaxTitleBytes = 47;
+constexpr size_t kMaxTitleBytes = 100;
 constexpr size_t kMaxExdates = 64;
 constexpr size_t kMaxOverrides = 400;
 constexpr int kMaxAllDaySpan = 31;
