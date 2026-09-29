@@ -9,6 +9,7 @@
 #include <cstdio>
 
 #include "DeskDatePickerActivity.h"
+#include "activities/network/CrossPointWebServerActivity.h"
 #include "calendar/CalendarSync.h"
 #include "components/CalendarView.h"
 #include "components/DeskDate.h"
@@ -40,7 +41,7 @@ void DeskCalendarActivity::onEnter() {
   pickerPending_ = picksDate_ && !todayKnown_;
   hasEvents_ = CalendarSync::loadStored(events_);
   selectedDay_ = 0;
-  if (hasEvents_ && todayKnown_) selectedDay_ = todayDay_;
+  if (todayKnown_) selectedDay_ = todayDay_;
   requestUpdate();
 }
 
@@ -74,11 +75,8 @@ void DeskCalendarActivity::pageMonth(const int delta) {
     viewYear_ += 1;
   }
   viewYear_ = std::clamp(viewYear_, 1970, 2100);
-  // Keep a selection only where it can be seen: today's day in today's month,
-  // otherwise the 1st.
-  if (hasEvents_) {
-    selectedDay_ = (todayKnown_ && viewYear_ == todayYear_ && viewMonth_ == todayMonth_) ? todayDay_ : 1;
-  }
+  // A month change lands on today's day in today's month, otherwise the 1st.
+  selectedDay_ = (todayKnown_ && viewYear_ == todayYear_ && viewMonth_ == todayMonth_) ? todayDay_ : 1;
   requestUpdate();
 }
 
@@ -105,7 +103,31 @@ Rect DeskCalendarActivity::gridRect() const {
   return Rect{frameX + 16, top, pageWidth - 2 * frameX - 32, bottom - top};
 }
 
+void DeskCalendarActivity::openOptions() {
+  std::vector<std::string> options;
+  options.emplace_back(tr(STR_SYNC_CALENDAR));
+  // Without a clock chip the date is picked by hand, so it lives here too.
+  if (picksDate_) options.emplace_back(tr(STR_DESK_SET_DATE));
+  const bool picksDate = picksDate_;
+  optionPopup_.show(tr(STR_CALENDAR_OPTIONS), options, 0, [this, picksDate](const int index) {
+    if (index == 0) {
+      // Runs the Wi-Fi flow, downloads the feed, and ends back at Home like
+      // Sync to Obsidian does.
+      startActivityForResult(
+          std::make_unique<CrossPointWebServerActivity>(renderer, mappedInput, NetworkMode::SYNC_CALENDAR),
+          [this](const ActivityResult&) { requestUpdate(); });
+    } else if (picksDate) {
+      pickerPending_ = true;
+    }
+  });
+  requestUpdate();
+}
+
 void DeskCalendarActivity::loop() {
+  if (optionPopup_.isActive()) {
+    optionPopup_.handleInput(mappedInput, [this] { requestUpdate(); });
+    return;
+  }
   if (TouchHeaderBackButton::wasTapped(mappedInput, renderer)) {
     finish();
     return;
@@ -119,36 +141,36 @@ void DeskCalendarActivity::loop() {
     openPicker();
     return;
   }
-  if (picksDate_ && mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    openPicker();
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    openOptions();
     return;
   }
-  if (hasEvents_) {
-    if (mappedInput.wasReleased(MappedInputManager::Button::Up)) {
-      moveSelection(-1);
-      return;
-    }
-    if (mappedInput.wasReleased(MappedInputManager::Button::Down)) {
-      moveSelection(1);
-      return;
-    }
-    int tapX = 0, tapY = 0;
-    if (mappedInput.wasScreenTapped(tapX, tapY)) {
-      const int day = CalendarView::dayAt(renderer, gridRect(), viewYear_, viewMonth_, tapX, tapY);
-      if (day != 0) {
-        selectedDay_ = day;
-        requestUpdate();
-        return;
-      }
-    }
-  }
+  // Front Left/Right step a day; the side page buttons step a month.
   if (mappedInput.wasReleased(MappedInputManager::Button::Left)) {
-    pageMonth(-1);
+    moveSelection(-1);
     return;
   }
   if (mappedInput.wasReleased(MappedInputManager::Button::Right)) {
+    moveSelection(1);
+    return;
+  }
+  if (mappedInput.wasReleased(MappedInputManager::Button::PageBack) ||
+      mappedInput.wasReleased(MappedInputManager::Button::Up)) {
+    pageMonth(-1);
+    return;
+  }
+  if (mappedInput.wasReleased(MappedInputManager::Button::PageForward) ||
+      mappedInput.wasReleased(MappedInputManager::Button::Down)) {
     pageMonth(1);
     return;
+  }
+  int tapX = 0, tapY = 0;
+  if (mappedInput.wasScreenTapped(tapX, tapY)) {
+    const int day = CalendarView::dayAt(renderer, gridRect(), viewYear_, viewMonth_, tapX, tapY);
+    if (day != 0) {
+      selectedDay_ = day;
+      requestUpdate();
+    }
   }
 }
 
@@ -173,8 +195,7 @@ void DeskCalendarActivity::render(RenderLock&&) {
   CalendarView::Markers markers;
   if (hasEvents_) {
     markers.eventMask = events_.monthMask(viewYear_, viewMonth_);
-    markers.selectedDay = selectedDay_;
-  }
+    }
   CalendarView::draw(renderer, grid, viewYear_, viewMonth_, todayKnown_, todayYear_, todayMonth_, todayDay_, markers);
 
   if (hasEvents_) {
@@ -191,8 +212,8 @@ void DeskCalendarActivity::render(RenderLock&&) {
     }
   }
 
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), picksDate_ ? tr(STR_DESK_SET_DATE) : "",
-                                            tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_CALENDAR_OPTIONS), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  if (optionPopup_.processRender(renderer, mappedInput)) return;
   renderer.displayBuffer();
 }

@@ -685,7 +685,7 @@ let allSettings = [];
     const c = calendarConfig;
     container.innerHTML = '<div class="card"><h2>Desk Calendar</h2>' +
       '<p style="color:var(--label-color);">Shows events from your Google, Apple (iCloud) or Outlook calendar in the Desk Calendar. ' +
-      'Paste the calendar\'s iCal (.ics) link below, then press Sync Now, or use Sync Calendar in the File Transfer menu on the device.</p>' +
+      'Paste the calendar\'s iCal (.ics) link below, then press Sync Now, or use Options > Sync Calendar in the Desk Calendar on the device.</p>' +
       '<div class="setting-row">' +
         '<span class="setting-name">Enabled</span>' +
         '<span class="setting-control"><input type="checkbox" id="cal-enabled"' + (c.enabled ? ' checked' : '') + '></span>' +

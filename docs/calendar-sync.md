@@ -10,7 +10,7 @@ The events live on the SD card (`/.crosspoint/calendar.bin`), so nothing is lost
 2. On the reader, open **File Transfer** and start a web server (Join a Network). Open the address it shows, go to **Settings**, and find the **Desk Calendar** card.
 3. Paste the link and press **Save**, then **Sync Now**.
 
-After that, you can update from the reader alone: **File Transfer > Sync Calendar** connects to Wi-Fi, downloads the calendar, and returns.
+After that, you can update from the reader alone: open the Desk Calendar, press the middle button (**Options**), and choose **Sync Calendar**. It connects to Wi-Fi, downloads the calendar, and returns to Home.
 
 ## Getting the link
 
@@ -22,7 +22,7 @@ Anyone with the link can read the calendar, so keep it private. The reader store
 
 ## What you see
 
-- **Desk Calendar**: a small square under every day that has an event. The side (up/down) buttons, or a tap, pick a day, and the events for that day are listed under the grid. Left and Right still change the month.
+- **Desk Calendar**: a small square under every day that has an event. The front Left and Right buttons move one day at a time (rolling into the next or previous month), the side page-turn buttons change the month, and a tap picks a day. The events for the selected day are listed under the grid. The Options button holds Sync Calendar (and Set Date on the original X4).
 - **Desk Calendar sleep screen**: the same dots, plus the next few events.
 
 Repeating events (daily, weekly, monthly, yearly, with days of the week, "second Thursday", end dates, and skipped dates) are expanded, and moved or cancelled single occurrences are respected. About 45 days back and 13 months ahead are kept, up to 400 entries. If a very busy calendar goes over that, the sync tells you some events were left out.
@@ -31,5 +31,5 @@ Repeating events (daily, weekly, monthly, yearly, with days of the week, "second
 
 - Times ending in `Z` (UTC) are shifted by the time zone set on the reader (Settings > Clock). Times that name another time zone are taken as already being local, which is right for a calendar kept in your own time zone.
 - Only one calendar is supported. Read-only; you cannot add events from the reader.
-- On the original X4 (no clock), set the date in the Desk Calendar first so the reader knows what "today" is.
+- On the original X4 (no clock), set the date in the Desk Calendar first (Options > Set Date) so the reader knows what "today" is.
 - Text is shown in the reader's UI font, so a title in a script that font lacks may show gaps.

@@ -12,7 +12,7 @@ enum class NetworkMode {
   CONNECT_CALIBRE,
   CREATE_HOTSPOT,
   SYNC_OBSIDIAN,
-  SYNC_CALENDAR,
+  SYNC_CALENDAR,  // started from the Desk Calendar Options menu, not listed here
   USB_DRIVE,
   NEARBY_BOOK_RECEIVE,
   NEARBY_STATS_SYNC
@@ -24,7 +24,6 @@ enum class NetworkMode {
  * - "Connect to Calibre" - Use Calibre wireless device transfers
  * - "Create Hotspot" - Create an Access Point that others can connect to (AP mode)
  * - "Sync to Obsidian" - Push queued clippings to an Obsidian vault
- * - "Sync Calendar" - Download the calendar feed for the Desk Calendar
  * - "Sync Stats" - Sync reading stats directly with a nearby reader
  * - "Receive File" - Receive a file directly from another reader
  *

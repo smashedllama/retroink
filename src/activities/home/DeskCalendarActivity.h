@@ -5,6 +5,7 @@
 #include <GfxRenderer.h>
 
 #include "activities/Activity.h"
+#include "components/OptionPopup.h"
 #include "components/themes/BaseTheme.h"
 
 // A static desk-calendar month view, paged with Left/Right. Today's cell is
@@ -26,7 +27,10 @@ class DeskCalendarActivity final : public Activity {
   bool hasEvents_ = false;
   int selectedDay_ = 0;  // 1-31 within the viewed month, 0 = none
 
+  OptionPopup optionPopup_;
+
   void moveSelection(int deltaDays);
+  void openOptions();
   Rect gridRect() const;
 
   void pageMonth(int delta);
