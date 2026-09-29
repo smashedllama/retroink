@@ -36,4 +36,4 @@ Repeating events (daily, weekly, monthly, yearly, with days of the week, "second
 
 ## Day View
 
-**Options > Day View** shows the selected day full screen: every event on its own row, the time on the left and the whole title (up to four lines) beside it. Left and Right go to the previous and next day, the side buttons scroll a long day, a touch reader can swipe, and Back returns to the month, which follows the day you ended on.
+**Options > Day View** shows the selected day full screen: every event on its own row, the start time on the left with the length under it ("1h 30m", when the event has an end time on the same day) and the whole title (up to four lines) beside it. Left and Right go to the previous and next day, the side buttons scroll a long day, a touch reader can swipe, and Back returns to the month, which follows the day you ended on.

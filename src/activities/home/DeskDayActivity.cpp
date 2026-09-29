@@ -21,6 +21,21 @@ StrId weekdayStrId(const int weekdayMonday0) {
                               StrId::STR_STATS_FRI, StrId::STR_STATS_SAT, StrId::STR_STATS_SUN};
   return ids[std::clamp(weekdayMonday0, 0, 6)];
 }
+
+// "45m", "2h", "1h 30m". Empty when the event has no known end.
+std::string durationText(const ics::Occurrence& o) {
+  if (o.allDay() || o.endMinute == ics::kNoTime || o.endMinute <= o.startMinute) return {};
+  const int minutes = o.endMinute - o.startMinute;
+  char buf[16];
+  if (minutes < 60) {
+    std::snprintf(buf, sizeof(buf), "%dm", minutes);
+  } else if (minutes % 60 == 0) {
+    std::snprintf(buf, sizeof(buf), "%dh", minutes / 60);
+  } else {
+    std::snprintf(buf, sizeof(buf), "%dh %dm", minutes / 60, minutes % 60);
+  }
+  return buf;
+}
 }  // namespace
 
 void DeskDayActivity::loadDay() {
@@ -131,6 +146,7 @@ void DeskDayActivity::render(RenderLock&&) {
     int timeWidth = renderer.getTextWidth(font, tr(STR_CALENDAR_ALL_DAY), EpdFontFamily::BOLD);
     char label[24];
     std::vector<std::string> labels(total);
+    std::vector<std::string> durations(total);
     for (int i = 0; i < total; ++i) {
       const ics::Occurrence& o = events_.occurrences[indices_[i]];
       if (o.allDay()) {
@@ -142,6 +158,8 @@ void DeskDayActivity::render(RenderLock&&) {
         DeskDate::formatTime(t, label, sizeof(label));
       }
       labels[i] = label;
+      durations[i] = durationText(o);
+      timeWidth = std::max(timeWidth, renderer.getTextWidth(font, durations[i].c_str()));
       timeWidth = std::max(timeWidth, renderer.getTextWidth(font, label, EpdFontFamily::BOLD));
     }
     const int titleX = left + timeWidth + 14;
@@ -151,7 +169,10 @@ void DeskDayActivity::render(RenderLock&&) {
     std::vector<int> heights(total);
     for (int i = 0; i < total; ++i) {
       lines[i] = renderer.wrappedText(font, events_.title(events_.occurrences[indices_[i]]), titleWidth, kMaxTitleLines);
-      heights[i] = static_cast<int>(std::max<size_t>(1, lines[i].size())) * lineHeight + kRowPadding * 2;
+      // The duration sits under the start time, so a one-line title still
+      // gets a two-line row.
+      const size_t rows = std::max<size_t>(durations[i].empty() ? 1 : 2, lines[i].size());
+      heights[i] = static_cast<int>(rows) * lineHeight + kRowPadding * 2;
     }
 
     // How far the list can scroll: the earliest start from which everything
@@ -181,6 +202,9 @@ void DeskDayActivity::render(RenderLock&&) {
     int y = top;
     for (int i = first_; i < first_ + visible_; ++i) {
       renderer.drawText(font, left, y + kRowPadding, labels[i].c_str(), true, EpdFontFamily::BOLD);
+      if (!durations[i].empty()) {
+        renderer.drawText(font, left, y + kRowPadding + lineHeight, durations[i].c_str());
+      }
       for (size_t l = 0; l < lines[i].size(); ++l) {
         renderer.drawText(font, titleX, y + kRowPadding + static_cast<int>(l) * lineHeight, lines[i][l].c_str());
       }
