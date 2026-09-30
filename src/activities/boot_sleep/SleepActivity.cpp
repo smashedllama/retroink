@@ -618,7 +618,7 @@ void SleepActivity::onEnter() {
   // device the one picked in the desk accessory. Nothing picked yet means
   // nothing to draw.
   if (sleepScreen == CrossPointSettings::MOON_PHASE_SLEEP || sleepScreen == CrossPointSettings::EARTH_PHASE_SLEEP ||
-      sleepScreen == CrossPointSettings::DESK_CALENDAR_SLEEP) {
+      sleepScreen == CrossPointSettings::DESK_CALENDAR_SLEEP || sleepScreen == CrossPointSettings::DESK_DAY_SLEEP) {
     DeskDateTime shown;
     if (!DeskDate::current(shown)) return renderDefaultSleepScreen();
   }
@@ -652,6 +652,8 @@ void SleepActivity::onEnter() {
       return renderMoonPhaseSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::DESK_CALENDAR_SLEEP):
       return renderDeskCalendarSleepScreen();
+    case (CrossPointSettings::SLEEP_SCREEN_MODE::DESK_DAY_SLEEP):
+      return renderDeskDaySleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::EARTH_PHASE_SLEEP):
       return renderEarthPhaseSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::RETROINK_ERROR_404_SLEEP):
@@ -981,13 +983,213 @@ void SleepActivity::renderDeskCalendarSleepScreen() const {
     const int listTop = gridBottom + 4;
     renderer.drawLine(left, listTop, left + gridWidth, listTop, 2, true);
     std::vector<size_t> upcoming;
-    events.upcoming(ics::daysFromCivil(todayYear, todayMonth, todayDay), 8, upcoming);
+    const int32_t todayDays = ics::daysFromCivil(todayYear, todayMonth, todayDay);
+    events.upcoming(todayDays, 40, upcoming);
+    // With a clock, today's events that are already over are left out, so the
+    // list is what is still to come.
+    if (halClock.isAvailable()) {
+      const int nowMinute = shown.hour * 60 + shown.minute;
+      upcoming.erase(std::remove_if(upcoming.begin(), upcoming.end(),
+                                    [&](const size_t i) {
+                                      const ics::Occurrence& o = events.occurrences[i];
+                                      if (o.day != todayDays || o.allDay()) return false;
+                                      const int end = o.endMinute != ics::kNoTime ? o.endMinute : o.startMinute + 60;
+                                      return nowMinute >= end;
+                                    }),
+                     upcoming.end());
+    }
+    if (upcoming.size() > 8) upcoming.resize(8);
     const Rect listRect{left, listTop + 8, gridWidth, contentBottom - listTop - 8};
     if (upcoming.empty()) {
       renderer.drawText(UI_10_FONT_ID, listRect.x, listRect.y, tr(STR_CALENDAR_NO_EVENTS));
     } else {
-      CalendarView::drawAgenda(renderer, listRect, events, upcoming, true);
+      CalendarView::drawAgenda(renderer, listRect, events, upcoming, true, todayDays);
     }
+  }
+
+  renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+}
+
+// The whole of today from the synced calendar, in the Desk Calendar's window.
+// With a clock, events that have finished are struck through, the one under
+// way gets a bar down the left, and the foot says when the screen was drawn.
+// Without one (the original X4) it shows the picked day with nothing marked.
+void SleepActivity::renderDeskDaySleepScreen() const {
+  const auto pageWidth = renderer.getScreenWidth();
+  const auto pageHeight = renderer.getScreenHeight();
+  renderer.clearScreen();
+  drawSystem6Desktop(renderer, pageWidth, pageHeight);
+
+  DeskDateTime shown;
+  DeskDate::current(shown);
+  const bool hasClock = halClock.isAvailable();
+  const int32_t today = ics::daysFromCivil(shown.year, shown.month, shown.day);
+  const int nowMinute = shown.hour * 60 + shown.minute;
+
+  const int windowWidth = std::min(480, pageWidth - 24);
+  const int windowHeight = std::min(pageHeight - 40, pageHeight * 9 / 10);
+  const int wx = (pageWidth - windowWidth) / 2;
+  const int wy = (pageHeight - windowHeight) / 2;
+  renderer.fillRect(wx + 5, wy + 5, windowWidth, windowHeight);
+  renderer.fillRect(wx, wy, windowWidth, windowHeight, false);
+  renderer.drawRect(wx, wy, windowWidth, windowHeight);
+  renderer.drawRect(wx + 3, wy + 3, windowWidth - 6, windowHeight - 6);
+
+  constexpr int titleHeight = 42;
+  for (int stripeY = wy + 8; stripeY < wy + titleHeight - 5; stripeY += 4) {
+    renderer.drawLine(wx + 8, stripeY, wx + windowWidth - 9, stripeY);
+  }
+  static const StrId weekdays[] = {StrId::STR_STATS_MON, StrId::STR_STATS_TUE, StrId::STR_STATS_WED,
+                                   StrId::STR_STATS_THU, StrId::STR_STATS_FRI, StrId::STR_STATS_SAT,
+                                   StrId::STR_STATS_SUN};
+  char dateText[40];
+  DeskDate::formatDate(shown, dateText, sizeof(dateText));
+  char title[64];
+  std::snprintf(title, sizeof(title), "%s %s", I18n::getInstance().get(weekdays[ics::weekdayFromDays(today)]),
+                dateText);
+  const int titleWidth = renderer.getTextWidth(UI_12_FONT_ID, title);
+  const int titleX = wx + (windowWidth - titleWidth) / 2;
+  renderer.fillRect(titleX - 10, wy + 5, titleWidth + 20, titleHeight - 8, false);
+  renderer.drawText(UI_12_FONT_ID, titleX, wy + (titleHeight - renderer.getLineHeight(UI_12_FONT_ID)) / 2, title);
+  renderer.drawLine(wx + 4, wy + titleHeight, wx + windowWidth - 5, wy + titleHeight);
+
+  const int font = UI_10_FONT_ID;
+  const int lineHeight = renderer.getLineHeight(font);
+  const int left = wx + 22;
+  const int width = windowWidth - 44;
+  const int top = wy + titleHeight + 8;
+  int bottom = wy + windowHeight - 14;
+  if (hasClock) bottom -= lineHeight + 10;  // room for the "Updated" line
+
+  ics::Calendar events;
+  if (!CalendarSync::loadStored(events)) {
+    renderer.drawCenteredText(font, top + (bottom - top) / 2 - lineHeight / 2, tr(STR_CALENDAR_NOT_SYNCED));
+    renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+    return;
+  }
+  std::vector<size_t> indices;
+  events.eventsOn(today, indices);
+  const int total = static_cast<int>(indices.size());
+
+  if (total == 0) {
+    renderer.drawCenteredText(font, top + (bottom - top) / 2 - lineHeight / 2, tr(STR_CALENDAR_NO_EVENTS));
+  } else {
+    struct Row {
+      std::string time, length;
+      std::vector<std::string> lines;
+      bool finished, current;
+      int height;
+    };
+    std::vector<Row> rows(total);
+    int timeWidth = renderer.getTextWidth(font, tr(STR_CALENDAR_ALL_DAY), EpdFontFamily::BOLD);
+    for (int i = 0; i < total; ++i) {
+      const ics::Occurrence& o = events.occurrences[indices[i]];
+      Row& r = rows[i];
+      char label[24];
+      if (o.allDay()) {
+        std::snprintf(label, sizeof(label), "%s", tr(STR_CALENDAR_ALL_DAY));
+      } else {
+        DeskDateTime t;
+        t.hour = static_cast<uint8_t>(o.startMinute / 60);
+        t.minute = static_cast<uint8_t>(o.startMinute % 60);
+        DeskDate::formatTime(t, label, sizeof(label));
+      }
+      r.time = label;
+      if (!o.allDay() && o.endMinute != ics::kNoTime && o.endMinute > o.startMinute) {
+        const int minutes = o.endMinute - o.startMinute;
+        if (minutes < 60) std::snprintf(label, sizeof(label), "%dm", minutes);
+        else if (minutes % 60 == 0) std::snprintf(label, sizeof(label), "%dh", minutes / 60);
+        else std::snprintf(label, sizeof(label), "%dh %dm", minutes / 60, minutes % 60);
+        r.length = label;
+      }
+      // All-day events last all day. A timed event with no end is treated as
+      // an hour long for this purpose.
+      r.finished = false;
+      r.current = false;
+      if (hasClock && !o.allDay()) {
+        const int end = o.endMinute != ics::kNoTime ? o.endMinute : o.startMinute + 60;
+        r.finished = nowMinute >= end;
+        r.current = !r.finished && nowMinute >= o.startMinute;
+      }
+      timeWidth = std::max(timeWidth, renderer.getTextWidth(font, r.time.c_str(), EpdFontFamily::BOLD));
+      timeWidth = std::max(timeWidth, renderer.getTextWidth(font, r.length.c_str()));
+    }
+    const int titleX = left + timeWidth + 14;
+    const int titleWidth2 = std::max(60, left + width - titleX);
+    for (int i = 0; i < total; ++i) {
+      Row& r = rows[i];
+      r.lines = renderer.wrappedText(font, events.title(events.occurrences[indices[i]]), titleWidth2, 2);
+      const size_t n = std::max<size_t>(r.length.empty() ? 1 : 2, r.lines.size());
+      r.height = static_cast<int>(n) * lineHeight + 14;
+    }
+    // Show as many rows as fit; if some do not, the last line counts them.
+    int used = 0, fit = 0;
+    for (int i = 0; i < total; ++i) {
+      if (used + rows[i].height > bottom - top) break;
+      used += rows[i].height;
+      ++fit;
+    }
+    if (fit < total) {
+      used = 0;
+      fit = 0;
+      for (int i = 0; i < total; ++i) {
+        if (used + rows[i].height > bottom - top - (lineHeight + 8) && fit > 0) break;
+        used += rows[i].height;
+        ++fit;
+      }
+      // Once something has finished, the ones still ahead matter more than
+      // the ones behind: start at the first unfinished row.
+    }
+    int first = 0;
+    if (fit < total) {
+      while (first < total - 1 && rows[first].finished && total - first > fit) ++first;
+      int f = 0;
+      used = 0;
+      for (int i = first; i < total; ++i) {
+        if (used + rows[i].height > bottom - top - (lineHeight + 8) && f > 0) break;
+        used += rows[i].height;
+        ++f;
+      }
+      fit = f;
+    }
+
+    int y = top;
+    for (int i = first; i < first + fit; ++i) {
+      const Row& r = rows[i];
+      const int textY = y + 7;
+      if (r.current) renderer.fillRect(left - 12, y + 3, 5, r.height - 8, true);
+      renderer.drawText(font, left, textY, r.time.c_str(), true, EpdFontFamily::BOLD);
+      if (!r.length.empty()) renderer.drawText(font, left, textY + lineHeight, r.length.c_str());
+      for (size_t l = 0; l < r.lines.size(); ++l) {
+        renderer.drawText(font, titleX, textY + static_cast<int>(l) * lineHeight, r.lines[l].c_str(), true,
+                          r.current ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR);
+      }
+      if (r.finished) {
+        // Struck through: each line of text gets a line across its middle.
+        renderer.drawLine(left, textY + lineHeight / 2, left + renderer.getTextWidth(font, r.time.c_str(), EpdFontFamily::BOLD), textY + lineHeight / 2);
+        for (size_t l = 0; l < r.lines.size(); ++l) {
+          const int ly = textY + static_cast<int>(l) * lineHeight + lineHeight / 2;
+          renderer.drawLine(titleX, ly, titleX + renderer.getTextWidth(font, r.lines[l].c_str()), ly);
+        }
+      }
+      y += r.height;
+      for (int x = left; x < left + width; x += 6) renderer.drawLine(x, y - 1, x + 2, y - 1);
+    }
+    if (first + fit < total) {
+      char more[48];
+      std::snprintf(more, sizeof(more), tr(STR_CALENDAR_MORE), total - first - fit);
+      renderer.drawText(font, left, y + 4, more, true, EpdFontFamily::BOLD);
+    }
+  }
+
+  if (hasClock) {
+    char timeText[24];
+    DeskDate::formatTime(shown, timeText, sizeof(timeText));
+    char updated[48];
+    std::snprintf(updated, sizeof(updated), tr(STR_CALENDAR_UPDATED), timeText);
+    const int footY = wy + windowHeight - 14 - lineHeight;
+    renderer.drawLine(wx + 4, footY - 6, wx + windowWidth - 5, footY - 6);
+    renderer.drawCenteredText(font, footY, updated);
   }
 
   renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);

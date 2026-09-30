@@ -43,6 +43,7 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
     MOON_PHASE_SLEEP = 16,
     DESK_CALENDAR_SLEEP = 17,
     EARTH_PHASE_SLEEP = 18,
+    DESK_DAY_SLEEP = 19,
     SLEEP_SCREEN_MODE_COUNT
   };
   enum SLEEP_SCREEN_COVER_MODE { FIT = 0, CROP = 1, SLEEP_SCREEN_COVER_MODE_COUNT };

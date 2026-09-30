@@ -160,7 +160,7 @@ void draw(const GfxRenderer& renderer, const Rect rect, const int year, const in
 int agendaLineHeight(const GfxRenderer& renderer) { return renderer.getLineHeight(UI_10_FONT_ID) + 6; }
 
 size_t drawAgenda(const GfxRenderer& renderer, const Rect rect, const ics::Calendar& calendar,
-                  const std::vector<size_t>& indices, const bool showDate) {
+                  const std::vector<size_t>& indices, const bool showDate, const int32_t timeOnDay) {
   const int font = UI_10_FONT_ID;
   const int lineHeight = agendaLineHeight(renderer);
   size_t drawn = 0;
@@ -169,10 +169,18 @@ size_t drawAgenda(const GfxRenderer& renderer, const Rect rect, const ics::Calen
     if (y + lineHeight > rect.y + rect.height) break;
     const ics::Occurrence& o = calendar.occurrences[index];
     char lead[24];
-    if (showDate) {
+    if (showDate && o.day != timeOnDay) {
       int yy, mm, dd;
       ics::civilFromDays(o.day, yy, mm, dd);
-      std::snprintf(lead, sizeof(lead), "%s %d", I18n::getInstance().get(monthNameStrId(mm)), dd);
+      // The first three characters of the month name ("Sep"), cut on a
+      // character boundary so other scripts stay intact.
+      const char* name = I18n::getInstance().get(monthNameStrId(mm));
+      size_t cut = 0;
+      for (int chars = 0; name[cut] != '\0' && chars < 3; ++chars) {
+        ++cut;
+        while ((static_cast<unsigned char>(name[cut]) & 0xC0) == 0x80) ++cut;
+      }
+      std::snprintf(lead, sizeof(lead), "%.*s %d", static_cast<int>(cut), name, dd);
     } else if (o.allDay()) {
       std::snprintf(lead, sizeof(lead), "%s", tr(STR_CALENDAR_ALL_DAY));
     } else {

@@ -339,7 +339,7 @@ inline SettingInfo buildSleepScreenSetting() {
       StrId::STR_SLEEP_SCREEN, &CrossPointSettings::sleepScreen,
       {StrId::STR_RETROINK_REST, StrId::STR_CUSTOM, StrId::STR_COVER, StrId::STR_PAGE_OVERLAY,
        StrId::STR_QUICK_RESUME, StrId::STR_TODAY, StrId::STR_BOOK_STATUS, StrId::STR_BOOK_WEEK_STATS,
-       StrId::STR_READING_YEAR, StrId::STR_MOON_PHASE, StrId::STR_EARTH_PHASE, StrId::STR_DESK_CALENDAR,
+       StrId::STR_READING_YEAR, StrId::STR_MOON_PHASE, StrId::STR_EARTH_PHASE, StrId::STR_DESK_CALENDAR, StrId::STR_CALENDAR_DAY_SLEEP,
        StrId::STR_SLEEP_SYSTEM_NAP, StrId::STR_SLEEP_ERROR_404, StrId::STR_SLEEP_INSERT_BOOKMARK},
       "sleepScreen", StrId::STR_CAT_DISPLAY);
   s.withEnumRawValues({
@@ -355,6 +355,7 @@ inline SettingInfo buildSleepScreenSetting() {
       static_cast<uint8_t>(CrossPointSettings::MOON_PHASE_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::EARTH_PHASE_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::DESK_CALENDAR_SLEEP),
+      static_cast<uint8_t>(CrossPointSettings::DESK_DAY_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::RETROINK_SYSTEM_NAP_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::RETROINK_ERROR_404_SLEEP),
       static_cast<uint8_t>(CrossPointSettings::RETROINK_INSERT_BOOKMARK_SLEEP),

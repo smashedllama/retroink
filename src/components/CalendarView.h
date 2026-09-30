@@ -33,9 +33,10 @@ int dayAt(const GfxRenderer& renderer, Rect rect, int year, int month, int x, in
 int agendaLineHeight(const GfxRenderer& renderer);
 
 // A list of events, one per line ("9:00 AM  Dentist", "All day  Holiday"),
-// as many as fit in `rect`. With `showDate` each line starts with the month
-// and day instead, for the upcoming list. Returns how many lines were drawn.
+// as many as fit in `rect`. With `showDate` each line starts with a short
+// month and day instead (for the upcoming list), except events on `timeOnDay`
+// (today), which keep their time. Returns how many lines were drawn.
 size_t drawAgenda(const GfxRenderer& renderer, Rect rect, const ics::Calendar& calendar,
-                  const std::vector<size_t>& indices, bool showDate);
+                  const std::vector<size_t>& indices, bool showDate, int32_t timeOnDay = INT32_MIN);
 
 }  // namespace CalendarView

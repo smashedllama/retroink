@@ -30,6 +30,7 @@ class SleepActivity final : public Activity {
   void renderDashboardSleepScreen() const;
   void renderMoonPhaseSleepScreen() const;
   void renderDeskCalendarSleepScreen() const;
+  void renderDeskDaySleepScreen() const;
   void renderEarthPhaseSleepScreen() const;
   bool renderBitmapSleepScreen(Bitmap& bitmap, bool forceFastNoGreyscale = false) const;
   void renderLastScreenSleepScreen() const;
