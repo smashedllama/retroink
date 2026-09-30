@@ -67,7 +67,7 @@ struct ParseOptions {
   int32_t windowStartDay = 0;
   int32_t windowEndDay = 0;
   int utcOffsetMinutes = 0;      // added to times ending in Z
-  size_t maxOccurrences = 400;   // keeps memory bounded on the reader
+  size_t maxOccurrences = 600;   // keeps memory bounded on the reader
   size_t maxTitleBytes = 12000;  // total size of all stored titles
 };
 

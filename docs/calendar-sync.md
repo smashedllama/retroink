@@ -25,7 +25,7 @@ Anyone with the link can read the calendar, so keep it private. The reader store
 - **Desk Calendar**: a small square under every day that has an event. The front Left and Right buttons move one day at a time (rolling into the next or previous month), the side page-turn buttons change the month, and a tap picks a day. The selected day is the filled (black) one, and today has a double border around its number; when they are the same day you get a filled day with a ring inside. The events for the selected day are listed under the grid. If a day has more events than fit, the list ends with "+N more" and a reminder that **Options > Day View** shows them all. The Options button holds Sync Calendar (and Set Date on the original X4).
 - **Desk Calendar sleep screen**: the same dots, plus what is still to come: today's remaining events with their times, then later days by date. On a reader with a clock, today's finished events are left out. On the original X4 it shows the day you set in Options > Set Date.
 
-Repeating events (daily, weekly, monthly, yearly, with days of the week, "second Thursday", end dates, and skipped dates) are expanded, and moved or cancelled single occurrences are respected. About 45 days back and 13 months ahead are kept, up to 400 entries. If a very busy calendar goes over that, the sync tells you some events were left out.
+Repeating events (daily, weekly, monthly, yearly, with days of the week, "second Thursday", end dates, and skipped dates) are expanded, and moved or cancelled single occurrences are respected. About 45 days back and 13 months ahead are kept, up to 600 entries. If a very busy calendar goes over that, the sync tells you some events were left out.
 
 ## Limits
 

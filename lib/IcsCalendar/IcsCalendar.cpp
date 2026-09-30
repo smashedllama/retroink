@@ -335,6 +335,7 @@ struct Parser::Rule {
   std::vector<Day> byDay;
   std::vector<int> byMonthDay;
   std::vector<int> byMonth;
+  std::vector<int> bySetPos;  // picks from the days a period produces: 1 = first, -1 = last
   int weekStart = 0;
 };
 
@@ -521,6 +522,11 @@ void Parser::finishEvent() {
           if (m >= 1 && m <= 12) rule.byMonth.push_back(m);
         });
         std::sort(rule.byMonth.begin(), rule.byMonth.end());
+      } else if (key == "BYSETPOS") {
+        forEachListItem(val, [&](const std::string& item) {
+          const int pos = atoi(item.c_str());
+          if (pos != 0) rule.bySetPos.push_back(pos);
+        });
       } else if (key == "WKST") {
         const int wd = weekdayCode(upper(val));
         if (wd >= 0) rule.weekStart = wd;
@@ -666,6 +672,20 @@ void Parser::expand(const Event& event, const Rule* rule) {
     for (const int dom : doms) out.push_back(daysFromCivil(year, month, dom));
   };
 
+  // BYSETPOS keeps only the listed positions of the days a month (or year)
+  // produced, e.g. BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1 is the last weekday.
+  auto applySetPos = [&](std::vector<int32_t>& days) {
+    if (rule->bySetPos.empty()) return;
+    std::vector<int32_t> picked;
+    for (const int pos : rule->bySetPos) {
+      const int index = pos > 0 ? pos - 1 : static_cast<int>(days.size()) + pos;
+      if (index >= 0 && index < static_cast<int>(days.size())) picked.push_back(days[index]);
+    }
+    std::sort(picked.begin(), picked.end());
+    picked.erase(std::unique(picked.begin(), picked.end()), picked.end());
+    days.swap(picked);
+  };
+
   int guard = 0;
   switch (rule->freq) {
     case Rule::Freq::Daily: {
@@ -707,11 +727,15 @@ void Parser::expand(const Event& event, const Rule* rule) {
       int year = startYear;
       int month = startMonth;
       for (bool done = false; !done && guard++ < 1200;) {
-        monthDays(year, month, days);
-        for (const int32_t day : days) {
-          if (!add(day)) {
-            done = true;
-            break;
+        if (rule->byMonth.empty() ||
+            std::find(rule->byMonth.begin(), rule->byMonth.end(), month) != rule->byMonth.end()) {
+          monthDays(year, month, days);
+          applySetPos(days);
+          for (const int32_t day : days) {
+            if (!add(day)) {
+              done = true;
+              break;
+            }
           }
         }
         month += rule->interval;
@@ -728,15 +752,17 @@ void Parser::expand(const Event& event, const Rule* rule) {
       if (months.empty()) months.push_back(startMonth);
       bool done = false;
       for (int year = startYear; !done && guard++ < 300; year += rule->interval) {
+        std::vector<int32_t> yearDays;
         for (const int month : months) {
           monthDays(year, month, days);
-          for (const int32_t day : days) {
-            if (!add(day)) {
-              done = true;
-              break;
-            }
+          yearDays.insert(yearDays.end(), days.begin(), days.end());
+        }
+        applySetPos(yearDays);
+        for (const int32_t day : yearDays) {
+          if (!add(day)) {
+            done = true;
+            break;
           }
-          if (done) break;
         }
       }
       break;

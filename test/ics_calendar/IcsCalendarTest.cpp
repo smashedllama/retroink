@@ -246,3 +246,35 @@ TEST(IcsCalendar, FlagsSurviveSerialization) {
   EXPECT_TRUE(back.occurrences[0].toNextDay());
   EXPECT_TRUE(back.occurrences[1].fromPreviousDay());
 }
+
+TEST(IcsRecur, BySetPosLastDayOfMonth) {
+  // Apple's "last day of the month": every weekday listed, keep the last.
+  const auto c = parse(wrap("BEGIN:VEVENT\r\nUID:a\r\nDTSTART;VALUE=DATE:20260430\r\nDTEND;VALUE=DATE:20260501\r\n"
+                            "RRULE:FREQ=MONTHLY;UNTIL=20310331;BYDAY=SU,MO,TU,WE,TH,FR,SA;BYSETPOS=-1\r\nSUMMARY:Pay\r\nEND:VEVENT\r\n"),
+                       D(2026, 4, 1), D(2026, 8, 31));
+  ASSERT_EQ(c.occurrences.size(), 5u);  // Apr 30, May 31, Jun 30, Jul 31, Aug 31
+  EXPECT_EQ(c.occurrences[0].day, D(2026, 4, 30));
+  EXPECT_EQ(c.occurrences[1].day, D(2026, 5, 31));
+  EXPECT_EQ(c.occurrences[2].day, D(2026, 6, 30));
+  EXPECT_EQ(c.occurrences[4].day, D(2026, 8, 31));
+}
+
+TEST(IcsRecur, BySetPosLastWeekdayAndNthMonday) {
+  const auto weekday = parse(wrap("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20260930T090000\r\nRRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1\r\nSUMMARY:W\r\nEND:VEVENT\r\n"),
+                             D(2026, 9, 1), D(2026, 12, 31));
+  ASSERT_EQ(weekday.occurrences.size(), 4u);
+  EXPECT_EQ(weekday.occurrences[1].day, D(2026, 10, 30));  // Fri
+  EXPECT_EQ(weekday.occurrences[2].day, D(2026, 11, 30));  // Mon
+  const auto monday = parse(wrap("BEGIN:VEVENT\r\nUID:b\r\nDTSTART:20260928T090000\r\nRRULE:FREQ=MONTHLY;BYDAY=MO;BYSETPOS=4;COUNT=3\r\nSUMMARY:M\r\nEND:VEVENT\r\n"),
+                            D(2026, 9, 1), D(2026, 12, 31));
+  ASSERT_EQ(monday.occurrences.size(), 3u);
+  EXPECT_EQ(monday.occurrences[0].day, D(2026, 9, 28));
+  EXPECT_EQ(monday.occurrences[1].day, D(2026, 10, 26));
+}
+
+TEST(IcsRecur, MonthlyHonoursByMonth) {
+  const auto c = parse(wrap("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20260115T090000\r\nRRULE:FREQ=MONTHLY;BYMONTH=1,7\r\nSUMMARY:X\r\nEND:VEVENT\r\n"),
+                       D(2026, 1, 1), D(2026, 12, 31));
+  ASSERT_EQ(c.occurrences.size(), 2u);
+  EXPECT_EQ(c.occurrences[1].day, D(2026, 7, 15));
+}
