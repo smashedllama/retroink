@@ -111,6 +111,8 @@ class ActivityManager {
   void goToFileTransfer(std::string returnBookPath = {});
   void goToCalibreWireless(const std::string& returnBookPath = {});
   void goToJoinNetworkFileTransfer(const std::string& returnBookPath = {});
+  // Restarts into a clean-memory network boot and syncs the calendar feed.
+  void goToCalendarSync();
   void goToHotspotFileTransfer(const std::string& returnBookPath = {});
   void goToUsbDrive();
   bool resumeFileTransferFromNetworkBoot(uint32_t payload);

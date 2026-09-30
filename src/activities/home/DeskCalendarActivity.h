@@ -38,6 +38,7 @@ class DeskCalendarActivity final : public Activity {
   void moveSelection(int deltaDays);
   void openOptions();
   void openDayView();
+  void startCalendarSync();
   int32_t daySeen_ = 0;  // the day the Day View ends on
   Rect gridRect() const;
 

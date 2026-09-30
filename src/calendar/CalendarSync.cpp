@@ -119,7 +119,11 @@ Result run(size_t* eventCount, bool* truncated, const ProgressFn& progress) {
             transport == HttpDownloader::Transport::ESP_HTTP ? "esp" : "wolfssl", static_cast<int>(error),
             static_cast<unsigned>(received), static_cast<unsigned>(parser->eventsSeen()));
     if (error == HttpDownloader::OK) break;
-    if (g_detail.empty()) g_detail = HttpDownloader::lastFailure();
+    if (g_detail.empty()) {
+      char mem[24];
+      snprintf(mem, sizeof(mem), ", mem %uk", static_cast<unsigned>(ESP.getMaxAllocHeap() / 1024));
+      g_detail = HttpDownloader::lastFailure() + mem;
+    }
   }
   if (error != HttpDownloader::OK) return Result::Network;
   g_detail.clear();

@@ -369,8 +369,9 @@ void forEachListItem(const std::string& list, Fn fn) {
 }  // namespace
 
 Parser::Parser(const ParseOptions& options) : options_(options) {
-  work_.reserve(std::min<size_t>(options.maxOccurrences, 512));
-  titles_.reserve(std::min<size_t>(options.maxTitleBytes, 4096));
+  // No up-front reservation: this runs while a TLS session holds most of the
+  // free memory, so it grows in small steps only once data arrives.
+  titles_.reserve(256);
 }
 
 Parser::~Parser() { delete current_; }

@@ -607,6 +607,8 @@ void ActivityManager::goToJoinNetworkFileTransfer(const std::string& returnBookP
   restartToFileTransfer(NetworkMode::JOIN_NETWORK, returnBookPath);
 }
 
+void ActivityManager::goToCalendarSync() { restartToFileTransfer(NetworkMode::SYNC_CALENDAR, {}); }
+
 void ActivityManager::goToHotspotFileTransfer(const std::string& returnBookPath) {
   restartToFileTransfer(NetworkMode::CREATE_HOTSPOT, returnBookPath);
 }
@@ -626,7 +628,8 @@ void ActivityManager::goToUsbDrive() {
 
 bool ActivityManager::resumeFileTransferFromNetworkBoot(const uint32_t payload) {
   const uint32_t rawMode = payload & FILE_TRANSFER_MODE_MASK;
-  if (rawMode > static_cast<uint32_t>(NetworkMode::CREATE_HOTSPOT)) {
+  if (rawMode > static_cast<uint32_t>(NetworkMode::CREATE_HOTSPOT) &&
+      rawMode != static_cast<uint32_t>(NetworkMode::SYNC_CALENDAR)) {
     LOG_ERR("ACT", "Invalid file transfer network boot mode: %lu", static_cast<unsigned long>(rawMode));
     return false;
   }

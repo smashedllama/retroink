@@ -10,7 +10,8 @@
 
 #include "DeskDatePickerActivity.h"
 #include "DeskDayActivity.h"
-#include "activities/network/CrossPointWebServerActivity.h"
+#include "activities/ActivityManager.h"
+#include "calendar/CalendarFeedStore.h"
 #include "calendar/CalendarSync.h"
 #include "components/CalendarView.h"
 #include "components/DeskDate.h"
@@ -126,6 +127,25 @@ void DeskCalendarActivity::openDayView() {
                          });
 }
 
+void DeskCalendarActivity::startCalendarSync() {
+  const CalendarFeedConfig& cfg = CALENDAR_FEED.getConfig();
+  if (!cfg.enabled || cfg.url.empty()) {
+    for (const auto& [message, holdMs] : {std::pair{tr(STR_CALENDAR_NOT_CONFIGURED), 2200UL},
+                                          std::pair{tr(STR_CALENDAR_NOT_CONFIGURED_HINT), 2600UL}}) {
+      {
+        RenderLock lock(*this);
+        GUI.drawPopup(renderer, message);
+      }
+      delay(holdMs);
+    }
+    requestUpdate();
+    return;
+  }
+  // Wi-Fi and TLS need a large block of free memory, so the device restarts
+  // into a clean network boot to do the sync, then comes back to Home.
+  activityManager.goToCalendarSync();
+}
+
 void DeskCalendarActivity::openOptions() {
   enum class Choice { Sync, DayView, SetDate };
   std::vector<std::string> options;
@@ -147,9 +167,7 @@ void DeskCalendarActivity::openOptions() {
       case Choice::Sync:
         // Runs the Wi-Fi flow, downloads the feed, and ends back at Home like
         // Sync to Obsidian does.
-        startActivityForResult(
-            std::make_unique<CrossPointWebServerActivity>(renderer, mappedInput, NetworkMode::SYNC_CALENDAR),
-            [this](const ActivityResult&) { requestUpdate(); });
+        startCalendarSync();
         break;
       case Choice::DayView:
         openDayView();
