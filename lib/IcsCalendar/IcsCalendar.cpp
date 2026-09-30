@@ -551,7 +551,11 @@ bool Parser::titleFor(const Event& event, uint16_t& offset) {
   return true;
 }
 
-void Parser::emit(const Event& event, const int32_t day, const uint16_t titleOffset) {
+// `part` is 0 for the day an event starts on, then 1, 2... for each further
+// day it covers (`extraDays` of them). `totalEnd` is the end in minutes after
+// the start day's midnight, or -1 if the event has no known end.
+void Parser::emit(const Event& event, const int32_t day, const uint16_t titleOffset, const int part,
+                  const int extraDays, const int totalEnd) {
   if (day < options_.windowStartDay || day > options_.windowEndDay) return;
   if (work_.size() >= options_.maxOccurrences) {
     truncated_ = true;
@@ -561,11 +565,18 @@ void Parser::emit(const Event& event, const int32_t day, const uint16_t titleOff
   w.occurrence.day = day;
   w.occurrence.titleOffset = titleOffset;
   if (!event.allDay) {
-    w.occurrence.startMinute = event.startMinute;
-    if (event.hasEnd && event.endDay == event.startDay && event.endMinute != kNoTime) {
-      w.occurrence.endMinute = event.endMinute;
-    } else if (event.durationMinutes >= 0 && event.startMinute + event.durationMinutes < 1440) {
-      w.occurrence.endMinute = static_cast<uint16_t>(event.startMinute + event.durationMinutes);
+    const bool last = part >= extraDays;
+    if (part == 0) {
+      w.occurrence.startMinute = event.startMinute;
+    } else {
+      w.occurrence.startMinute = 0;
+      w.occurrence.flags |= kFromPreviousDay;
+    }
+    if (!last) {
+      w.occurrence.endMinute = 1440;
+      w.occurrence.flags |= kToNextDay;
+    } else if (totalEnd > 0) {
+      w.occurrence.endMinute = static_cast<uint16_t>(totalEnd - extraDays * 1440);
     }
   }
   w.uid = event.uid;
@@ -576,10 +587,22 @@ void Parser::emit(const Event& event, const int32_t day, const uint16_t titleOff
 void Parser::expand(const Event& event, const Rule* rule) {
   // How many days an all-day event covers; timed events sit on their start day.
   int span = 1;
+  int extraDays = 0;  // timed events: further days past the start day that it runs into
+  int totalEnd = -1;
   if (event.allDay) {
     if (event.hasEnd) span = static_cast<int>(event.endDay - event.startDay);
     else if (event.durationMinutes > 0) span = event.durationMinutes / 1440;
     span = std::max(1, std::min(kMaxAllDaySpan, span));
+  } else {
+    if (event.hasEnd && event.endMinute != kNoTime) {
+      totalEnd = static_cast<int>(event.endDay - event.startDay) * 1440 + event.endMinute;
+    } else if (event.durationMinutes >= 0) {
+      totalEnd = event.startMinute + event.durationMinutes;
+    }
+    if (totalEnd <= static_cast<int>(event.startMinute)) totalEnd = -1;
+    // Ending exactly at midnight stays on the start day.
+    if (totalEnd > 1440) extraDays = std::min(kMaxAllDaySpan, (totalEnd - 1) / 1440);
+    span = 1 + extraDays;
   }
 
   uint16_t titleOffset = 0;
@@ -592,7 +615,7 @@ void Parser::expand(const Event& event, const Rule* rule) {
       if (!titleFor(event, titleOffset)) return;
       haveTitle = true;
     }
-    for (int i = 0; i < span; ++i) emit(event, startDay + i, titleOffset);
+    for (int i = 0; i < span; ++i) emit(event, startDay + i, titleOffset, i, extraDays, totalEnd);
   };
 
   if (rule == nullptr) {
@@ -794,7 +817,7 @@ std::string serialize(const Calendar& calendar) {
     putU16(out, o.startMinute);
     putU16(out, o.endMinute);
     putU16(out, o.titleOffset);
-    putU16(out, 0);
+    putU16(out, o.flags);
   }
   return out;
 }
@@ -819,6 +842,7 @@ bool deserialize(const uint8_t* data, const size_t length, Calendar& out) {
     o.startMinute = getU16(record + 4);
     o.endMinute = getU16(record + 6);
     o.titleOffset = getU16(record + 8);
+    o.flags = static_cast<uint8_t>(getU16(record + 10) & (kFromPreviousDay | kToNextDay));
     if (o.titleOffset >= titleBytes && titleBytes > 0) return false;
     c.occurrences.push_back(o);
   }

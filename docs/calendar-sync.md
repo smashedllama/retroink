@@ -29,6 +29,7 @@ Repeating events (daily, weekly, monthly, yearly, with days of the week, "second
 
 ## Limits
 
+- Events that run past midnight show on every day they cover: "Continues" under the start time on the first day, "Ongoing" on days in between, and "Until 6:00 AM" on the last. Up to 31 days of one event are kept.
 - Times ending in `Z` (UTC) are shifted by the time zone set on the reader (Settings > Clock). Times that name another time zone are taken as already being local, which is right for a calendar kept in your own time zone.
 - Only one calendar is supported. Read-only; you cannot add events from the reader.
 - On the original X4 (no clock), set the date in the Desk Calendar first (Options > Set Date) so the reader knows what "today" is.

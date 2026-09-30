@@ -1085,23 +1085,9 @@ void SleepActivity::renderDeskDaySleepScreen() const {
     for (int i = 0; i < total; ++i) {
       const ics::Occurrence& o = events.occurrences[indices[i]];
       Row& r = rows[i];
-      char label[24];
-      if (o.allDay()) {
-        std::snprintf(label, sizeof(label), "%s", tr(STR_CALENDAR_ALL_DAY));
-      } else {
-        DeskDateTime t;
-        t.hour = static_cast<uint8_t>(o.startMinute / 60);
-        t.minute = static_cast<uint8_t>(o.startMinute % 60);
-        DeskDate::formatTime(t, label, sizeof(label));
-      }
-      r.time = label;
-      if (!o.allDay() && o.endMinute != ics::kNoTime && o.endMinute > o.startMinute) {
-        const int minutes = o.endMinute - o.startMinute;
-        if (minutes < 60) std::snprintf(label, sizeof(label), "%dm", minutes);
-        else if (minutes % 60 == 0) std::snprintf(label, sizeof(label), "%dh", minutes / 60);
-        else std::snprintf(label, sizeof(label), "%dh %dm", minutes / 60, minutes % 60);
-        r.length = label;
-      }
+      const CalendarView::TimeLabel label = CalendarView::timeLabel(o);
+      r.time = label.primary;
+      r.length = label.secondary;
       // All-day events last all day. A timed event with no end is treated as
       // an hour long for this purpose.
       r.finished = false;

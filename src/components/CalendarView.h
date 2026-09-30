@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include <IcsCalendar.h>
@@ -28,6 +29,16 @@ void draw(const GfxRenderer& renderer, Rect rect, int year, int month, bool toda
 // The day (1-31) drawn at a point inside `rect` for the same year and month,
 // or 0 if the point is not on a day.
 int dayAt(const GfxRenderer& renderer, Rect rect, int year, int month, int x, int y);
+
+// How an event's time is written, in two short pieces: the start time
+// (or "All day") and, under it, how long it lasts. Events that cross midnight
+// read "Continues" on their first day, "Ongoing" in the middle, and "Until"
+// with the end time on their last.
+struct TimeLabel {
+  std::string primary;
+  std::string secondary;
+};
+TimeLabel timeLabel(const ics::Occurrence& occurrence);
 
 // Height of one agenda line, for working out how many fit in a rect.
 int agendaLineHeight(const GfxRenderer& renderer);

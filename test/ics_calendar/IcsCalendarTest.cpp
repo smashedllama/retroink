@@ -200,3 +200,49 @@ TEST(IcsParse, LongTitleKeptToAHundredBytes) {
   ASSERT_EQ(c.occurrences.size(), 1u);
   EXPECT_EQ(std::string(c.title(c.occurrences[0])).size(), 100u);
 }
+
+TEST(IcsParse, OvernightEventSplitsAcrossMidnight) {
+  const auto c = parse(wrap("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20261001T220000\r\nDTEND:20261002T060000\r\nSUMMARY:Night shift\r\nEND:VEVENT\r\n"),
+                       D(2026, 9, 1), D(2026, 12, 1));
+  ASSERT_EQ(c.occurrences.size(), 2u);
+  EXPECT_EQ(c.occurrences[0].day, D(2026, 10, 1));
+  EXPECT_EQ(c.occurrences[0].startMinute, 22 * 60);
+  EXPECT_EQ(c.occurrences[0].endMinute, 1440);
+  EXPECT_TRUE(c.occurrences[0].toNextDay());
+  EXPECT_FALSE(c.occurrences[0].fromPreviousDay());
+  EXPECT_EQ(c.occurrences[1].day, D(2026, 10, 2));
+  EXPECT_EQ(c.occurrences[1].startMinute, 0);
+  EXPECT_EQ(c.occurrences[1].endMinute, 6 * 60);
+  EXPECT_TRUE(c.occurrences[1].fromPreviousDay());
+  EXPECT_FALSE(c.occurrences[1].toNextDay());
+}
+
+TEST(IcsParse, MultiDayTimedEventAndDurationForm) {
+  const auto c = parse(wrap("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20261001T200000\r\nDURATION:P2DT4H\r\nSUMMARY:Retreat\r\nEND:VEVENT\r\n"),
+                       D(2026, 9, 1), D(2026, 12, 1));
+  ASSERT_EQ(c.occurrences.size(), 3u);  // 2d4h from Oct 1 20:00 ends Oct 4 00:00: Oct 1, 2, 3
+  EXPECT_TRUE(c.occurrences[1].fromPreviousDay() && c.occurrences[1].toNextDay());
+  EXPECT_EQ(c.occurrences[1].startMinute, 0);
+  EXPECT_TRUE(c.occurrences[2].fromPreviousDay());
+  EXPECT_FALSE(c.occurrences[2].toNextDay());
+  EXPECT_EQ(c.occurrences[2].endMinute, 1440);
+}
+
+TEST(IcsParse, EndingAtMidnightStaysOnOneDay) {
+  const auto c = parse(wrap("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20261001T230000\r\nDTEND:20261002T000000\r\nSUMMARY:Late\r\nEND:VEVENT\r\n"),
+                       D(2026, 9, 1), D(2026, 12, 1));
+  ASSERT_EQ(c.occurrences.size(), 1u);
+  EXPECT_EQ(c.occurrences[0].endMinute, 1440);
+  EXPECT_FALSE(c.occurrences[0].toNextDay());
+}
+
+TEST(IcsCalendar, FlagsSurviveSerialization) {
+  auto c = parse(wrap("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20261001T220000\r\nDTEND:20261002T060000\r\nSUMMARY:N\r\nEND:VEVENT\r\n"),
+                 D(2026, 9, 1), D(2026, 12, 1));
+  const std::string blob = serialize(c);
+  Calendar back;
+  ASSERT_TRUE(deserialize(reinterpret_cast<const uint8_t*>(blob.data()), blob.size(), back));
+  ASSERT_EQ(back.occurrences.size(), 2u);
+  EXPECT_TRUE(back.occurrences[0].toNextDay());
+  EXPECT_TRUE(back.occurrences[1].fromPreviousDay());
+}

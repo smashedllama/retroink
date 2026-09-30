@@ -157,6 +157,45 @@ void draw(const GfxRenderer& renderer, const Rect rect, const int year, const in
   }
 }
 
+namespace {
+std::string clockText(const int minute) {
+  DeskDateTime t;
+  t.hour = static_cast<uint8_t>(std::min(minute, 1439) / 60);
+  t.minute = static_cast<uint8_t>(std::min(minute, 1439) % 60);
+  char buf[24];
+  DeskDate::formatTime(t, buf, sizeof(buf));
+  return buf;
+}
+
+std::string lengthText(const int minutes) {
+  char buf[16];
+  if (minutes < 60) std::snprintf(buf, sizeof(buf), "%dm", minutes);
+  else if (minutes % 60 == 0) std::snprintf(buf, sizeof(buf), "%dh", minutes / 60);
+  else std::snprintf(buf, sizeof(buf), "%dh %dm", minutes / 60, minutes % 60);
+  return buf;
+}
+}  // namespace
+
+TimeLabel timeLabel(const ics::Occurrence& o) {
+  TimeLabel label;
+  if (o.allDay()) {
+    label.primary = tr(STR_CALENDAR_ALL_DAY);
+  } else if (o.fromPreviousDay() && o.toNextDay()) {
+    label.primary = tr(STR_CALENDAR_ONGOING);
+  } else if (o.fromPreviousDay()) {
+    label.primary = tr(STR_CALENDAR_UNTIL);
+    if (o.endMinute != ics::kNoTime) label.secondary = clockText(o.endMinute);
+  } else {
+    label.primary = clockText(o.startMinute);
+    if (o.toNextDay()) {
+      label.secondary = tr(STR_CALENDAR_CONTINUES);
+    } else if (o.endMinute != ics::kNoTime && o.endMinute > o.startMinute) {
+      label.secondary = lengthText(o.endMinute - o.startMinute);
+    }
+  }
+  return label;
+}
+
 int agendaLineHeight(const GfxRenderer& renderer) { return renderer.getLineHeight(UI_10_FONT_ID) + 6; }
 
 size_t drawAgenda(const GfxRenderer& renderer, const Rect rect, const ics::Calendar& calendar,
@@ -181,13 +220,13 @@ size_t drawAgenda(const GfxRenderer& renderer, const Rect rect, const ics::Calen
         while ((static_cast<unsigned char>(name[cut]) & 0xC0) == 0x80) ++cut;
       }
       std::snprintf(lead, sizeof(lead), "%.*s %d", static_cast<int>(cut), name, dd);
-    } else if (o.allDay()) {
-      std::snprintf(lead, sizeof(lead), "%s", tr(STR_CALENDAR_ALL_DAY));
     } else {
-      DeskDateTime t;
-      t.hour = static_cast<uint8_t>(o.startMinute / 60);
-      t.minute = static_cast<uint8_t>(o.startMinute % 60);
-      DeskDate::formatTime(t, lead, sizeof(lead));
+      // One line: an event that ends today after starting yesterday reads
+      // "Until 06:00".
+      const TimeLabel t = timeLabel(o);
+      const bool untilForm = o.fromPreviousDay() && !o.toNextDay();
+      std::snprintf(lead, sizeof(lead), "%s%s%s", t.primary.c_str(), untilForm ? " " : "",
+                    untilForm ? t.secondary.c_str() : "");
     }
     const int leadWidth = std::max(renderer.getTextWidth(font, lead) + 12, rect.width / 4);
     renderer.drawText(font, rect.x, y, lead, true, EpdFontFamily::BOLD);

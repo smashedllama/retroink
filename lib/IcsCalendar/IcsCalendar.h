@@ -28,14 +28,22 @@ int weekdayFromDays(int32_t days);
 int daysInMonth(int year, int month);
 
 constexpr uint16_t kNoTime = 0xFFFF;  // "all day" as a start time; "unknown" as an end time
+constexpr uint8_t kFromPreviousDay = 1;
+constexpr uint8_t kToNextDay = 2;
 
 struct Occurrence {
   int32_t day = 0;                 // local date, days since 1970-01-01
   uint16_t startMinute = kNoTime;  // minutes after local midnight, kNoTime = all day
   uint16_t endMinute = kNoTime;    // end on the same day, kNoTime = not known
   uint16_t titleOffset = 0;        // byte offset of the title in Calendar::titles
+  uint8_t flags = 0;               // kFromPreviousDay / kToNextDay for events that cross midnight
 
   bool allDay() const { return startMinute == kNoTime; }
+  // A timed event that began on an earlier day (this entry then starts at
+  // 00:00 and endMinute is when it ends) and/or carries on into the next day
+  // (endMinute is then 1440, the end of this one).
+  bool fromPreviousDay() const { return (flags & kFromPreviousDay) != 0; }
+  bool toNextDay() const { return (flags & kToNextDay) != 0; }
 };
 
 struct Calendar {
@@ -104,7 +112,7 @@ class Parser {
   void processLine(const std::string& line);
   void finishEvent();
   void expand(const Event& event, const Rule* rule);
-  void emit(const Event& event, int32_t day, uint16_t titleOffset);
+  void emit(const Event& event, int32_t day, uint16_t titleOffset, int part, int extraDays, int totalEnd);
   bool titleFor(const Event& event, uint16_t& offset);
 
  public:

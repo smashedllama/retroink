@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <string>
 
+#include "components/CalendarView.h"
 #include "components/DeskDate.h"
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
@@ -20,21 +21,6 @@ StrId weekdayStrId(const int weekdayMonday0) {
   static const StrId ids[] = {StrId::STR_STATS_MON, StrId::STR_STATS_TUE, StrId::STR_STATS_WED, StrId::STR_STATS_THU,
                               StrId::STR_STATS_FRI, StrId::STR_STATS_SAT, StrId::STR_STATS_SUN};
   return ids[std::clamp(weekdayMonday0, 0, 6)];
-}
-
-// "45m", "2h", "1h 30m". Empty when the event has no known end.
-std::string durationText(const ics::Occurrence& o) {
-  if (o.allDay() || o.endMinute == ics::kNoTime || o.endMinute <= o.startMinute) return {};
-  const int minutes = o.endMinute - o.startMinute;
-  char buf[16];
-  if (minutes < 60) {
-    std::snprintf(buf, sizeof(buf), "%dm", minutes);
-  } else if (minutes % 60 == 0) {
-    std::snprintf(buf, sizeof(buf), "%dh", minutes / 60);
-  } else {
-    std::snprintf(buf, sizeof(buf), "%dh %dm", minutes / 60, minutes % 60);
-  }
-  return buf;
 }
 }  // namespace
 
@@ -144,23 +130,14 @@ void DeskDayActivity::render(RenderLock&&) {
   } else {
     // The time column is as wide as the widest label, so titles line up.
     int timeWidth = renderer.getTextWidth(font, tr(STR_CALENDAR_ALL_DAY), EpdFontFamily::BOLD);
-    char label[24];
     std::vector<std::string> labels(total);
     std::vector<std::string> durations(total);
     for (int i = 0; i < total; ++i) {
-      const ics::Occurrence& o = events_.occurrences[indices_[i]];
-      if (o.allDay()) {
-        std::snprintf(label, sizeof(label), "%s", tr(STR_CALENDAR_ALL_DAY));
-      } else {
-        DeskDateTime t;
-        t.hour = static_cast<uint8_t>(o.startMinute / 60);
-        t.minute = static_cast<uint8_t>(o.startMinute % 60);
-        DeskDate::formatTime(t, label, sizeof(label));
-      }
-      labels[i] = label;
-      durations[i] = durationText(o);
+      const CalendarView::TimeLabel t = CalendarView::timeLabel(events_.occurrences[indices_[i]]);
+      labels[i] = t.primary;
+      durations[i] = t.secondary;
+      timeWidth = std::max(timeWidth, renderer.getTextWidth(font, labels[i].c_str(), EpdFontFamily::BOLD));
       timeWidth = std::max(timeWidth, renderer.getTextWidth(font, durations[i].c_str()));
-      timeWidth = std::max(timeWidth, renderer.getTextWidth(font, label, EpdFontFamily::BOLD));
     }
     const int titleX = left + timeWidth + 14;
     const int titleWidth = std::max(60, left + width - titleX);
