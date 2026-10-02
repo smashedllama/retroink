@@ -1,17 +1,12 @@
----
-title: Calendar Sync
-nav_order: 7.7
----
-
 # Calendar Sync
 
 Calendar Sync puts your Google, Apple (iCloud) or Outlook calendar on the reader. Events show up in the Desk Calendar, in a full-screen Day View, and on two sleep screens. You give the reader your calendar's iCal link once, then update it whenever you like. The reader only ever reads the calendar; it never changes it.
 
-<div class="device-row">
-  <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-calendar-month.png" alt="Desk Calendar for October with a small square under every day that has an event, and the selected day's events listed underneath" /></div></div>
-  <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-calendar-day-view.png" alt="Day View listing every event for the day with its start time, length and full title" /></div></div>
-  <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-calendar-day-sleep.png" alt="Calendar Day sleep screen with finished events struck through and the current event marked" /></div></div>
-</div>
+<p align="center">
+  <img src="./images/retroink-calendar-month.png" width="31%" alt="Desk Calendar for October with a small square under every day that has an event, and the selected day's events listed underneath">
+  <img src="./images/retroink-calendar-day-view.png" width="31%" alt="Day View listing every event for the day with its start time, length and full title">
+  <img src="./images/retroink-calendar-day-sleep.png" width="31%" alt="Calendar Day sleep screen with finished events struck through and the current event marked">
+</p>
 
 The events are saved on the SD card (`/.crosspoint/calendar.bin`), so they survive restarts and the reader works offline between syncs. Only a few kilobytes of the reader's own flash are used for the feature itself; the data lives on the card.
 
@@ -35,10 +30,6 @@ Anyone with the link can read the calendar, so keep it private. The reader store
 
 ## Desk Calendar
 
-<div class="device-row">
-  <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-calendar-month.png" alt="Desk Calendar month view with event squares" /></div></div>
-</div>
-
 - A small square sits under every day that has an event.
 - The front **Left** and **Right** buttons move one day at a time, rolling into the next or previous month. The side page-turn buttons change the month. On a touch reader you can also tap a day.
 - The **filled black** day is the one you are looking at. **Today** has a double border around its number; when they are the same day you get a filled day with a ring inside. Today is known on a reader with a clock, or from the date you picked on the original X4.
@@ -55,10 +46,10 @@ An event that runs past midnight shows on every day it covers (up to 31 days): *
 
 ## Sleep screens
 
-<div class="device-row">
-  <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-calendar-sleep.png" alt="Desk Calendar sleep screen showing the month with event squares and the next events" /></div></div>
-  <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-calendar-day-sleep.png" alt="Calendar Day sleep screen" /></div></div>
-</div>
+<p align="center">
+  <img src="./images/retroink-calendar-sleep.png" width="46%" alt="Desk Calendar sleep screen showing the month with event squares and the next events">
+  <img src="./images/retroink-calendar-day-sleep.png" width="46%" alt="Calendar Day sleep screen">
+</p>
 
 Both are under **Settings > Sleep Screen**.
 
