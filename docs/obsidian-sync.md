@@ -9,8 +9,8 @@ Obsidian Clipping Sync pushes the highlights you save while reading (the same
 ones written to `/My Clippings.txt`) into an Obsidian vault, without a
 computer in between.
 
-There is no public Obsidian Sync protocol to build against, so this feature
-talks to one of two things instead:
+Obsidian doesn't offer a public sync protocol, so RetroInk sends highlights
+to one of two places:
 
 - **[Local REST API with MCP](https://github.com/coddingtonbear/obsidian-local-rest-api)
   plugin** (recommended), built by Adam Coddington. It runs an HTTPS API on
@@ -118,11 +118,10 @@ of letting it block everything behind it forever.
 - **The Local REST API target only works on the same local network** as
   whatever's running Obsidian. For sync over the internet, use the webhook
   target and route it yourself.
-- **Verify the plugin's POST/PUT behavior for your installed version.** This
-  integration assumes `POST /vault/<path>` appends to an existing note and
-  that a `404` means the note doesn't exist yet (handled by falling back to
-  `PUT`, which creates/overwrites). Check the plugin's own docs if syncing
-  behaves unexpectedly.
+- **If syncing behaves unexpectedly, check the plugin's documentation.**
+  RetroInk adds to an existing note with `POST /vault/<path>`. If the plugin
+  answers `404` because the note doesn't exist yet, RetroInk creates it with
+  `PUT`. A different plugin version may behave differently.
 - Pending clippings are capped at roughly 512 KB on the SD card (many
   thousands of highlights) so a forgotten sync can't grow without bound;
   syncing regularly avoids ever approaching that.
@@ -149,51 +148,19 @@ of letting it block everything behind it forever.
   sync). It stops casual reading of the SD card, not a targeted attacker who
   also has the device.
 
-### Heads up: the plugin is reachable by your whole Wi-Fi network, not just the reader
+### Who can reach the plugin
 
-Here's the tradeoff hiding under the hood. The Local REST API plugin has no
-way of knowing ahead of time which device on your network is your RetroInk
-reader, so it has to bind to `0.0.0.0`, "accept connections from anywhere,"
-just to let the reader reach it at all. The side effect is that every other
-device on the same Wi-Fi can technically reach that port too. The only thing
-standing between "on the network" and "full read/write access to your
-vault" is the API key, and that key isn't scoped to just appending
-clippings; it's the same access Obsidian itself has.
+The Local REST API plugin can't know which device on your network is your reader, so it accepts connections from every device on the same Wi-Fi. The API key is all that stands between those devices and your vault, and it isn't limited to adding clippings: it gives the same access Obsidian itself has. The plugin has no way to limit a key to one folder or to read-only access, so anyone with a valid key could read, write, and delete anywhere in the vault.
 
-So who could actually pull this off? Someone already on your Wi-Fi network
-who also has your API key, whether they guessed it, intercepted it, or
-found it lying around somewhere. It's not something a stranger on the
-internet could reach unless your router is forwarding that port in from the
-outside world, and nothing in this setup asks you to do that. Please don't
-set that up.
+To use it, someone would need to be on your Wi-Fi network and have your API key. The plugin isn't reachable from the internet unless your router forwards its port, so don't set up port forwarding for it.
 
-If someone did get in with a valid key, there's currently no way in the
-plugin to limit them to a single folder or to read-only access, so they'd
-be able to read, write, and delete anywhere in the vault. Worth checking the
-plugin's own settings every so often in case that changes down the line.
+This is the same trust boundary the File Transfer web server already relies on (it has no login either), extended to the machine running Obsidian.
 
-For what it's worth, this isn't a RetroInk-specific problem. It's the same
-trust boundary the whole File Transfer web server on this firmware already
-runs on (no login there either), just stretched to cover whatever's
-listening on your Obsidian machine too.
+To reduce the risk, roughly easiest first:
 
-**A few ways to close the gap, roughly easiest first:**
-
-1. **Treat the API key like a password.** Don't paste it anywhere else,
-   don't commit it to a repo, and regenerate it from the plugin's settings
-   the moment you suspect it leaked. Do this one no matter what else you
-   pick from the list below.
-2. **Only turn on "Auto-sync on File Transfer" if you'll actually use it.**
-   The plugin only needs to be reachable while a sync is happening. Leaving
-   it on all the time just widens the window for no real benefit if you're
-   syncing manually anyway.
-3. **Lock the plugin's port to your reader's IP with a firewall rule on the
-   machine running Obsidian.** This is the one that actually closes the gap
-   without breaking the reader's own access, so it's worth the extra effort
-   if you can spare it. On macOS, the built-in Application Firewall only
-   works by app, not by port and source IP, so it can't do this; `pf`
-   (packet filter) can. Here's a minimal example that only lets one IP
-   through and blocks everyone else:
+1. **Treat the API key like a password.** Don't paste it anywhere else, don't commit it to a repository, and regenerate it from the plugin's settings if you think it leaked. Do this whatever else you choose.
+2. **Only turn on "Auto-sync on File Transfer" if you'll use it.** The plugin only needs to be reachable while a sync is running.
+3. **Limit the plugin's port to your reader's IP with a firewall rule on the machine running Obsidian.** This closes the gap without blocking the reader. On macOS, the built-in Application Firewall works by app and can't filter by port and source address, but `pf` (packet filter) can. This example allows one IP and blocks everyone else:
 
    ```
    # /etc/pf.anchors/obsidian-rest-api, replace 192.168.1.50 with your reader's IP
@@ -201,26 +168,9 @@ listening on your Obsidian machine too.
    pass in proto tcp from 192.168.1.50 to any port 27124
    ```
 
-   Reference that anchor from `/etc/pf.conf` and load it with
-   `sudo pfctl -f /etc/pf.conf -e`. `pf` rules don't survive a reboot on
-   their own, you'd need a LaunchDaemon for that, so treat this as a
-   weekend project rather than a five-minute fix, and confirm it took with
-   `pfctl -s rules` before trusting it.
-4. **Or do the same thing at your router instead of the host machine**, if
-   your router supports custom firewall rules or ACLs (common on prosumer
-   gear like UniFi, pfSense, OPNsense, or ASUS running Merlin firmware).
-   Look for a rule that blocks the port from the LAN except from one
-   allowed IP. One thing to avoid here: your router's blanket "client
-   isolation" or "AP isolation" toggle looks like it would help, but it
-   isolates every device from every other device on the network, including
-   the reader itself, so it would just break the feature. You want an
-   allowlist scoped to one device, not a blanket wall.
-5. **And if none of that feels worth doing, that's a fair call too.** The
-   risk you're accepting comes down to "someone with hostile intent is
-   already on my home Wi-Fi," which is the same baseline every other
-   login-free feature on this firmware already runs on. Decide if that's
-   good enough for your situation the same way you would for any other
-   device on your network that has no login screen.
+   Reference that anchor from `/etc/pf.conf` and load it with `sudo pfctl -f /etc/pf.conf -e`. `pf` rules don't survive a reboot by themselves, so add a LaunchDaemon to reload them, and confirm the rules are active with `pfctl -s rules`.
+4. **Or do the same at your router**, if it supports custom firewall rules (UniFi, pfSense, OPNsense, and ASUS routers running Merlin firmware do). Look for a rule that blocks the port from the local network except from one allowed IP. Avoid your router's blanket "client isolation" or "AP isolation" switch: it isolates every device from every other, including the reader, which would break the feature.
+5. **Or accept the risk.** It comes down to someone with bad intent already being on your home Wi-Fi, which is the baseline every other login-free feature on this firmware assumes.
 
 ## Troubleshooting
 

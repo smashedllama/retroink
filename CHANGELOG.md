@@ -10,14 +10,14 @@
 
 ### Notes
 
-- Times ending in Z (UTC) follow the time zone set in Settings > Clock; times that name another zone are taken as already local. One calendar at a time, read-only.
+- Event times follow the time zone set under Settings > System > Clock UTC Offset. One calendar at a time, read-only.
 - The original X4 has no clock, so it works from the date you set in the Desk Calendar (Options > Set Date).
 
 ## [RetroInk 0.5.3] - 2026-09-29
 
 ### Fixed
 
-- Updating from Settings > System > Check for Updates could fail with "Update failed" partway through the download on the X3. The update is saved to the SD card before it is installed, and a write to the card failed about a third of the way in. The update now keeps the partial file and resumes from where it stopped, up to three attempts, instead of giving up. The finished file is still checked against its published checksum before anything is installed, so a resumed download can never install a damaged file. If it still fails, it now logs the attempt number and the card's used and total space.
+- Updating from Settings > System > Check for Updates could fail with "Update failed" partway through the download on the X3. The update is saved to the SD card before it is installed, and a write to the card failed about a third of the way in. The update now keeps the partial file and resumes from where it stopped, up to three attempts, instead of giving up. The finished file is still checked against its published checksum before anything is installed, so a resumed download can never install a damaged file.
 - If you are on 0.5.1 or 0.5.2 and the update fails, install 0.5.3 once from the SD card (copy the `.bin` onto the card, then Settings > System > SD Card Firmware Update). Updates from 0.5.3 onward use the fix.
 
 ## [RetroInk 0.5.2] - 2026-09-28
@@ -36,12 +36,12 @@
 
 ## [RetroInk 0.5.1] - 2026-09-28
 
-RetroInk is now built on CrossInk 1.6.0 (previously 1.5.0), bringing in everything from CrossInk 1.5.1 and 1.6.0 alongside all of RetroInk's own features. All 28 languages are still included, and the firmware is smaller than before (96.8% of flash, down from 99.1%), mainly because CrossInk's built-in reader fonts no longer carry emoji.
+RetroInk is now built on CrossInk 1.6.0 (previously 1.5.0), bringing in everything from CrossInk 1.5.1 and 1.6.0 alongside all of RetroInk's own features. All 28 languages are still included, and the firmware is smaller than before, mainly because CrossInk's built-in reader fonts no longer carry emoji.
 
 ### Added
 
 - Marble Maze joins Desk Accessories, next to Puzzle: a tabletop tilt maze. A new random maze every game, with the ball starting top-left and the hole in the cell farthest along the path. On the X3, tilt the reader to roll the ball; the angle you hold it at when the maze appears counts as level. The front buttons tilt left and right and the side buttons tilt up and down, which is the only control on the X4 (no motion sensor) and works alongside tilting on the X3. Select starts a new maze, and finishing shows your time. The reader stays awake while a game is running. If tilting ever feels reversed, hold Select for a second to redo the direction setup.
-- The X3 panel gets a shorter Fast waveform while Marble Maze is open, roughly twice as many ball updates per second. It is supplied by RetroInk through the SDK's waveform hook and only active inside the game, so reading is unaffected. Playing never triggers a full-panel flash; a deeper refresh runs only when a maze starts or ends.
+- The X3 panel gets a shorter Fast waveform while Marble Maze is open, roughly twice as many ball updates per second. It is only active inside the game, so reading is unaffected. Playing never triggers a full-panel flash; a deeper refresh runs only when a maze starts or ends.
 - Desktop Pattern (Settings > Display) chooses the texture behind every RetroInk window, and on the boot and sleep screens. Sixteen classic Macintosh 8x8 patterns: Checker (the original look, still the default), Gray 50%, Gray 25%, Gray 75%, Brick, Diagonal, Horizontal Lines, Vertical Lines, Weave, Grid, Diamonds, Scales, Dots, Polka, Stripes, and White. The setting is also in web settings. Dense patterns such as Gray 50%, Gray 75%, and Grid ghost a little more on e-ink and make the button hints harder to read.
 
 ### Changed

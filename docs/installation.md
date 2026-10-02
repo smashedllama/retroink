@@ -36,10 +36,13 @@ the first time you open them. Press **Set Date** to change it any time: the
 side buttons move between fields and the front buttons change the value. Earth
 also takes a time and a time zone. The date you pick is saved, so each
 accessory reopens on it, the picker starts from it next time, and the Moon
-Phase, Earth, and Desk Calendar sleep screens draw it.
+Phase, Earth, Desk Calendar, and Calendar Day sleep screens draw it. In the
+Desk Calendar, **Set Date** is in the Options menu. With
+[Calendar Sync](./calendar-sync.html), the events shown are for the date you
+set, so set it again now and then.
 
-**Left out.** These need the real time as it passes, so they're hidden on an
-X4 rather than shown broken:
+**Left out.** These need the real time as it passes, so they don't appear on
+an X4:
 
 - **Clock** in Desk Accessories.
 - **Marble Maze** in Desk Accessories, which is a tilt game and needs the X3's
@@ -141,4 +144,5 @@ with any of the install methods above.
 
 See [What's Different in RetroInk](./whats-different.html) for what's new
 over stock CrossInk, or jump straight to [Obsidian Clipping
-Sync](./obsidian-sync.html) setup if that's what brought you here.
+Sync](./obsidian-sync.html) or [Calendar Sync](./calendar-sync.html) setup if
+that's what brought you here.

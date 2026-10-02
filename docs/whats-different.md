@@ -5,7 +5,7 @@ nav_order: 1
 
 # What's Different in RetroInk
 
-Everything you love about [CrossInk](https://github.com/uxjulia/CrossInk), its reading engine, library, transfer, dictionary, and synchronization features, now with a full System 6 retro redesign, a reimagined stats dashboard, a real library, classic Mac desk accessories, Focus Session reading goals, and Obsidian clip syncing. This page covers that RetroInk-specific delta. For the full feature set RetroInk inherits from CrossInk, see the dropdown near the bottom of this page.
+Everything you love about [CrossInk](https://github.com/uxjulia/CrossInk), its reading engine, library, transfer, dictionary, and synchronization features, now with a full System 6 retro redesign, a reimagined stats dashboard, a real library, classic Mac desk accessories, Focus Session reading goals, Obsidian clip syncing, and calendar syncing. This page covers that RetroInk-specific delta. For the full feature set RetroInk inherits from CrossInk, see the dropdown near the bottom of this page.
 
 > **On an original X4?** It has no clock chip. Moon Phase, Earth, and Desk
 > Calendar ask you to pick a date instead, and the Clock accessory, the
@@ -24,9 +24,9 @@ Change the texture behind every window under **Settings > Display > Desktop Patt
 
 <img class="doc-screenshot" src="./images/retroink-desktop-patterns.png" alt="The sixteen desktop patterns: Checker, Gray 50%, Gray 25%, Gray 75%, Brick, Diagonal, Horizontal Lines, Vertical Lines, Weave, Grid, Diamonds, Scales, Dots, Polka, Stripes, and White" />
 
-None of it costs extra memory. The whole theme adds no additional state to the renderer, and every piece of chrome, windows, icons, the hourglass, drop-shadowed keycaps, is drawn with line and rectangle primitives straight into the existing single 1-bit framebuffer at render time. No second framebuffer, no decoded bitmaps, no stored animation frames. It's available as its own selectable theme in **Settings > Display > UI Theme**, so it doesn't change anyone's existing setup by default.
+The theme costs no extra memory. Windows, icons, the hourglass, and drop-shadowed keycaps are all drawn in code, straight onto the single 1-bit screen buffer, so there is no second buffer, no stored images, and no animation frames. You can switch themes under **Settings > Display > UI Theme**.
 
-Pick your sleep screen in **Settings > Display > Sleep Screen > Wallpaper**. Alongside CrossInk's cover, custom image, and page overlay options, RetroInk adds the reading-stats screens (Today, Book Status, Book + Week Stats with the book's cover and your week, and Reading Year), the desk-accessory screens (Moon Phase, Earth, and Desk Calendar), and three playful Mac-style dialogs:
+Pick your sleep screen in **Settings > Display > Sleep Screen > Wallpaper**. Alongside CrossInk's cover, custom image, and page overlay options, RetroInk adds the reading-stats screens (Today, Book Status, Book + Week Stats with the book's cover and your week, and Reading Year), the desk-accessory screens (Moon Phase, Earth, Desk Calendar, and Calendar Day), and three playful Mac-style dialogs:
 
 <div class="device-row">
   <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-sleep-error-404.png" alt="RetroInk sleep screen styled as a classic Mac Error 404 dialog" /></div></div>
@@ -59,7 +59,7 @@ Press Select on any of them to open the **Reading Desk**, where you can start a 
 
 <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img src="./images/retroink-reading-goal-badge.png" alt="Reading goal countdown badge shown in the top-right corner while reading" /></div></div>
 
-CrossInk doesn't have reading goals at all; this is new in RetroInk and it's what the Today and streak views above are actually tracking. Set one in **Settings > System > Reading Stats > Daily Reading Goal** (5 to 180 minutes), then turn on **Reader Goal Countdown** on the same screen. Once it's on, a small badge in the top-right corner of the reading screen counts down your remaining minutes for the day, no need to leave the book or open the stats screen to check.
+Reading goals are new in RetroInk, and they're what the Today and streak views above track. Set one in **Settings > System > Reading Stats > Daily Reading Goal** (5 to 180 minutes), then turn on **Reader Goal Countdown** on the same screen. Once it's on, a small badge in the top-right corner of the reading screen counts down your remaining minutes for the day, no need to leave the book or open the stats screen to check.
 
 ## Real Library
 
@@ -71,7 +71,7 @@ Press Select for **Actions**: pin a book to Favorites, move it to another folder
 
 ## Custom Shelves
 
-Beyond the built-in To Read/Reading/Finished/Favorites categories, you can now create your own named shelves and sort books into them however you like, a reading queue for a book club, a "borrowed" shelf, whatever makes sense for your library. Create and manage them from the web file transfer portal's new **Library** tab, drag and drop books between shelves (works with touch too), or from the device itself.
+Beyond the built-in To Read/Reading/Finished/Favorites categories, you can create your own named shelves and sort books into them however you like, a reading queue for a book club, a "borrowed" shelf, whatever makes sense for your library. Create and manage them from the web file transfer portal's new **Library** tab, drag and drop books between shelves (works with touch too), or from the device itself.
 
 <img class="doc-screenshot" src="./images/web-portal-smart-shelves.png" alt="Web portal Library tab, Smart Shelves view, showing the To Read and Reading shelves" />
 
@@ -109,7 +109,7 @@ Classic Macs had a menu of small utilities, the desk accessories. RetroInk has i
   <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-marble-maze.png" alt="Marble Maze: a random maze with the ball at the top left and the hole in the middle" /></div></div>
 </div>
 
-Press **Set Date** on Moon Phase or Earth to look at any other date; Earth also takes a time and a time zone. In the picker, the side buttons move between fields and the front buttons change the value (hold to scroll). Moon Phase, Earth, and Desk Calendar are also available as sleep screens.
+Press **Set Date** on Moon Phase or Earth to look at any other date; Earth also takes a time and a time zone. In the picker, the side buttons move between fields and the front buttons change the value (hold to scroll). Moon Phase, Earth, and Desk Calendar are also available as sleep screens, and Calendar Sync adds a Calendar Day screen.
 
 ### How I built the Marble Maze
 
@@ -154,7 +154,7 @@ Your Google, Apple (iCloud) or Outlook calendar, on the reader. Paste the calend
 
 ## Web Portal
 
-The on-device web portal, what loads in your browser when you connect over Wi-Fi in File Transfer mode, gets the same System 6 treatment as the device: the checkerboard desktop texture, striped title bars, beveled buttons, and the same UI font the reader itself uses. It's not a reskin over the old layout either; pages now span the full width of your browser window instead of floating in a fixed centered column, and the Library tab mirrors the device: Smart Shelves and Your Shelves as switchable tabs, with drag-and-drop between shelves.
+The on-device web portal, what loads in your browser when you connect over Wi-Fi in File Transfer mode, gets the same System 6 treatment as the device: the checkerboard desktop texture, striped title bars, beveled buttons, and the same UI font the reader itself uses. Pages span the full width of your browser window instead of sitting in a fixed centered column, and the Library tab mirrors the device: Smart Shelves and Your Shelves as switchable tabs, with drag-and-drop between shelves.
 
 ## Updates over Wi-Fi
 

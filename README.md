@@ -32,7 +32,7 @@ The X4 Pro and X4 Classic use a different chip (ESP32-S3), so they aren't suppor
 - A dedicated RetroInk interface with large, readable System 6-inspired type.
 - Macintosh-style windows, menus, controls, dialogs, icons, and progress bars, covering every screen, not just a handful of them, on a desktop texture you choose from sixteen classic Mac patterns.
 - A RetroInk boot sequence with an animated Macintosh glance.
-- New sleep screens: the themed "resting between chapters" default, three playful Mac-style dialogs, reading-stats screens (Today, Book Status, Book + Week Stats, Reading Year), and desk-accessory screens (Moon Phase, Earth, Desk Calendar), plus monochrome book-cover rendering.
+- New sleep screens: the themed "resting between chapters" default, three playful Mac-style dialogs, reading-stats screens (Today, Book Status, Book + Week Stats, Reading Year), and desk-accessory screens (Moon Phase, Earth, Desk Calendar, Calendar Day), plus monochrome book-cover rendering.
 - An optional charging screen that appears automatically when you plug in and aren't actively reading.
 - Code-drawn graphics that avoid extra framebuffers and large theme bitmaps.
 - A Home screen with a progress bar on your current book, optional reading stats, and an OPDS Browser entry once you've added a server.
@@ -245,7 +245,7 @@ This repository does not accept pull requests. Feature requests may be opened in
 
 ## Testers
 
-Thank you to our early testers and testing volunteers from the Reddit community for helping shape RetroInk before its public release:
+Thank you to the early testers and testing volunteers from the Reddit community who helped shape RetroInk before its public release:
 
 - [u/Any_Zookeepergame408](https://www.reddit.com/user/Any_Zookeepergame408/)
 - [u/Bitter_Day_368](https://www.reddit.com/user/Bitter_Day_368/)
