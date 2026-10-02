@@ -1,8 +1,17 @@
-## [Unreleased]
+## [RetroInk 0.5.4] - 2026-10-02
 
 ### Added
 
-- **Calendar sync.** Give the reader your Google, Apple (iCloud) or Outlook calendar link once (File Transfer web page > Settings > Desk Calendar), then update it any time from the Desk Calendar with **Options > Sync Calendar**. The Desk Calendar shows a small square under every day with an event and lists the selected day's events under the grid, ending in "+N more" when they do not all fit. **Options > Day View** shows the whole day full screen with complete titles, and Left/Right move between days. The front Left/Right buttons now move one day at a time, the side page buttons change the month, and a tap picks a day; on the original X4 Set Date moved into Options. The Desk Calendar sleep screen adds the same squares and a short Upcoming list. Repeating events, all-day and multi-day events, skipped dates and moved or cancelled occurrences are handled. Events are stored on the SD card. Events that run past midnight now appear on each day they cover ("Continues", "Ongoing", "Until 6:00 AM"). A new **Calendar Day** sleep screen shows the whole day, striking through finished events, marking the current one, and noting when it was updated. The Desk Calendar sleep screen now lists only what is still to come. See [Calendar Sync](./docs/calendar-sync.md).
+- **Calendar Sync.** Put your Google, Apple (iCloud) or Outlook calendar on the reader. Paste its iCal link once on the File Transfer web page (Settings > Desk Calendar), then update it any time from **Desk Accessories > Desk Calendar > Options > Sync Calendar**. The sync shows a progress bar, and the events are saved on the SD card, so they survive restarts and work offline. See [Calendar Sync](./docs/calendar-sync.md).
+- **Desk Calendar events.** A small square under every day with an event, and the selected day's events listed under the grid, ending in "+N more" when they do not all fit. The filled day is the one you are looking at, and today has a double border. Front Left/Right now step one day at a time, the side page buttons change the month, and a tap picks a day. On the original X4, Set Date moved into the Options menu.
+- **Day View.** Options > Day View shows the selected day full screen: every event with its start time, length and full title, Left/Right to move between days, side buttons or a swipe to scroll.
+- **Calendar Day sleep screen.** Shows the whole of today. On a reader with a clock, finished events are struck through, the one under way is marked, and the bottom says when the screen was last updated. The Desk Calendar sleep screen now shows the event squares and what is still to come.
+- Repeating events (daily, weekly, monthly, yearly, "second Thursday", "last day of the month", end dates, skipped dates), all-day and multi-day events, events that run past midnight ("Continues", "Ongoing", "Until"), and moved or cancelled occurrences are handled. About 45 days back and 13 months ahead are kept, up to 600 entries.
+
+### Notes
+
+- Times ending in Z (UTC) follow the time zone set in Settings > Clock; times that name another zone are taken as already local. One calendar at a time, read-only.
+- The original X4 has no clock, so it works from the date you set in the Desk Calendar (Options > Set Date).
 
 ## [RetroInk 0.5.3] - 2026-09-29
 

@@ -96,7 +96,7 @@ Classic Macs had a menu of small utilities, the desk accessories. RetroInk has i
 - **Clock**, an analog or digital desk clock with an optional seconds display. It keeps the reader awake while it's open, so it can sit on a desk.
 - **Puzzle**, the classic fifteen-tile slider. Your board and move count are saved after every move.
 - **Marble Maze** (X3 only), a tabletop tilt maze. Tilt the reader to roll the ball into the hole; a new random maze every game. The far-right button opens Options: **Recalibrate** (lay the reader flat on a table to set level), and **Invert Left/Right** and **Invert Forward/Back** if a tilt rolls the wrong way for how you hold it.
-- **Desk Calendar**, a month view with today marked. Left and Right page through months.
+- **Desk Calendar**, a month view with today marked. With [Calendar Sync](./calendar-sync.html) it also shows your own calendar: event squares, the selected day's events, and a full-screen Day View.
 - **System Info**, firmware version, storage use, and battery level.
 
 <div class="device-row">
@@ -147,6 +147,10 @@ A configurable reading-session timer, in **Desk Accessories > Focus Session**:
 ## Obsidian Clipping Sync
 
 Pushes the highlights you save while reading straight into an Obsidian vault, over your local network via Adam Coddington's [Local REST API with MCP plugin](https://github.com/coddingtonbear/obsidian-local-rest-api), or to any webhook. On top of, not instead of, the existing `/My Clippings.txt` export. Highlights saved before you set it up, including ones carried over from CrossInk, can be sent too with **Queue Older Highlights**. See the [full guide](./obsidian-sync.html).
+
+## Calendar Sync
+
+Your Google, Apple (iCloud) or Outlook calendar, on the reader. Paste the calendar's iCal link once on the File Transfer web page, then update it any time from **Desk Calendar > Options > Sync Calendar**. Events appear in the Desk Calendar with a square under each busy day, a Day View shows a whole day with full titles and lengths, and two sleep screens show the month with what is coming up, or all of today with finished events struck through and a note of when it was last updated. Repeating events, all-day and overnight events, and moved or cancelled occurrences are handled. Everything is stored on the SD card. See the [full guide](./calendar-sync.html).
 
 ## Web Portal
 

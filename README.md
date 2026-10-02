@@ -44,6 +44,7 @@ The X4 Pro and X4 Classic use a different chip (ESP32-S3), so they aren't suppor
 - Adjustable status bar text size (Small, Medium, Large).
 - Safe book moves across the device, web file manager, and WebDAV. RetroInk reviews old and current reading records before restoring progress after a move made elsewhere.
 - [Obsidian Clipping Sync](./docs/obsidian-sync.md): pushes saved highlights into an Obsidian vault over the local network (via the Local REST API plugin) or a webhook, on top of the existing `/My Clippings.txt` export, including highlights saved before you set it up.
+- [Calendar Sync](./docs/calendar-sync.md): puts your Google, Apple (iCloud) or Outlook calendar in the Desk Calendar from its iCal link, with event squares, a full-screen Day View, and two sleep screens (month with what is coming up, and a whole-day view with finished events struck through). Saved on the SD card.
 - Over-the-air updates from RetroInk's own releases, with the release notes shown before you install.
 - A matching System 6 redesign of the on-device web portal (the page you get connecting over Wi-Fi in File Transfer mode), including a Library tab with drag-and-drop custom shelves.
 
