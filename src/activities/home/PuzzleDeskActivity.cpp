@@ -1,5 +1,7 @@
 #include "PuzzleDeskActivity.h"
 
+#include "PuzzleRules.h"
+
 #include <Arduino.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
@@ -45,17 +47,7 @@ void PuzzleDeskActivity::shuffle() {
   solved_ = false;
 }
 
-bool PuzzleDeskActivity::isSolvable() const {
-  int inversions = 0;
-  for (int i = 0; i < 16; ++i) {
-    for (int j = i + 1; j < 16; ++j) {
-      if (tiles_[i] && tiles_[j] && tiles_[i] > tiles_[j]) ++inversions;
-    }
-  }
-  const int blankRowFromTop = blankPos_ / 4;
-  const int blankRowFromBottom = 4 - blankRowFromTop;
-  return (inversions + blankRowFromBottom) % 2 == 0;
-}
+bool PuzzleDeskActivity::isSolvable() const { return PuzzleRules::solvable(tiles_); }
 
 void PuzzleDeskActivity::checkSolved() {
   for (int i = 0; i < 15; ++i) {
@@ -121,6 +113,9 @@ bool PuzzleDeskActivity::loadState() {
     tiles_[i] = data[1 + i];
     if (tiles_[i] == 0) blankPos_ = i;
   }
+  // A board saved by an earlier version could be one that can never be solved
+  // (its shuffle had the parity backwards); drop it and start a fresh game.
+  if (!isSolvable()) return false;
   moves_ = static_cast<uint32_t>(data[17]) | (static_cast<uint32_t>(data[18]) << 8) |
            (static_cast<uint32_t>(data[19]) << 16) | (static_cast<uint32_t>(data[20]) << 24);
   checkSolved();

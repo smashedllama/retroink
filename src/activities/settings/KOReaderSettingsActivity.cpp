@@ -227,8 +227,7 @@ void KOReaderSettingsActivity::buildListScreen(UiApp::ScreenType& screen) {
     fui::ListItem item;
     item.label = I18N.get(menuNames[i]);
     if (!values[i].empty()) item.value = values[i].c_str();
-    item.toggle = i == 4;
-    item.toggleChecked = KOREADER_STORE.getSendMetadata();
+    if (i == 4) applyUiToggle(item, KOREADER_STORE.getSendMetadata());
     item.actionValue = static_cast<int16_t>(i);
     items.push_back(item);
   }

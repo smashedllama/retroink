@@ -1,3 +1,13 @@
+## [Unreleased]
+
+### Fixed
+
+- **The Puzzle could not be solved.** Shuffles came out in the half of all arrangements that can never be reached from the solved board, so only the reversed arrangement (15, 14, 13, ...) could be finished, or you could swap two tiles by hand to make it work. Every shuffle is now solvable. A game saved by an earlier version that can't be solved is dropped and a fresh one is dealt the next time you open the Puzzle.
+
+### Changed
+
+- On/off settings now show a boxed **I** (on) or **O** (off) instead of a sliding switch in the System 6 theme. On a selected row the switch was drawn in inverted colours, so it looked already switched on, and the only sign of a change was a thin border. The letters read the same selected or not. Other themes keep the switch.
+
 ## [RetroInk 0.5.4] - 2026-10-02
 
 ### Added

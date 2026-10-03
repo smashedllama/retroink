@@ -1483,10 +1483,8 @@ void SettingsActivity::buildSettingsScreen(UiApp::ScreenType& screen) {
     item.icon = itemIcon;
     if (!isSectionHeader && !values[i].empty()) item.value = values[i].c_str();
     item.isHeader = isSectionHeader;
-    item.toggle = !isSectionHeader && settings[i].type == SettingType::TOGGLE;
-    if (item.toggle) {
-      item.toggleChecked = settings[i].valuePtr != nullptr && SETTINGS.*(settings[i].valuePtr) != 0;
-      item.value = nullptr;
+    if (!isSectionHeader && settings[i].type == SettingType::TOGGLE) {
+      applyUiToggle(item, settings[i].valuePtr != nullptr && SETTINGS.*(settings[i].valuePtr) != 0);
     }
     item.actionValue = static_cast<int16_t>(i);
     items.push_back(item);

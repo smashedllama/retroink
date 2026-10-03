@@ -746,10 +746,8 @@ void ReaderOptionsActivity::buildOptionsScreen(UiApp::ScreenType& screen) {
         isSectionHeader ? uiListSectionHeaderLabel(values[i], I18N.get(setting.nameId)) : I18N.get(setting.nameId);
     if (!isSectionHeader && !values[i].empty()) item.value = values[i].c_str();
     item.isHeader = isSectionHeader;
-    item.toggle = !isSectionHeader && setting.type == SettingType::TOGGLE;
-    if (item.toggle) {
-      item.toggleChecked = setting.valuePtr != nullptr && SETTINGS.*(setting.valuePtr) != 0;
-      item.value = nullptr;
+    if (!isSectionHeader && setting.type == SettingType::TOGGLE) {
+      applyUiToggle(item, setting.valuePtr != nullptr && SETTINGS.*(setting.valuePtr) != 0);
     }
     item.actionValue = static_cast<int16_t>(i);
     items.push_back(item);
