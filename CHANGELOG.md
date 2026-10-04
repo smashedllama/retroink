@@ -1,3 +1,9 @@
+## [Unreleased]
+
+### Changed
+
+- The **Today** and **Book Status** sleep screens use the whole page. Today adds a **Now Reading** card under the week, with the cover, title and progress of the book you have open. Book Status now shows the cover beside the title, and its numbers (reading time, pages turned, sessions, average session, start date, and time left or finished date) are spaced down the page. The Reading Desk screens inside the reader are unchanged.
+
 ## [RetroInk 0.5.6] - 2026-10-04
 
 ### Added

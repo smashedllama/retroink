@@ -35,6 +35,30 @@ void dither(const GfxRenderer& r, const int x, const int y, const int w, const i
     for (int col = ((row / 2) & 1) * 2; col < w; col += 4) r.fillRect(x + col, y + row, 2, std::min(2, h - row));
 }
 
+// Draws a book cover (a cached BMP) in a box, or a dithered placeholder if there is none.
+void drawCover(GfxRenderer& r, const std::string& coverBmpPath, const int x, const int y, const int w, const int h) {
+  if (!coverBmpPath.empty()) {
+    FsFile file;
+    if (Storage.openFileForRead("RDV", coverBmpPath, file)) {
+      Bitmap bitmap(file);
+      if (bitmap.parseHeaders() == BmpReaderError::Ok) {
+        r.drawRect(x - 1, y - 1, w + 2, h + 2);
+        r.drawBitmap(bitmap, x, y, w, h);
+        return;
+      }
+    }
+  }
+  r.drawRect(x, y, w, h);
+  dither(r, x + 2, y + 2, w - 4, h - 4);
+}
+
+// A percent as "26%" over a progress bar, for the sleep screens' book cards.
+void drawProgressBar(const GfxRenderer& r, const int x, const int y, const int w, const float percent) {
+  r.drawRect(x, y, w, 22);
+  const int fill = static_cast<int>(std::clamp(percent, 0.0f, 100.0f) * (w - 4) / 100.0f);
+  if (fill > 0) r.fillRect(x + 2, y + 2, fill, 18);
+}
+
 void footer(GfxRenderer& r, const MappedInputManager* input, const char* left, const char* right) {
   if (!input) return;
   const auto labels = input->mapLabels(left, right, tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
@@ -67,7 +91,8 @@ void drawCell(const GfxRenderer& r, const int x, const int y, const int size, co
 }  // namespace
 
 namespace RetroInkReadingDeskView {
-void renderToday(GfxRenderer& r, const MappedInputManager* input, const GlobalReadingStats& globalStats) {
+void renderToday(GfxRenderer& r, const MappedInputManager* input, const GlobalReadingStats& globalStats,
+                 const NowReading* nowReading) {
   r.clearScreen();
   CompactHeader::drawTitle(r, tr(STR_READING_DESK));
   const auto& metrics = UITheme::getInstance().getMetrics();
@@ -118,6 +143,36 @@ void renderToday(GfxRenderer& r, const MappedInputManager* input, const GlobalRe
   char streak[30];
   snprintf(streak, sizeof(streak), tr(STR_READING_STREAK), static_cast<unsigned>(globalStats.currentReadingStreak(&date)));
   r.drawCenteredText(UI_10_FONT_ID, weekTop + 147, streak);
+
+  // Sleep screen only: what you are reading, in the space under the week.
+  const int cardTop = weekTop + 190 + 14;
+  const int cardBottom = r.getScreenHeight() - metrics.buttonHintsHeight - 12;
+  if (nowReading != nullptr && cardBottom - cardTop >= 190) {
+    constexpr int coverW = 96;
+    constexpr int coverH = 140;
+    constexpr int pad = 16;
+    const int cardH = std::min(cardBottom - cardTop, 36 + coverH + pad);
+    window(r, x, cardTop, w, cardH, tr(STR_NOW_READING));
+    const int coverX = x + pad + 4;
+    const int coverY = cardTop + 36;
+    drawCover(r, nowReading->coverBmpPath, coverX, coverY, coverW, coverH);
+    const int textX = coverX + coverW + 18;
+    const int textW = std::max(40, x + w - pad - 4 - textX);
+    const int lineH = r.getLineHeight(UI_10_FONT_ID);
+    const auto lines = r.wrappedText(UI_10_FONT_ID, nowReading->title.c_str(), textW, 4, EpdFontFamily::BOLD);
+    int y = coverY;
+    for (const auto& line : lines) {
+      r.drawText(UI_10_FONT_ID, textX, y, line.c_str(), true, EpdFontFamily::BOLD);
+      y += lineH;
+    }
+    if (nowReading->progressPercent >= 0.0f) {
+      const int barY = coverY + coverH - 22;
+      char percent[16];
+      snprintf(percent, sizeof(percent), "%.0f%%", nowReading->progressPercent);
+      r.drawText(UI_10_FONT_ID, textX, barY - lineH - 6, percent, true, EpdFontFamily::BOLD);
+      drawProgressBar(r, textX, barY, textW, nowReading->progressPercent);
+    }
+  }
   footer(r, input, tr(STR_BACK), tr(STR_ACTIONS));
 }
 
@@ -226,6 +281,87 @@ void renderBookStatus(GfxRenderer& r, const MappedInputManager* input, const std
     r.drawCenteredText(UI_10_FONT_ID, statsTop + 205, value);
   }
   footer(r, input, tr(STR_BACK), tr(STR_ACTIONS));
+}
+
+void renderBookStatusSleep(GfxRenderer& r, const std::string& title, const BookReadingStats& stats,
+                           const float progressPercent, const uint32_t estimatedTimeLeftSeconds,
+                           const std::string& coverBmpPath) {
+  r.clearScreen();
+  CompactHeader::drawTitle(r, tr(STR_BOOK_STATUS));
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const int x = metrics.contentSidePadding;
+  const int w = r.getScreenWidth() - x * 2;
+  const int top = metrics.topPadding + metrics.headerHeight + 10;
+  const int bottom = r.getScreenHeight() - metrics.buttonHintsHeight - 12;
+
+  // Cover beside the title.
+  constexpr int coverW = 110;
+  constexpr int coverH = 160;
+  constexpr int pad = 14;
+  const int headH = coverH + pad * 2;
+  window(r, x, top, w, headH, nullptr);
+  const int coverX = x + pad + 4;
+  const int coverY = top + pad;
+  drawCover(r, coverBmpPath, coverX, coverY, coverW, coverH);
+  const int textX = coverX + coverW + 16;
+  const int textW = std::max(20, x + w - pad - 4 - textX);
+  const int lineH = r.getLineHeight(UI_10_FONT_ID);
+  const auto titleLines = r.wrappedText(UI_10_FONT_ID, title.c_str(), textW, std::max(1, coverH / lineH),
+                                        EpdFontFamily::BOLD);
+  int textY = coverY + std::max(0, (coverH - static_cast<int>(titleLines.size()) * lineH) / 2);
+  for (const auto& line : titleLines) {
+    r.drawText(UI_10_FONT_ID, textX, textY, line.c_str(), true, EpdFontFamily::BOLD);
+    textY += lineH;
+  }
+
+  // Progress and the numbers, spread over the rest of the page.
+  const int statsTop = top + headH + 14;
+  const int statsH = std::max(216, bottom - statsTop);
+  window(r, x, statsTop, w, statsH, tr(STR_STATS_THIS_BOOK));
+  char value[32];
+  snprintf(value, sizeof(value), "%.0f%%", std::max(0.0f, progressPercent));
+  r.drawCenteredText(UI_12_FONT_ID, statsTop + 50, value, true, EpdFontFamily::BOLD);
+  r.drawRect(x + 34, statsTop + 92, w - 68, 22);
+  const int fill = static_cast<int>(std::clamp(progressPercent, 0.0f, 100.0f) * (w - 72) / 100.0f);
+  if (fill) r.fillRect(x + 36, statsTop + 94, fill, 18);
+
+  struct Row {
+    const char* label;
+    char value[32];
+  };
+  Row rows[7];
+  int rowCount = 0;
+  auto addRow = [&](const char* label) -> Row& {
+    Row& row = rows[rowCount++];
+    row.label = label;
+    row.value[0] = '\0';
+    return row;
+  };
+  BookReadingStats::formatDuration(stats.totalReadingSeconds, addRow(tr(STR_STATS_TIME_LBL)).value, sizeof(rows[0].value));
+  snprintf(addRow(tr(STR_STATS_PAGES_LBL)).value, sizeof(rows[0].value), "%lu",
+           static_cast<unsigned long>(stats.totalPagesTurned));
+  snprintf(addRow(tr(STR_STATS_SESSIONS_LBL)).value, sizeof(rows[0].value), "%u",
+           static_cast<unsigned>(stats.sessionCount));
+  if (stats.sessionCount > 0) {
+    BookReadingStats::formatDuration(stats.totalReadingSeconds / stats.sessionCount,
+                                     addRow(tr(STR_STATS_AVG_SESSION_LBL)).value, sizeof(rows[0].value));
+  }
+  if (stats.startDate.isValid()) {
+    formatReadingStatsShortDate(stats.startDate, addRow(tr(STR_STATS_STARTED)).value, sizeof(rows[0].value));
+  }
+  if (stats.isCompleted && stats.finishedDate.isValid()) {
+    formatReadingStatsShortDate(stats.finishedDate, addRow(tr(STR_STATS_FINISHED_DATE)).value, sizeof(rows[0].value));
+  } else {
+    const uint32_t left = estimatedTimeLeftSeconds ? estimatedTimeLeftSeconds : stats.estimatedTimeLeftSeconds;
+    if (left > 0) BookReadingStats::formatDuration(left, addRow(tr(STR_TIME_LEFT)).value, sizeof(rows[0].value));
+  }
+  const int rowsTop = statsTop + 142;
+  const int step = std::clamp((statsH - 142 - 24) / std::max(1, rowCount), 33, 50);
+  for (int i = 0; i < rowCount; ++i) {
+    const int ry = rowsTop + i * step;
+    r.drawText(UI_10_FONT_ID, x + 38, ry, rows[i].label);
+    r.drawText(UI_10_FONT_ID, x + w / 2, ry, rows[i].value, true, EpdFontFamily::BOLD);
+  }
 }
 
 void renderBookWeekStatus(GfxRenderer& r, const MappedInputManager* input, const std::string& title,

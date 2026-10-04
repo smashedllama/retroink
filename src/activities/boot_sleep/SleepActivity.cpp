@@ -1405,7 +1405,19 @@ void SleepActivity::renderReadingStatsSleepScreen() const {
   }
 
   if (SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {
-    RetroInkReadingDeskView::renderToday(renderer, nullptr, GlobalReadingStats::load());
+    // With a book open, a "Now Reading" card fills the space under the week.
+    RetroInkReadingDeskView::NowReading nowReading;
+    const bool hasBook = !path.empty();
+    if (hasBook) {
+      nowReading.title = bookTitle;
+      nowReading.progressPercent = progressPercent;
+      nowReading.coverBmpPath = SleepCoverAssets::cachedBookWeekCoverPathFor(path);
+      if (nowReading.coverBmpPath.empty() && SleepCoverAssets::prepareBookWeekCoverForPath(path, &renderer)) {
+        nowReading.coverBmpPath = SleepCoverAssets::cachedBookWeekCoverPathFor(path);
+      }
+    }
+    RetroInkReadingDeskView::renderToday(renderer, nullptr, GlobalReadingStats::load(),
+                                         hasBook ? &nowReading : nullptr);
     renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
     return;
   }
@@ -1458,8 +1470,12 @@ void SleepActivity::renderMinimalStatsSleepScreen() const {
 
   const BookReadingStats bookStats = loadBookStatsForPath(path);
   if (SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {
-    RetroInkReadingDeskView::renderBookStatus(renderer, nullptr, book.title, bookStats,
-                                               RecentBookProgress::loadPercent(book), 0);
+    std::string coverPath = SleepCoverAssets::cachedBookWeekCoverPathFor(path);
+    if (coverPath.empty() && SleepCoverAssets::prepareBookWeekCoverForPath(path, &renderer)) {
+      coverPath = SleepCoverAssets::cachedBookWeekCoverPathFor(path);
+    }
+    RetroInkReadingDeskView::renderBookStatusSleep(renderer, book.title, bookStats,
+                                                   RecentBookProgress::loadPercent(book), 0, coverPath);
     renderer.displayBuffer(sleepRefreshMode(), TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
     return;
   }
