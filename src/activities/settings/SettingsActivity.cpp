@@ -1,5 +1,7 @@
 #include "SettingsActivity.h"
 
+#include "SleepScreenPickerActivity.h"
+
 #include <BoardConfig.h>
 #include <GfxRenderer.h>
 #include <HalGPIO.h>
@@ -1020,6 +1022,20 @@ void SettingsActivity::toggleCurrentSetting() {
     return;
   }
 
+  if (setting.valuePtr == &CrossPointSettings::sleepScreen) {
+    // Browse the screens with a live preview instead of a plain list.
+    startActivityForResult(std::make_unique<SleepScreenPickerActivity>(renderer, mappedInput),
+                           [this](const ActivityResult& result) {
+                             if (!result.isCancelled) {
+                               syncQuickResumeTimeoutForSleepScreen(/*sleepScreenChanged=*/true,
+                                                                    /*quickResumeTimeoutChanged=*/false);
+                               SETTINGS.saveToFile();
+                               rebuildSettingsLists();
+                             }
+                             requestUpdate();
+                           });
+    return;
+  }
   if (currentSettingUsesOptionMenu(setting)) {
     openEnumOptionPicker(setting);
     return;

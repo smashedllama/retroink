@@ -609,6 +609,12 @@ void SleepActivity::onEnter() {
     GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
   }
 
+  renderForMode(sleepScreen);
+}
+
+// The part of going to sleep that picks and draws the screen, shared with the
+// sleep screen picker's previews.
+void SleepActivity::renderForMode(const uint8_t sleepScreen) const {
   // A date-driven screen saved on a clockless device (the original X4) has
   // nothing to draw; use the default screen instead.
   if (!halClock.isAvailable() && sleepScreenNeedsClock(sleepScreen)) {
@@ -667,6 +673,65 @@ void SleepActivity::onEnter() {
     default:
       return renderDefaultSleepScreen();
   }
+}
+
+bool SleepActivity::modeHasPreview(const uint8_t mode) {
+  return mode != CrossPointSettings::QUICK_RESUME && mode != CrossPointSettings::OVERLAY;
+}
+
+bool SleepActivity::renderPreview(const uint8_t mode, uint8_t* thumb, const int thumbW, const int thumbH) {
+  if (thumb == nullptr || thumbW <= 0 || thumbH <= 0 || !modeHasPreview(mode)) return false;
+
+  const uint8_t savedMode = SETTINGS.sleepScreen;
+  const auto savedOrientation = renderer.getOrientation();
+  SleepClockScope hideClockWhileRendering(SETTINGS.hideClock);
+  SETTINGS.sleepScreen = mode;
+  previewMode_ = true;
+  renderer.setDisplaySuppressed(true);
+  renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+
+  const bool usesRecentBooks = mode == CrossPointSettings::READING_STATS_SLEEP ||
+                               mode == CrossPointSettings::MINIMAL_SLEEP ||
+                               mode == CrossPointSettings::MINIMAL_STATS_SLEEP ||
+                               mode == CrossPointSettings::DASHBOARD_SLEEP;
+  if (usesRecentBooks && !APP_STATE.openEpubPath.empty()) RECENT_BOOKS.ensureLoaded();
+
+  renderer.clearScreen();
+  renderForMode(mode);
+
+  // Shrink the frame buffer into the thumbnail: the share of black in each
+  // block of source pixels picks black or white through a 4x4 ordered dither,
+  // so text and grey areas keep some of their shape.
+  static constexpr uint8_t kBayer[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
+  const int srcW = renderer.getScreenWidth();
+  const int srcH = renderer.getScreenHeight();
+  const int stride = (thumbW + 7) / 8;
+  std::fill(thumb, thumb + static_cast<size_t>(stride) * thumbH, 0);
+  for (int ty = 0; ty < thumbH; ++ty) {
+    const int y0 = ty * srcH / thumbH;
+    const int y1 = std::max(y0 + 1, (ty + 1) * srcH / thumbH);
+    for (int tx = 0; tx < thumbW; ++tx) {
+      const int x0 = tx * srcW / thumbW;
+      const int x1 = std::max(x0 + 1, (tx + 1) * srcW / thumbW);
+      int black = 0;
+      for (int y = y0; y < y1; ++y) {
+        for (int x = x0; x < x1; ++x) {
+          if (renderer.isPixelBlack(x, y)) ++black;
+        }
+      }
+      const int area = (y1 - y0) * (x1 - x0);
+      // black / area > (threshold + 0.5) / 16
+      if (black * 32 > area * (2 * kBayer[ty & 3][tx & 3] + 1)) {
+        thumb[ty * stride + tx / 8] |= static_cast<uint8_t>(0x80 >> (tx % 8));
+      }
+    }
+  }
+
+  renderer.setDisplaySuppressed(false);
+  renderer.setOrientation(savedOrientation);
+  previewMode_ = false;
+  SETTINGS.sleepScreen = savedMode;
+  return true;
 }
 
 void SleepActivity::renderCustomSleepScreen() const {
@@ -1228,7 +1293,7 @@ bool SleepActivity::renderBitmapSleepScreen(Bitmap& bitmap, const bool forceFast
 
   renderer.clearScreen();
 
-  const bool hasGreyscale = bitmap.hasGreyscale() && !forceFastNoGreyscale &&
+  const bool hasGreyscale = bitmap.hasGreyscale() && !forceFastNoGreyscale && !previewMode_ &&
                             SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER;
 
   // The gray nudge needs a clean base. Clear the full panel to white first in

@@ -32,6 +32,7 @@
 #include "activities/boot_sleep/BootActivity.h"
 #include "activities/boot_sleep/ChargingActivity.h"
 #include "activities/boot_sleep/SleepActivity.h"
+#include "activities/settings/SleepScreenPickerActivity.h"
 #include "activities/reader/EpubReaderMenuActivity.h"
 #include "activities/reader/BookStatsActivity.h"
 #include "activities/reader/FocusSessionActivity.h"
@@ -1004,6 +1005,26 @@ class SimulatorSmokeTest {
           quickResumePreview.onEnter();
           if (SETTINGS.hideClock != savedClockChoice) fail("Quick Resume changed the saved clock setting");
           captureFrameUnlocked("Quick Resume with clock hidden");
+          {
+            // The sleep screen picker draws a real preview and leaves the panel and settings as it found them.
+            const uint8_t savedForPicker = SETTINGS.sleepScreen;
+            SETTINGS.sleepScreen = CrossPointSettings::DARK;
+            SleepScreenPickerActivity picker(renderer, mappedInputManager);
+            picker.onEnter();
+            {
+              RenderLock lock(picker);
+              picker.render(std::move(lock));
+            }
+            picker.loop();  // draws the preview now that the "Drawing..." frame is up
+            {
+              RenderLock lock(picker);
+              picker.render(std::move(lock));
+            }
+            captureFrameUnlocked("Sleep Screen Picker");
+            picker.onExit();
+            if (SETTINGS.sleepScreen != CrossPointSettings::DARK) fail("Sleep screen picker changed the setting");
+            SETTINGS.sleepScreen = savedForPicker;
+          }
           APP_STATE.lastSleepFromReader = savedSleepFromReader;
           SETTINGS.sleepScreen = savedSleepChoice;
           renderer.clearScreen();

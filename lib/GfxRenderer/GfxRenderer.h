@@ -47,6 +47,7 @@ class GfxRenderer {
   HalDisplay& display;
   RenderMode renderMode;
   mutable bool absoluteGrayPlanes = false;
+  bool displaySuppressed_ = false;
   Orientation orientation;
   bool fadingFix;
   uint8_t* frameBuffer = nullptr;
@@ -227,6 +228,12 @@ class GfxRenderer {
   bool supportsAsyncGrayscaleBase() const;
   // Refresh a logical rectangle; rotation and byte alignment are handled here.
   void displayWindow(int x, int y, int width, int height) const;
+
+  // While suppressed, every display*() call returns without touching the
+  // panel. Drawing still goes into the frame buffer, so a screen can be drawn
+  // off to the side and then read back (the sleep screen picker's previews).
+  void setDisplaySuppressed(bool suppressed) { displaySuppressed_ = suppressed; }
+
   void invertScreen() const;
   void invertRect(int x, int y, int width, int height) const;
   void clearScreen(uint8_t color = 0xFF) const;

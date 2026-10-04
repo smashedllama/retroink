@@ -1,3 +1,13 @@
+## [Unreleased]
+
+### Added
+
+- **Sleep screen picker.** Settings > Display > Sleep Screen > Wallpaper now opens a window with a preview of the sleep screen, drawn by the real sleep screen code with your own book, stats, calendar and date. **Left** and **Right** move between the screens (or swipe on a touch reader), **Select** uses the one on show, and **Back** leaves it unchanged. The Moon and Earth take a moment, so they show "Drawing..." first. Quick Resume and Page Overlay show a short description instead, since they depend on the page you were on when you went to sleep.
+
+### Changed
+
+- The sleep screens are in a new order: the original options first (Cover, Custom, Page Overlay, Quick Resume), then RetroInk's (Resting Between Chapters, System Nap, Error 404, Insert Bookmark, Today, Book Status, Book + Week, Reading Year), then the desk accessories (Moon Phase, Earth, Desk Calendar, Calendar Day). The same order is used in the web settings.
+
 ## [RetroInk 0.5.5] - 2026-10-03
 
 ### Fixed

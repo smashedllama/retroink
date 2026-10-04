@@ -26,7 +26,7 @@ Change the texture behind every window under **Settings > Display > Desktop Patt
 
 The theme costs no extra memory. Windows, icons, the hourglass, and drop-shadowed keycaps are all drawn in code, straight onto the single 1-bit screen buffer, so there is no second buffer, no stored images, and no animation frames. You can switch themes under **Settings > Display > UI Theme**.
 
-Pick your sleep screen in **Settings > Display > Sleep Screen > Wallpaper**. Alongside CrossInk's cover, custom image, and page overlay options, RetroInk adds the reading-stats screens (Today, Book Status, Book + Week Stats with the book's cover and your week, and Reading Year), the desk-accessory screens (Moon Phase, Earth, Desk Calendar, and Calendar Day), and three playful Mac-style dialogs:
+Pick your sleep screen in **Settings > Display > Sleep Screen > Wallpaper**. It opens a picker with a preview of each screen, drawn with your own book, stats and date: Left and Right browse, Select uses the one you are looking at. They run in this order: the original CrossInk options, then RetroInk's own, then the desk accessories. Alongside CrossInk's cover, custom image, and page overlay options, RetroInk adds the reading-stats screens (Today, Book Status, Book + Week Stats with the book's cover and your week, and Reading Year), the desk-accessory screens (Moon Phase, Earth, Desk Calendar, and Calendar Day), and three playful Mac-style dialogs:
 
 <div class="device-row">
   <div class="device-mock"><img class="device-frame" src="./images/x3-frame.png" alt="" /><div class="device-screen"><img class="fill-screen" src="./images/retroink-sleep-error-404.png" alt="RetroInk sleep screen styled as a classic Mac Error 404 dialog" /></div></div>

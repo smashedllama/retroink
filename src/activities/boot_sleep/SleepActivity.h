@@ -19,7 +19,17 @@ class SleepActivity final : public Activity {
         sleepPopupOrientation(sleepPopupOrientation) {}
   void onEnter() override;
 
+  // Draws the sleep screen for `mode` exactly as it would be drawn when the
+  // reader goes to sleep (your current book, stats and date included), without
+  // showing it on the panel, and shrinks it into `thumb`: a 1-bit bitmap,
+  // thumbW x thumbH, rows padded to whole bytes, black = 1. Returns false if
+  // the mode has no preview (Quick Resume and Page Overlay show what was on
+  // screen, which does not exist yet) or the thumbnail is empty.
+  bool renderPreview(uint8_t mode, uint8_t* thumb, int thumbW, int thumbH);
+  static bool modeHasPreview(uint8_t mode);
+
  private:
+  void renderForMode(uint8_t mode) const;
   void renderDefaultSleepScreen() const;
   void renderCustomSleepScreen() const;
   void renderCoverSleepScreen() const;
@@ -36,6 +46,7 @@ class SleepActivity final : public Activity {
   void renderLastScreenSleepScreen() const;
   void renderBlankSleepScreen() const;
   void renderOverlaySleepScreen() const;
+  mutable bool previewMode_ = false;  // draw black and white only, for renderPreview()
   bool canSnapshotOverlayBackground = false;
   bool overlayBackgroundBufferStored = false;
   uint8_t clockVisibilityBeforeSleep = CrossPointSettings::HIDE_CLOCK_ALWAYS;
