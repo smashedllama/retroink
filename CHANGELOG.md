@@ -1,4 +1,4 @@
-## [Unreleased]
+## [RetroInk 0.5.6] - 2026-10-04
 
 ### Added
 
