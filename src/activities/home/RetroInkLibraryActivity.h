@@ -105,6 +105,10 @@ class RetroInkLibraryActivity final : public Activity {
   void reviewRecovery();
   void reviewCandidate(uint32_t match);
   void openSelectedBook();
+  // Touch: tap a book to pick it, tap it again (or the detail panel) to open,
+  // hold for Actions, swipe to page or change shelf. Returns true if it acted.
+  bool handleTouch();
+  void pageBooks(int direction);
 
  public:
   RetroInkLibraryActivity(GfxRenderer& renderer, MappedInputManager& input)

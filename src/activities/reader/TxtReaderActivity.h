@@ -115,6 +115,13 @@ class TxtReaderActivity final : public Activity {
   bool blocksGlobalInput() const override { return quickActionsPopup.isActive(); }
   bool handleShortcutAction(uint8_t action) override;
   bool handleShortcutAction(CrossPointSettings::SHORT_PWRBTN action) override;
+  bool openReaderSettingsMenu() override {
+    if (!txt) {
+      return false;
+    }
+    openReaderMenu();
+    return true;
+  }
   std::string getCurrentBookPath() const override { return txt ? txt->getPath() : std::string{}; }
   std::string getCurrentBookTitle() const override { return txt ? txt->getTitle() : std::string{}; }
   bool getFrontlightPanelBookDetails(FrontlightPanelBookDetails& details) override;

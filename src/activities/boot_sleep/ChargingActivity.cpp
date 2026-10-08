@@ -29,7 +29,10 @@ void ChargingActivity::onEnter() {
 }
 
 void ChargingActivity::loop() {
-  if (!gpio.isUsbConnected() || mappedInput.wasAnyReleased()) {
+  // Any button release, or a tap anywhere on a touch screen, dismisses it.
+  int tapX = 0, tapY = 0;
+  if (!gpio.isUsbConnected() || mappedInput.wasAnyReleased() ||
+      (mappedInput.hasTouchHardware() && mappedInput.wasScreenTapped(tapX, tapY))) {
     activityManager.goHome();
     return;
   }

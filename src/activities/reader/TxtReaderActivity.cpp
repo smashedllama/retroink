@@ -246,7 +246,9 @@ void TxtReaderActivity::loop() {
     return;
   }
 
-  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+  // The menu opens with Select, or on a touch-only device by the Home key's
+  // hold or an upward swipe from the bottom edge (as in the other readers).
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) || ReaderUtils::isTouchMenuGesture(mappedInput)) {
     openReaderMenu();
     return;
   }

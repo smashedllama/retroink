@@ -228,6 +228,8 @@ class SimulatorSmokeTest {
     AssertActivity,
     Render,
     OpenDeskAccessories,
+    OpenLibrary,
+    GoHome,
     TapTargetDown,   // x = TouchRegistry::Kind, y = target id: touch down on its centre
     TapTargetUp      // release where the last TapTargetDown touched
   };
@@ -251,7 +253,6 @@ class SimulatorSmokeTest {
   int deskAccessoryCheckIndex = 0;
   uint32_t focusRedrawWaitStartedMs = 0;
   SmokeStep inputCompletionStep = SmokeStep::Done;
-  bool touchNavigationDone = false;
   int lastTapX = 0;
   int lastTapY = 0;
 
@@ -856,6 +857,15 @@ class SimulatorSmokeTest {
         verifyReaderControlsSettings();
         verifyMixedPageGestures();
         applyRequestedTheme();
+#if CROSSINK_APP_CAP_TOUCH
+        // Touch-only walkthrough, run on its own (--touch-nav): on a device with
+        // no front buttons, every screen must open and close by touch alone.
+        if (std::getenv("CROSSINK_SIMULATOR_SMOKE_TOUCH_NAV") && mappedInputManager.hasTouchHardware()) {
+          buildTouchNavigationScript();
+          step = SmokeStep::ReaderInput;
+          break;
+        }
+#endif
         if (SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {
           ReadingStatsDateTime today;
           if (getCurrentLocalReadingStatsDateTime(today)) {
@@ -1048,16 +1058,6 @@ class SimulatorSmokeTest {
         break;
 
       case SmokeStep::Home:
-#if CROSSINK_APP_CAP_TOUCH
-        // On a touch-only device, first check every Desk Accessory can be
-        // opened and closed by touch alone.
-        if (mappedInputManager.hasTouchHardware() && !touchNavigationDone && SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {
-          touchNavigationDone = true;
-          buildTouchNavigationScript();
-          step = SmokeStep::ReaderInput;
-          break;
-        }
-#endif
         if (SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {
           activityManager.replaceActivity(std::make_unique<RetroInkLibraryActivity>(renderer, mappedInputManager));
           queueStep("RetroInk Library", SmokeStep::Library, 40);
@@ -1777,6 +1777,12 @@ class SimulatorSmokeTest {
 #endif
 
 #if CROSSINK_APP_CAP_TOUCH
+  static ScriptAction openLibrary() {
+    return {ScriptActionType::OpenLibrary, MappedInputManager::Button::Back, nullptr, 0, 0, 0};
+  }
+  static ScriptAction goHomeAction() {
+    return {ScriptActionType::GoHome, MappedInputManager::Button::Back, nullptr, 0, 0, 0};
+  }
   static ScriptAction openDeskAccessories() {
     return {ScriptActionType::OpenDeskAccessories, MappedInputManager::Button::Back, nullptr, 0, 0, 0};
   }
@@ -1796,9 +1802,9 @@ class SimulatorSmokeTest {
   void buildTouchNavigationScript() {
     inputScript.clear();
     scriptIndex = 0;
-    inputCompletionStep = SmokeStep::Home;
+    inputCompletionStep = SmokeStep::Done;
 
-    constexpr int kFocus = 0, kClock = 3, kPuzzle = 4, kCalendar = 5, kSystemInfo = 6;
+    constexpr int kFocus = 0, kMoon = 1, kClock = 3, kPuzzle = 4, kCalendar = 5, kSystemInfo = 6;
     constexpr int kKeyBack = 0, kKeySelect = 1;
     (void)kFocus;
 
@@ -1826,12 +1832,42 @@ class SimulatorSmokeTest {
     addTapTarget(TouchRegistry::Button, kKeyBack, "Touch: back from Puzzle by key bar");
     inputScript.push_back(assertActivity("DeskAccessories"));
 
+    // Moon Phase opens the date picker on its own when no date is known.
+    addTapTarget(TouchRegistry::Item, kMoon, "Touch: Moon Phase opened");
+    inputScript.push_back(assertActivity("DeskDatePicker"));
+    addTapTarget(TouchRegistry::Item, 2 * 3 + 2, "Touch: year raised by the + button");
+    inputScript.push_back(assertActivity("DeskDatePicker"));
+    addTapTarget(TouchRegistry::Item, 1 * 3, "Touch: month row picked");
+    inputScript.push_back(assertActivity("DeskDatePicker"));
+    addTapTarget(TouchRegistry::Button, kKeySelect, "Touch: date saved by Done on the key bar");
+    inputScript.push_back(assertActivity("MoonPhaseDesk"));
+    addTapTarget(TouchRegistry::Back, 0, "Touch: back from Moon Phase by header");
+    inputScript.push_back(assertActivity("DeskAccessories"));
+
     addTapTarget(TouchRegistry::Item, kClock, "Touch: Clock opened");
     inputScript.push_back(assertActivity("ClockDesk"));
     addTapTarget(TouchRegistry::Button, kKeySelect, "Touch: Clock mode toggled by key bar");
     inputScript.push_back(assertActivity("ClockDesk"));
     addTapTarget(TouchRegistry::Back, 0, "Touch: back from Clock by header");
     inputScript.push_back(assertActivity("DeskAccessories"));
+
+    // Library: a fresh library asks before scanning; the key bar's fourth key says Scan.
+    inputScript.push_back(openLibrary());
+    inputScript.push_back(render("Touch: Library opened", 6));
+    inputScript.push_back(assertActivity("RetroInkLibrary"));
+    addTapTarget(TouchRegistry::Button, 3, "Touch: Library scan started by key bar");
+    inputScript.push_back(render("Touch: Library scan finished", 60));
+    inputScript.push_back(assertActivity("RetroInkLibrary"));
+    // Shelf banner: its right third goes to the next shelf, the left third back.
+    addTapTarget(TouchRegistry::Tab, 1, "Touch: next shelf from the banner");
+    addTapTarget(TouchRegistry::Tab, 0, "Touch: previous shelf from the banner");
+    inputScript.push_back(assertActivity("RetroInkLibrary"));
+    // The first book is selected, so tapping it opens it.
+    addTapTarget(TouchRegistry::Cover, 0, "Touch: book opened from the shelf");
+    inputScript.push_back(render("Touch: book opened settle", 20));
+    inputScript.push_back(assertActivity("EpubReader"));
+    inputScript.push_back(goHomeAction());
+    inputScript.push_back(render("Touch: Home", 6));
   }
 #endif
 
@@ -2228,6 +2264,12 @@ class SimulatorSmokeTest {
         break;
       case ScriptActionType::Render:
         queueStep(action.label, SmokeStep::ReaderInput, action.settleFrames);
+        break;
+      case ScriptActionType::OpenLibrary:
+        activityManager.replaceActivity(std::make_unique<RetroInkLibraryActivity>(renderer, mappedInputManager));
+        break;
+      case ScriptActionType::GoHome:
+        activityManager.goHome();
         break;
       case ScriptActionType::OpenDeskAccessories:
         activityManager.replaceActivity(std::make_unique<DeskAccessoriesActivity>(renderer, mappedInputManager));

@@ -82,6 +82,8 @@ def run_smoke(args: argparse.Namespace) -> int:
         env["CROSSINK_SIMULATOR_SMOKE_TEST"] = "1"
         env["CROSSINK_SIMULATOR_SMOKE_BOOK"] = simulator_book_path
         env["CROSSINK_SIMULATOR_SMOKE_PAGE_TURNS"] = str(args.page_turns)
+        if args.touch_nav:
+            env["CROSSINK_SIMULATOR_SMOKE_TOUCH_NAV"] = "1"
         if args.theme:
             env["CROSSINK_SIMULATOR_SMOKE_THEME"] = str(THEMES[args.theme])
         if args.ui_scale:
@@ -129,6 +131,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--page-turns", type=int, default=2, help="Number of EPUB page-forward taps to run")
     parser.add_argument("--theme", choices=sorted(THEMES), help="UI theme to use during the smoke test")
     parser.add_argument("--ui-scale", choices=("small", "large"), help="UI scale to use during the smoke test")
+    parser.add_argument("--touch-nav", action="store_true",
+                        help="Run only the touch-only navigation walkthrough (touch devices, e.g. x4-pro-simulator)")
     parser.add_argument("--show-clock", action="store_true", help="Show the clock in UI and reader headers")
     parser.add_argument("--no-build", dest="build", action="store_false", help="Run the existing simulator binary")
     parser.add_argument("--window", dest="headless", action="store_false", help="Show the SDL window instead of using dummy video")

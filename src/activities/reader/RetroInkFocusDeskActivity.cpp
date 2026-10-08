@@ -10,6 +10,7 @@
 #include "CrossPointSettings.h"
 #include "FocusSessionActivity.h"
 #include "components/CompactHeader.h"
+#include "components/TouchRegistry.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
@@ -126,6 +127,18 @@ void RetroInkFocusDeskActivity::loop() {
     }
     return;
   }
+  // Touch: tap a row to choose and open it, or a refresh option to pick it.
+  int tappedRow = -1;
+  if (mappedInput.hasTouchHardware() && mappedInput.wasItemTapped(tappedRow)) {
+    if (editor_ == Editor::None && tappedRow >= 0 && tappedRow < itemCount()) {
+      selected_ = static_cast<uint8_t>(tappedRow);
+      activate();
+    } else if (editor_ == Editor::Refresh && tappedRow >= 0 && tappedRow < 3) {
+      selectedCadence_ = static_cast<uint8_t>(tappedRow);
+      requestUpdate();
+    }
+    return;
+  }
   const bool sidePrevious = mappedInput.wasPressed(MappedInputManager::Button::Up);
   const bool frontPrevious = mappedInput.wasPressed(MappedInputManager::Button::Left);
   const bool sideNext = mappedInput.wasPressed(MappedInputManager::Button::Down);
@@ -170,6 +183,7 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
     const int rowH = std::min(76, std::max(52, (bottom - rowTop - 20) / itemCount()));
     for (int i = 0; i < itemCount(); ++i) {
       const int y = rowTop + i * rowH;
+      TouchRegistry::getInstance().add(Rect{x + 20, y, w - 40, rowH - 8}, i, TouchRegistry::Item);
       renderer.drawRect(x + 20, y, w - 40, rowH - 8);
       if (selected_ == i) renderer.fillRect(x + 24, y + 4, 8, rowH - 16);
       renderer.drawText(UI_10_FONT_ID, x + 42, y + 16, rows[i], true, EpdFontFamily::BOLD);
@@ -188,6 +202,7 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
       const int rowHeight = std::max(40, std::min(53, (editorHeight - 86) / 3));
       for (int i = 0; i < 3; ++i) {
         const int rowY = editorTop + 58 + i * rowHeight;
+        TouchRegistry::getInstance().add(Rect{x + 34, rowY, w - 68, rowHeight - 5}, i, TouchRegistry::Item);
         renderer.drawRect(x + 34, rowY, w - 68, rowHeight - 5);
         if (selectedCadence_ == i) renderer.fillRect(x + 38, rowY + 4, 8, rowHeight - 13);
         renderer.drawText(UI_10_FONT_ID, x + 58, rowY + 10, cadences[i], true, EpdFontFamily::BOLD);

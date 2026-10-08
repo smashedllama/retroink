@@ -25,6 +25,19 @@ class DeskDatePickerActivity final : public Activity {
   int selected_ = 0;
   ButtonNavigator valueNavigator_{150, 450};
 
+  // Touch: -/+ buttons at the end of each row, held to repeat.
+  int repeatDelta_ = 0;
+  uint32_t repeatStartMs_ = 0;
+  uint32_t lastRepeatMs_ = 0;
+
+  struct RowGeometry {
+    int rowX, rowW, rowH, firstY, step, buttonW;
+  };
+  RowGeometry rowGeometry() const;
+  // Returns the row and, if the point is on its - or + button, -1 or +1 (else 0); -1 row if none.
+  int rowAt(int x, int y, int& buttonDelta) const;
+  void handleTouch();
+
   int fieldCount() const { return fields_ == Fields::DateTimeZone ? 6 : 3; }
   void adjust(int delta);
   void formatValue(Field field, char* buf, size_t len) const;

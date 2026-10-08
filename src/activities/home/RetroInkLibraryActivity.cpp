@@ -19,6 +19,7 @@
 #include "MappedInputManager.h"
 #include "activities/util/OptionSelectionActivity.h"
 #include "components/CompactHeader.h"
+#include "components/TouchRegistry.h"
 #include "components/UITheme.h"
 #include "FileBrowserActivity.h"
 #include "RecentBookProgress.h"
@@ -602,6 +603,72 @@ void RetroInkLibraryActivity::showActions() {
                          });
 }
 
+void RetroInkLibraryActivity::pageBooks(const int direction) {
+  const uint32_t count = shelfBookCount();
+  if (!count) return;
+  const uint32_t perPage = itemsPerPage();
+  const int64_t next = static_cast<int64_t>(selected_) + static_cast<int64_t>(direction) * perPage;
+  selected_ = static_cast<uint32_t>(std::clamp<int64_t>(next, 0, static_cast<int64_t>(count) - 1));
+  stripStart_ = (selected_ / perPage) * perPage;
+  requestUpdate();
+}
+
+bool RetroInkLibraryActivity::handleTouch() {
+  const uint32_t count = shelfBookCount();
+  int x = 0, y = 0, id = -1;
+
+  // Hold a book for its Actions menu (the front-button Select).
+  if (mappedInput.wasScreenLongPress(x, y) && TouchRegistry::getInstance().hitTest(x, y, TouchRegistry::Cover, id)) {
+    const uint32_t idx = stripStart_ + static_cast<uint32_t>(id);
+    if (idx < count) {
+      selected_ = idx;
+      mappedInput.suppressNextTouchTap();
+      showActions();
+      return true;
+    }
+  }
+  if (mappedInput.wasCoverTapped(id)) {
+    const uint32_t idx = stripStart_ + static_cast<uint32_t>(id);
+    if (idx >= count) return true;
+    if (idx == selected_) {
+      openSelectedBook();
+    } else {
+      selected_ = idx;
+      requestUpdate();
+    }
+    return true;
+  }
+  // The shelf banner: its left and right thirds step to the previous and next shelf.
+  if (mappedInput.wasTabTapped(id)) {
+    const uint32_t shelves = static_cast<uint32_t>(shelfCycle_.size());
+    applyShelfChange(id == 0 ? (shelfIndex_ ? shelfIndex_ - 1 : shelves - 1) : (shelfIndex_ + 1) % shelves);
+    return true;
+  }
+  // The detail panel under the shelf: tap to open the book shown there.
+  if (mappedInput.wasItemTapped(id)) {
+    if (count) openSelectedBook();
+    return true;
+  }
+  // Swipes: sideways for the next or previous page of books, up and down for
+  // the next or previous shelf.
+  switch (mappedInput.wasSwipe()) {
+    case MappedInputManager::SwipeDir::Left:
+      pageBooks(1);
+      return true;
+    case MappedInputManager::SwipeDir::Right:
+      pageBooks(-1);
+      return true;
+    case MappedInputManager::SwipeDir::Up:
+      applyShelfChange((shelfIndex_ + 1) % static_cast<uint32_t>(shelfCycle_.size()));
+      return true;
+    case MappedInputManager::SwipeDir::Down:
+      applyShelfChange(shelfIndex_ ? shelfIndex_ - 1 : static_cast<uint32_t>(shelfCycle_.size()) - 1);
+      return true;
+    default:
+      return false;
+  }
+}
+
 void RetroInkLibraryActivity::loop() {
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     if (catalog_.isScanning()) catalog_.pauseScan();
@@ -633,6 +700,7 @@ void RetroInkLibraryActivity::loop() {
     return;
   }
   if (!scanFinished_ || catalog_.failed()) return;
+  if (mappedInput.hasTouchHardware() && handleTouch()) return;
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) { showActions(); return; }
 
   // Up/Down: previous/next shelf, wrapping across the whole cycle (5
@@ -741,6 +809,21 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
     renderer.drawText(SMALL_FONT_ID, innerX + innerW - posWidth - 12,
                        bannerY + (BANNER_H - renderer.getLineHeight(SMALL_FONT_ID)) / 2, posBuf, true,
                        EpdFontFamily::BOLD);
+    // On touch, the banner's outer thirds step between shelves; chevrons show where.
+    TouchRegistry::getInstance().add(Rect{innerX, bannerY, innerW / 3, BANNER_H}, 0, TouchRegistry::Tab);
+    TouchRegistry::getInstance().add(Rect{innerX + innerW * 2 / 3, bannerY, innerW - innerW * 2 / 3, BANNER_H}, 1,
+                                     TouchRegistry::Tab);
+    if (mappedInput.hasTouchHardware()) {
+      const int midY = bannerY + BANNER_H / 2;
+      const int leftX = nameX - 34;
+      const int rightX = nameX + nameWidth + 18;
+      renderer.fillRect(leftX - 6, bannerY + 2, 30, BANNER_H - 4, false);
+      renderer.fillRect(rightX - 6, bannerY + 2, 30, BANNER_H - 4, false);
+      for (int i = 0; i < 9; ++i) {
+        renderer.drawLine(leftX + 12 - i, midY - 8 + i, leftX + 12 - i, midY + 8 - i);   // points left
+        renderer.drawLine(rightX + 4 + i, midY - 8 + i, rightX + 4 + i, midY + 8 - i);   // points right
+      }
+    }
     if (moveFailed_) {
       drawFitted(renderer, UI_10_FONT_ID, innerX + 4, bannerY + BANNER_H + 14, innerW - 8,
                  tr(STR_LIBRARY_MOVE_FAILED), true);
@@ -767,6 +850,7 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
         const bool isSelected = idx == selected_;
         const int cellX = innerX + (i % cols) * cellW;
         const int cellY = gridTop + (i / cols) * ICON_CELL_H;
+        TouchRegistry::getInstance().add(Rect{cellX, cellY, cellW, ICON_CELL_H}, i, TouchRegistry::Cover);
         drawDocIcon(renderer, cellX + (cellW - DOC_ICON_W) / 2, cellY + 6, isSelected);
         drawIconLabel(renderer, cellX + cellW / 2, cellY + 6 + DOC_ICON_H + 8, cellW - 10, selectedRecord_.title,
                       isSelected);
@@ -784,6 +868,8 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
         if (isSelected) sh = spineAreaH + 14;  // stands the tallest, pulled out of the shelf
         sh = std::max(sh, 60);
         const int sy = boardY - sh;
+        TouchRegistry::getInstance().add(Rect{sx, stripTop - 16, sw, boardY - (stripTop - 16)}, i,
+                                         TouchRegistry::Cover);
         renderer.fillRect(sx + 3, sy + 3, sw, sh, true);
         renderer.fillRect(sx, sy, sw, sh, false);
         renderer.drawRect(sx, sy, sw, sh, isSelected ? 2 : 1, true);
@@ -809,6 +895,7 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
     // --- detail panel for the selected book: spine labels are necessarily
     // terse, so this is where the current selection is actually readable ---
     renderer.drawRect(x + 9, detailY, innerW, DETAIL_H);
+    TouchRegistry::getInstance().add(Rect{x + 9, detailY, innerW, DETAIL_H}, 0, TouchRegistry::Item);
     if (count && shelfRecord(selected_, selectedRecord_)) {
       drawTwoLineTitle(renderer, x + 22, detailY + 10, innerW - 26, selectedRecord_.title);
       drawFitted(renderer, UI_10_FONT_ID, x + 22, detailY + 56, innerW - 26,
