@@ -23,6 +23,8 @@ class TouchRegistry {
   void publish();
   void clear();
   bool hitTest(int x, int y, Kind kind, int& outId) const;
+  // The drawn rect of the target with this kind and id (the newest, as hitTest does).
+  bool findTarget(Kind kind, int id, Rect& out) const;
 
  private:
   static constexpr size_t CAPACITY = 64;
@@ -62,5 +64,6 @@ class TouchRegistry {
   constexpr void publish() {}
   constexpr void clear() {}
   constexpr bool hitTest(int, int, Kind, int&) const { return false; }
+  constexpr bool findTarget(Kind, int, Rect&) const { return false; }
 };
 #endif

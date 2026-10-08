@@ -299,6 +299,7 @@ class MappedInputManager {
   bool touchInputEnabled() const;
   bool hasHomeKeyHardware() const;
   bool wasBackGesture() const;
+  bool wasHeaderBackTapped() const;
   bool wasTopEdgeDownSwipe() const;
   // Fetch the pending swipe (if any) and map both endpoints to logical screen coords.
   bool decodeSwipe(int& sx, int& sy, int& ex, int& ey) const;

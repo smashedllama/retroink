@@ -630,6 +630,13 @@ bool MappedInputManager::wasBackGesture() const {
 
 bool MappedInputManager::wasLeftEdgeGesture() const { return wasBackGesture(); }
 
+// A tap on the header's Back box (System 6 registers it on touch devices).
+bool MappedInputManager::wasHeaderBackTapped() const {
+  if (!touchInputEnabled()) return false;
+  int id = -1;
+  return wasRegistryTargetTapped(TouchRegistry::Kind::Back, id);
+}
+
 bool MappedInputManager::hasHomeKeyHardware() const {
 #ifdef SIMULATOR
 #ifdef SIMULATOR_DEVICE_X4_PRO
@@ -800,6 +807,9 @@ bool MappedInputManager::wasReleased(const Button button) const {
     }
 
 #if CROSSINK_APP_CAP_TOUCH
+    if (wasHeaderBackTapped()) {
+      return true;
+    }
     if (!simulatedRelease && !mapButton(button, &HalGPIO::wasReleased) &&
         !wasFrontButtonHintTapped(mappedFrontButtonFor(button))) {
       return false;

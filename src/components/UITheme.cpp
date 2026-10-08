@@ -139,7 +139,10 @@ const ThemeMetrics& UITheme::getMetrics() const {
   if (!metricsValid || touch != metricsForTouch) {
     adjustedMetrics = *currentMetrics;
     if (touch) {
-      adjustedMetrics.buttonHintsHeight = 0;
+      // System 6 keeps a bottom key bar on touch devices (tappable Back /
+      // Select / Left / Right); other themes drop the band.
+      adjustedMetrics.buttonHintsHeight =
+          currentMetrics == &System6Metrics::values ? System6Metrics::kTouchButtonHintsHeight : 0;
     }
     metricsForTouch = touch;
     metricsValid = true;

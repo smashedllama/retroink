@@ -38,6 +38,20 @@ void TouchRegistry::clear() {
   live_.store(0, std::memory_order_release);
 }
 
+bool TouchRegistry::findTarget(const Kind kind, const int id, Rect& out) const {
+  if (!enabled_) return false;
+  const uint8_t bufferIndex = live_.load(std::memory_order_acquire);
+  const size_t count = counts_[bufferIndex];
+  const auto& buffer = buffers_[bufferIndex];
+  for (size_t i = count; i-- > 0;) {
+    if (buffer[i].kind == kind && buffer[i].id == id) {
+      out = buffer[i].rect;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool TouchRegistry::hitTest(const int x, const int y, const Kind kind, int& outId) const {
   if (!enabled_) return false;
   const uint8_t bufferIndex = live_.load(std::memory_order_acquire);

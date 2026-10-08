@@ -256,7 +256,9 @@ void System6Theme::drawHeader(const GfxRenderer& r, Rect rect, const char* title
   const int h = 40;
   const int y = std::max(rect.y, top);
   if (end - x < 80 || y < top) return;
-  const int contentBottom = r.getScreenHeight() - System6Metrics::values.buttonHintsHeight - 4;
+  const bool touch = gpio.hasTouch();
+  const int hintBand = touch ? System6Metrics::kTouchButtonHintsHeight : System6Metrics::values.buttonHintsHeight;
+  const int contentBottom = r.getScreenHeight() - hintBand - 4;
   desktop(r, 0, r.getScreenHeight());
   if (!home) {
     frame(r, Rect{x, y, end - x, std::max(h, contentBottom - y)});
@@ -314,7 +316,7 @@ void System6Theme::drawHeader(const GfxRenderer& r, Rect rect, const char* title
   const int font = uiScaleSpec().bodyFontId;
   const char* text = title && title[0] ? title : tr(STR_THEME_SYSTEM6);
   char clipped[160];
-  const int titleLeft = x + (home ? 42 : 32);
+  const int titleLeft = x + (home || touch ? 42 : 32);
   const int titleRight = std::max(titleLeft + 1, statusLeft - 10);
   const int width = fitLabel(r, font, text, titleRight - titleLeft, clipped);
   const int centeredX = x + (end - x - width) / 2;
@@ -324,8 +326,22 @@ void System6Theme::drawHeader(const GfxRenderer& r, Rect rect, const char* title
   if (home) {
     r.fillRect(x + 6, y + 2, 32, h - 4, false);
     macIcon(r, x + 9, y + 3);
+  } else if (touch) {
+    // On touch devices the window box is the Back button: bigger, with a
+    // chevron, and registered so a tap anywhere on it acts as Back.
+    constexpr int box = 30;
+    const int bx = x + 6;
+    const int by = y + (h - box) / 2;
+    r.fillRect(bx, by, box, box, false);
+    r.drawRect(bx, by, box, box);
+    const int cx = bx + box / 2 + 4;
+    const int cy = by + box / 2;
+    for (int i = 0; i < 9; ++i) {
+      r.drawLine(cx - i, cy - 8 + i, cx - i, cy + 8 - i);
+    }
+    TouchRegistry::getInstance().add(Rect{0, std::max(0, y - 8), 76, h + 16}, 0, TouchRegistry::Back);
   } else {
-    // Decorative window box; navigation still uses the physical Back button.
+    // Decorative window box; navigation uses the physical Back button.
     r.fillRect(x + 9, y + 13, 14, 14, false);
     r.drawRect(x + 9, y + 13, 14, 14);
   }
@@ -333,14 +349,16 @@ void System6Theme::drawHeader(const GfxRenderer& r, Rect rect, const char* title
 
 void System6Theme::drawButtonHints(GfxRenderer& r, const char* btn1, const char* btn2, const char* btn3,
                                    const char* btn4, bool allowInvertedText) const {
-  if (gpio.hasTouch()) return;
+  // On touch devices these are real keys: tapping one acts as the front
+  // button in that slot (Back, Select, Left, Right).
+  const bool touch = gpio.hasTouch();
 
   const auto orientation = r.getOrientation();
   const bool invertText = allowInvertedText && orientation == GfxRenderer::Orientation::PortraitInverted;
   r.setOrientation(GfxRenderer::Orientation::Portrait);
   const int pageHeight = r.getScreenHeight();
   constexpr int buttonWidth = 106;
-  constexpr int buttonBandHeight = System6Metrics::values.buttonHintsHeight;
+  const int buttonBandHeight = touch ? System6Metrics::kTouchButtonHintsHeight : System6Metrics::values.buttonHintsHeight;
   constexpr int narrowButtonPositions[] = {25, 130, 245, 350};
   constexpr int wideButtonPositions[] = {38, 154, 268, 384};
   const int* buttonPositions = r.getScreenWidth() >= 528 ? wideButtonPositions : narrowButtonPositions;
@@ -363,8 +381,11 @@ void System6Theme::drawButtonHints(GfxRenderer& r, const char* btn1, const char*
   desktop(r, buttonTop, pageHeight);
   for (int i = 0; i < 4; ++i) {
     const int x = buttonPositions[i];
-    if (labels[i] && labels[i][0])
-      TouchRegistry::getInstance().add(Rect{x, keyTop, buttonWidth, buttonHeight}, i, TouchRegistry::Button);
+    const bool hasLabel = labels[i] && labels[i][0];
+    if (hasLabel) TouchRegistry::getInstance().add(Rect{x, keyTop, buttonWidth, buttonHeight}, i, TouchRegistry::Button);
+    // A key with nothing to do is left off on touch screens; a physical key
+    // still exists on a button device, so it is drawn there.
+    if (touch && !hasLabel) continue;
     r.fillRect(x + keyShadowOffset, keyTop + keyShadowOffset, buttonWidth, buttonHeight);
     r.fillRect(x, keyTop, buttonWidth, buttonHeight, false);
     r.drawRect(x, keyTop, buttonWidth, buttonHeight);

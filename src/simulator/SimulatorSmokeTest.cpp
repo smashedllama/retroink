@@ -40,6 +40,7 @@
 #include "activities/reader/RetroInkGoalCountdown.h"
 #include "activities/reader/RetroInkFocusDeskActivity.h"
 #include "activities/reader/ReaderOptionsActivity.h"
+#include "activities/home/DeskAccessoriesActivity.h"
 #include "activities/home/RetroInkCustomShelves.h"
 #include "activities/home/RetroInkLibraryCatalog.h"
 #include "activities/home/RetroInkLibraryActivity.h"
@@ -48,6 +49,7 @@
 #include "activities/reader/ReaderUtils.h"
 #include "activities/settings/QuickActionsActivity.h"
 #include "components/TouchHeaderBackButton.h"
+#include "components/TouchRegistry.h"
 #include "components/DesktopPattern.h"
 #include "components/UITheme.h"
 #include "simulator/SimulatorHomeKeyInput.h"
@@ -224,7 +226,10 @@ class SimulatorSmokeTest {
     TouchMove,
     TouchRelease,
     AssertActivity,
-    Render
+    Render,
+    OpenDeskAccessories,
+    TapTargetDown,   // x = TouchRegistry::Kind, y = target id: touch down on its centre
+    TapTargetUp      // release where the last TapTargetDown touched
   };
 
   struct ScriptAction {
@@ -246,6 +251,9 @@ class SimulatorSmokeTest {
   int deskAccessoryCheckIndex = 0;
   uint32_t focusRedrawWaitStartedMs = 0;
   SmokeStep inputCompletionStep = SmokeStep::Done;
+  bool touchNavigationDone = false;
+  int lastTapX = 0;
+  int lastTapY = 0;
 
   static bool enabled() { return std::getenv("CROSSINK_SIMULATOR_SMOKE_TEST") != nullptr; }
 
@@ -1040,6 +1048,16 @@ class SimulatorSmokeTest {
         break;
 
       case SmokeStep::Home:
+#if CROSSINK_APP_CAP_TOUCH
+        // On a touch-only device, first check every Desk Accessory can be
+        // opened and closed by touch alone.
+        if (mappedInputManager.hasTouchHardware() && !touchNavigationDone && SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {
+          touchNavigationDone = true;
+          buildTouchNavigationScript();
+          step = SmokeStep::ReaderInput;
+          break;
+        }
+#endif
         if (SETTINGS.uiTheme == CrossPointSettings::SYSTEM6) {
           activityManager.replaceActivity(std::make_unique<RetroInkLibraryActivity>(renderer, mappedInputManager));
           queueStep("RetroInk Library", SmokeStep::Library, 40);
@@ -1758,6 +1776,65 @@ class SimulatorSmokeTest {
   }
 #endif
 
+#if CROSSINK_APP_CAP_TOUCH
+  static ScriptAction openDeskAccessories() {
+    return {ScriptActionType::OpenDeskAccessories, MappedInputManager::Button::Back, nullptr, 0, 0, 0};
+  }
+
+  // A full tap on something the screen drew: a key of the bottom bar, the
+  // header's Back box, or a list row. It is found where it was drawn, so the
+  // test uses only touch and breaks if the control is missing.
+  void addTapTarget(const TouchRegistry::Kind kind, const int id, const char* label) {
+    inputScript.push_back({ScriptActionType::TapTargetDown, MappedInputManager::Button::Back, nullptr, 0,
+                           static_cast<int>(kind), id});
+    inputScript.push_back({ScriptActionType::TapTargetUp, MappedInputManager::Button::Back, nullptr, 0, 0, 0});
+    inputScript.push_back(render(label, 4));
+  }
+
+  // Walks the Desk Accessories using only touch: every screen must open from
+  // the list and close again by the key bar's Back key or the header's Back box.
+  void buildTouchNavigationScript() {
+    inputScript.clear();
+    scriptIndex = 0;
+    inputCompletionStep = SmokeStep::Home;
+
+    constexpr int kFocus = 0, kClock = 3, kPuzzle = 4, kCalendar = 5, kSystemInfo = 6;
+    constexpr int kKeyBack = 0, kKeySelect = 1;
+    (void)kFocus;
+
+    inputScript.push_back(openDeskAccessories());
+    inputScript.push_back(render("Touch: Desk Accessories", 4));
+    inputScript.push_back(assertActivity("DeskAccessories"));
+
+    // Header Back box.
+    addTapTarget(TouchRegistry::Item, kCalendar, "Touch: Desk Calendar opened");
+    inputScript.push_back(assertActivity("DeskCalendar"));
+    addTapTarget(TouchRegistry::Back, 0, "Touch: back from Desk Calendar by header");
+    inputScript.push_back(assertActivity("DeskAccessories"));
+
+    // Key bar Back.
+    addTapTarget(TouchRegistry::Item, kSystemInfo, "Touch: System Info opened");
+    inputScript.push_back(assertActivity("SystemInfoDesk"));
+    addTapTarget(TouchRegistry::Button, kKeyBack, "Touch: back from System Info by key bar");
+    inputScript.push_back(assertActivity("DeskAccessories"));
+
+    // Key bar Select does what the front Select button did.
+    addTapTarget(TouchRegistry::Item, kPuzzle, "Touch: Puzzle opened");
+    inputScript.push_back(assertActivity("PuzzleDesk"));
+    addTapTarget(TouchRegistry::Button, kKeySelect, "Touch: Puzzle shuffled by key bar");
+    inputScript.push_back(assertActivity("PuzzleDesk"));
+    addTapTarget(TouchRegistry::Button, kKeyBack, "Touch: back from Puzzle by key bar");
+    inputScript.push_back(assertActivity("DeskAccessories"));
+
+    addTapTarget(TouchRegistry::Item, kClock, "Touch: Clock opened");
+    inputScript.push_back(assertActivity("ClockDesk"));
+    addTapTarget(TouchRegistry::Button, kKeySelect, "Touch: Clock mode toggled by key bar");
+    inputScript.push_back(assertActivity("ClockDesk"));
+    addTapTarget(TouchRegistry::Back, 0, "Touch: back from Clock by header");
+    inputScript.push_back(assertActivity("DeskAccessories"));
+  }
+#endif
+
   void addTap(MappedInputManager::Button button) {
     inputScript.push_back(press(button));
     inputScript.push_back(release(button));
@@ -2151,6 +2228,28 @@ class SimulatorSmokeTest {
         break;
       case ScriptActionType::Render:
         queueStep(action.label, SmokeStep::ReaderInput, action.settleFrames);
+        break;
+      case ScriptActionType::OpenDeskAccessories:
+        activityManager.replaceActivity(std::make_unique<DeskAccessoriesActivity>(renderer, mappedInputManager));
+        break;
+      case ScriptActionType::TapTargetDown:
+#if CROSSINK_APP_CAP_TOUCH
+      {
+        Rect rect(0, 0, 0, 0);
+        if (!TouchRegistry::getInstance().findTarget(static_cast<TouchRegistry::Kind>(action.x), action.y, rect)) {
+          fail("No touch target (kind %d, id %d) on %s", action.x, action.y,
+               activityManager.isCurrentActivityNamed("DeskAccessories") ? "Desk Accessories" : "this screen");
+        }
+        lastTapX = rect.x + rect.width / 2;
+        lastTapY = rect.y + rect.height / 2;
+        mappedInputManager.simulatorInjectTouchDown(lastTapX, lastTapY);
+      }
+#endif
+        break;
+      case ScriptActionType::TapTargetUp:
+#if CROSSINK_APP_CAP_TOUCH
+        mappedInputManager.simulatorInjectTouchRelease(lastTapX, lastTapY);
+#endif
         break;
     }
   }

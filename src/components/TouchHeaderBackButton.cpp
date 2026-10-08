@@ -4,6 +4,7 @@
 
 #include <algorithm>
 
+#include "CrossPointSettings.h"
 #include "UIThemeTokens.h"
 #include "components/CompactHeader.h"
 #include "components/HeaderDate.h"
@@ -85,6 +86,11 @@ void draw(GfxRenderer& renderer, const Rect& header, const char* title, const bo
 
 void draw(GfxRenderer& renderer, fui::GfxRendererTarget& target, const Rect& header, const char* title,
           const bool readerContext, const int rightReserve, const char* subtitle, const int verticalOffset) {
+  if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
+    // System 6 draws the Back box and the title itself.
+    GUI.drawHeader(renderer, header, title, subtitle, readerContext);
+    return;
+  }
   Layout back = layout(header);
   const int offset = effectiveVerticalOffset(back, header, verticalOffset);
   back.iconRect.y += offset;
