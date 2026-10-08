@@ -60,7 +60,7 @@ SleepScreenPickerActivity::Layout SleepScreenPickerActivity::layout() const {
   l.top = metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput) + metrics.verticalSpacing;
   l.bottom = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing;
   // Under the window: a position line, the dots, and a caption.
-  constexpr int kBelow = 96;
+  constexpr int kBelow = 116;
   const int windowMaxH = l.bottom - l.top - kBelow;
   // The preview keeps the screen's proportions and is at most 60% of its size.
   int thumbH = std::min(windowMaxH - kTitleBarHeight - 24, pageHeight * 6 / 10);

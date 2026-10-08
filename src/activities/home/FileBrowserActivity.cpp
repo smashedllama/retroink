@@ -1330,7 +1330,9 @@ void FileBrowserActivity::buildListScreen(UiApp::ScreenType& screen) {
       fui::Insets{static_cast<int16_t>(metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput)), 0,
                   static_cast<int16_t>(metrics.buttonHintsHeight), 0});
 
-  if (mode == Mode::Books && mappedInput.hasTouchHardware()) {
+  // The System 6 header already uses its right end for the battery readout,
+  // so this shortcut is left off there; the same settings are in Settings.
+  if (mode == Mode::Books && mappedInput.hasTouchHardware() && SETTINGS.uiTheme != CrossPointSettings::SYSTEM6) {
     const Rect header = TouchHeaderBackButton::headerRect(renderer, mappedInput);
     const auto backLayout = TouchHeaderBackButton::layout(header);
     const fui::Rect settingsRect{static_cast<int16_t>(header.x + header.width - backLayout.iconRect.width),

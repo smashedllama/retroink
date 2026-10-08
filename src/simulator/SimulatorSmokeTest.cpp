@@ -2174,19 +2174,23 @@ class SimulatorSmokeTest {
       inputScript.push_back(assertTouchscreenEnabled());
     }
 
-    const Rect header = TouchHeaderBackButton::headerRect(renderer, mappedInputManager);
-    const auto backLayout = TouchHeaderBackButton::layout(header);
-    const int x = header.x + header.width - backLayout.iconRect.width / 2;
-    const int y = backLayout.iconRect.y + backLayout.iconRect.height / 2;
-    inputScript.push_back(touchDown(x, y));
-    inputScript.push_back(touchRelease(x, y));
-    inputScript.push_back(render("File Browser Settings opened from header shortcut", 4));
-    inputScript.push_back(assertActivity("FileBrowserSettings"));
-    const int rowY = header.y + header.height + 32;
-    inputScript.push_back(touchDown(renderer.getScreenWidth() / 2, rowY));
-    inputScript.push_back(touchRelease(renderer.getScreenWidth() / 2, rowY));
-    inputScript.push_back(render("File Browser Settings toggle without row highlight", 4));
-    inputScript.push_back(assertActivity("FileBrowserSettings"));
+    // The settings shortcut in the header is not drawn under System 6 (the
+    // battery readout is there), so this part only applies to the other themes.
+    if (SETTINGS.uiTheme != CrossPointSettings::SYSTEM6) {
+      const Rect header = TouchHeaderBackButton::headerRect(renderer, mappedInputManager);
+      const auto backLayout = TouchHeaderBackButton::layout(header);
+      const int x = header.x + header.width - backLayout.iconRect.width / 2;
+      const int y = backLayout.iconRect.y + backLayout.iconRect.height / 2;
+      inputScript.push_back(touchDown(x, y));
+      inputScript.push_back(touchRelease(x, y));
+      inputScript.push_back(render("File Browser Settings opened from header shortcut", 4));
+      inputScript.push_back(assertActivity("FileBrowserSettings"));
+      const int rowY = header.y + header.height + 32;
+      inputScript.push_back(touchDown(renderer.getScreenWidth() / 2, rowY));
+      inputScript.push_back(touchRelease(renderer.getScreenWidth() / 2, rowY));
+      inputScript.push_back(render("File Browser Settings toggle without row highlight", 4));
+      inputScript.push_back(assertActivity("FileBrowserSettings"));
+    }
   }
 #endif
 
