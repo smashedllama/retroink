@@ -1,3 +1,9 @@
+## [Unreleased]
+
+### Added
+
+- **Move Selected** in the web file manager. Tick several files and folders (the box in the header row ticks everything in the folder), press **Move Selected**, and choose the destination once. Items move one after another with a "Moving 3 of 12..." count, and anything that could not move is listed afterwards, such as a name that already exists in the destination or a folder moved into itself. The rest still move.
+
 ## [RetroInk 0.5.7] - 2026-10-04
 
 ### Changed

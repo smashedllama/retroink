@@ -5582,9 +5582,11 @@ async function loadMoveFolderOptions() {
     });
 }
 
-function openMoveModal(name, path) {
-  document.getElementById("moveItemName").textContent = name;
-  document.getElementById("moveItemPath").value = path;
+// Items chosen with "Move Selected". Empty for a single-file move from a row's Move button.
+let moveItemsGlobal = [];
+let moveInProgress = false;
+
+function showMoveModal() {
   document.getElementById("moveDestPath").value = currentPath === "/" ? "/" : currentPath;
   document.getElementById("moveModal").classList.add("open");
   loadMoveFolderOptions();
@@ -5593,12 +5595,107 @@ function openMoveModal(name, path) {
   }, 50);
 }
 
+function openMoveModal(name, path) {
+  moveItemsGlobal = [];
+  document.getElementById("moveModalTitle").textContent = "Move File";
+  document.getElementById("moveItemName").textContent = name;
+  document.getElementById("moveItemPath").value = path;
+  document.getElementById("moveItemList").style.display = "none";
+  showMoveModal();
+}
+
+// Open the move window for every ticked item (files and folders).
+function openMoveSelectedModal() {
+  const items = getSelectedItems();
+  if (items.length === 0) {
+    alert("Please select at least one item to move.");
+    return;
+  }
+  moveItemsGlobal = items;
+  document.getElementById("moveModalTitle").textContent = items.length === 1 ? "Move Item" : "Move Items";
+  document.getElementById("moveItemName").textContent = items.length + (items.length === 1 ? " item" : " items");
+  document.getElementById("moveItemPath").value = "";
+  const listEl = document.getElementById("moveItemList");
+  listEl.innerHTML = "";
+  items.slice(0, 8).forEach((it) => {
+    const div = document.createElement("div");
+    div.textContent = it.name + (it.isFolder ? "/" : "");
+    listEl.appendChild(div);
+  });
+  if (items.length > 8) {
+    const more = document.createElement("div");
+    more.textContent = "...and " + (items.length - 8) + " more";
+    listEl.appendChild(more);
+  }
+  listEl.style.display = "block";
+  showMoveModal();
+}
+
 function closeMoveModal() {
+  // A batch is still moving; closing now would hide the progress.
+  if (moveInProgress) return;
   document.getElementById("moveModal").classList.remove("open");
 }
 
+// Moves the selected items one after another, since the reader handles one
+// request at a time. Items that cannot move are listed afterwards; the rest
+// still move.
+async function moveSelectedItems(destPath) {
+  const items = moveItemsGlobal.slice();
+  const button = document.querySelector("#moveModal .move-btn-confirm");
+  moveInProgress = true;
+  button.disabled = true;
+
+  const failed = [];
+  let moved = 0;
+  let notTried = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const path = item.path.startsWith("/") ? item.path : "/" + item.path;
+    button.textContent = "Moving " + (i + 1) + " of " + items.length + "...";
+    if (item.isFolder && (destPath === path || destPath.startsWith(path + "/"))) {
+      failed.push(item.name + ": a folder can't be moved into itself");
+      continue;
+    }
+    try {
+      const res = await fetch("/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "path=" + encodeURIComponent(path) + "&dest=" + encodeURIComponent(destPath),
+      });
+      if (res.ok) {
+        moved++;
+      } else {
+        failed.push(item.name + ": " + (await res.text()));
+      }
+    } catch (_) {
+      // The connection is gone, so the rest would fail the same way.
+      failed.push(item.name + ": network error");
+      notTried = items.length - i - 1;
+      break;
+    }
+  }
+
+  moveInProgress = false;
+  button.disabled = false;
+  button.textContent = "Move";
+
+  if (failed.length > 0 || notTried > 0) {
+    const shown = failed.slice(0, 4).join("\n");
+    const hidden = failed.length - 4;
+    alert(
+      "Moved " + moved + " of " + items.length + ".\n\nCould not move " + failed.length + ":\n" + shown +
+        (hidden > 0 ? "\n...and " + hidden + " more" : "") +
+        (notTried > 0 ? "\n\n" + notTried + " more were not attempted." : ""),
+    );
+  }
+  closeMoveModal();
+  // Reload even after a partial failure, so the list shows what did move.
+  window.location.reload();
+}
+
 function confirmMove() {
-  const path = document.getElementById("moveItemPath").value;
+  if (moveInProgress) return;
   const destPath = normalizePath(document.getElementById("moveDestPath").value);
 
   if (!destPath) {
@@ -5606,6 +5703,12 @@ function confirmMove() {
     return;
   }
 
+  if (moveItemsGlobal.length > 0) {
+    moveSelectedItems(destPath);
+    return;
+  }
+
+  const path = document.getElementById("moveItemPath").value;
   const formData = new FormData();
   formData.append("path", path);
   formData.append("dest", destPath);

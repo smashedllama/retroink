@@ -7,6 +7,7 @@
   <div class="action-buttons">
     <button class="action-btn upload-action-btn" onclick="openUploadModal()">Upload</button>
     <button class="action-btn folder-action-btn" onclick="openFolderModal()">New Folder</button>
+    <button class="action-btn folder-action-btn" onclick="openMoveSelectedModal()">Move Selected</button>
     <button class="action-btn delete-action-btn" onclick="openDeleteSelectedModal()">Delete Selected</button>
   </div>
 </div>
@@ -351,9 +352,10 @@
 <div class="modal-overlay" id="moveModal">
   <div class="modal">
     <button class="modal-close" onclick="closeMoveModal()">&times;</button>
-    <h3>Move File</h3>
+    <h3 id="moveModalTitle">Move File</h3>
     <div class="folder-form">
       <p class="file-info">Moving <strong id="moveItemName"></strong></p>
+      <div id="moveItemList" style="display:none;max-height:120px;overflow:auto;margin:0 0 12px;font-size:0.85em;text-align:left;word-break:break-all"></div>
       <input
         type="text"
         id="moveDestPath"

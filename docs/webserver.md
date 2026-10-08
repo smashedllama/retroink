@@ -94,7 +94,7 @@ The File Manager page can:
 - Create folders
 - Download files
 - Rename files
-- Move files into existing folders
+- Move files into existing folders, one at a time with **Move** on a row, or many at once: tick them (the box in the header row ticks everything in the folder) and press **Move Selected**
 - Delete one or more selected files or empty folders
 
 Existing files with the same name are overwritten by uploads. When EPUB files
