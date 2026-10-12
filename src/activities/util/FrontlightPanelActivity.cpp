@@ -43,6 +43,34 @@ constexpr int HEADER_BUTTON_WIDTH = 64;
 constexpr int HEADER_CONTENT_BOTTOM_GAP = 8;
 constexpr int ACTION_BAR_HEIGHT = 58;
 
+// System 6 look for the drawer: boxed keys, a scroll-bar slider and an I/O
+// switch, drawn straight to the renderer so they match the title bar above.
+bool isSystem6() { return SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6; }
+
+void drawArrowBox(GfxRenderer& r, const fui::Rect& box, const int direction) {
+  r.fillRect(box.x, box.y, box.width, box.height, false);
+  r.drawRect(box.x, box.y, box.width, box.height);
+  const int cx = box.x + box.width / 2;
+  const int cy = box.y + box.height / 2;
+  for (int k = 0; k <= 7; ++k) {
+    const int x = direction < 0 ? cx - 5 + k : cx + 5 - k;
+    r.drawLine(x, cy - k, x, cy + k);
+  }
+}
+
+// A key like the ones on System 6's bottom bar: white face, black outline and
+// a drop shadow. A key showing an active state is drawn solid black.
+void drawKeyBox(GfxRenderer& r, const fui::Rect& box, const char* label, const bool active) {
+  r.fillRect(box.x + 3, box.y + 3, box.width, box.height);
+  r.fillRect(box.x, box.y, box.width, box.height, active);
+  r.drawRect(box.x, box.y, box.width, box.height);
+  const int font = UI_10_FONT_ID;
+  const int textW = r.getTextWidth(font, label);
+  const int textX = box.x + std::max(2, (box.width - textW) / 2);
+  const int textY = box.y + (box.height - r.getLineHeight(font)) / 2;
+  r.drawText(font, textX, textY, label, !active);
+}
+
 uint8_t percentFromPermille(const int16_t permille) {
   int value = (static_cast<int>(permille) * 100 + 500) / 1000;
   if (value < 0) value = 0;
@@ -453,14 +481,26 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
       fui::bitmapFromIcon(icon_reading_stats_24), fui::bitmapFromIcon(icon_transfer_24),
       fui::bitmapFromIcon(icon_tabler_moon_filled_24), fui::bitmapFromIcon(icon_sliders_horizontal_24),
       fui::bitmapFromIcon(pendingTouchscreenDisabled ? icon_device_tablet_off_24 : icon_device_tablet_24)};
+  const bool system6 = isSystem6();
+  const char* const keyLabels[5] = {tr(STR_PANEL_STATS), tr(STR_PANEL_SYNC), tr(STR_PANEL_DARK),
+                                    tr(STR_PANEL_PREFS), tr(STR_PANEL_TOUCH)};
+  const bool keyActive[5] = {false, false, SETTINGS.screenInverted != 0, false, pendingTouchscreenDisabled};
   for (int16_t i = 0; i < 5; ++i) {
     const int16_t x = static_cast<int16_t>(actionBar.x + i * slotWidth);
     const int16_t width = i == 4 ? static_cast<int16_t>(actionBar.right() - x) : slotWidth;
     const fui::Rect slot{x, actionBar.y, width, actionBar.height};
     screen.frame().hit(slot, ACTION_QUICK, i);
-    screen.target().bitmap(slot, icons[static_cast<size_t>(i)], fui::BitmapMode::Center);
+    if (system6) {
+      const fui::Rect key{static_cast<int16_t>(slot.x + 5), static_cast<int16_t>(slot.y + 8),
+                          static_cast<int16_t>(slot.width - 14), static_cast<int16_t>(slot.height - 18)};
+      drawKeyBox(renderer, key, keyLabels[i], keyActive[i]);
+    } else {
+      screen.target().bitmap(slot, icons[static_cast<size_t>(i)], fui::BitmapMode::Center);
+    }
   }
-  screen.target().fill(fui::Rect{actionBar.x, actionBar.y, actionBar.width, 1}, fui::Paint::solid(fui::Color::Black));
+  if (!system6) {
+    screen.target().fill(fui::Rect{actionBar.x, actionBar.y, actionBar.width, 1}, fui::Paint::solid(fui::Color::Black));
+  }
 
   if (context.showReaderDetails) {
     drawReaderDetails(screen);
@@ -497,7 +537,20 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
                           static_cast<int16_t>(headerRow.y - theme.spaceSm),
                           static_cast<int16_t>(hitW + sideInset.right), static_cast<int16_t>(rowH + theme.spaceSm * 2)};
   screen.frame().hit(hitRect, ACTION_TOGGLE);
-  screen.target().bitmap(iconRect, lightIcon, fui::BitmapMode::Center);
+  if (system6) {
+    // I/O switch: the lit side is solid, so the state reads at a glance.
+    constexpr int cellW = 40;
+    const int cellH = std::min<int>(rowH - 6, 34);
+    const int sx = headerRow.right() - cellW * 2;
+    const int sy = headerRow.y + (rowH - cellH) / 2;
+    drawKeyBox(renderer, fui::Rect{static_cast<int16_t>(sx), static_cast<int16_t>(sy), cellW, static_cast<int16_t>(cellH)},
+               "I", lightOn);
+    drawKeyBox(renderer,
+               fui::Rect{static_cast<int16_t>(sx + cellW), static_cast<int16_t>(sy), cellW, static_cast<int16_t>(cellH)},
+               "O", !lightOn);
+  } else {
+    screen.target().bitmap(iconRect, lightIcon, fui::BitmapMode::Center);
+  }
 
   addStepSlider(screen, screen.takeTop(theme.rowHeight, theme.spaceLg).inset(sideInset), brightness, ACTION_BRIGHTNESS,
                 ACTION_BRIGHTNESS_STEP);
@@ -587,18 +640,44 @@ void FrontlightPanelActivity::addStepSlider(UiApp::ScreenType& screen, const fui
   glyph.align = fui::TextAlign::Center;
   const int16_t lineHeight = screen.target().lineHeight(glyph.font);
   const int16_t glyphY = static_cast<int16_t>(row.y + (row.height - lineHeight) / 2);
-  screen.target().text(fui::Rect{minusHit.x, glyphY, stepWidth, lineHeight}, "-", glyph);
-  screen.target().text(fui::Rect{plusHit.x, glyphY, stepWidth, lineHeight}, "+", glyph);
+  const bool system6 = isSystem6();
+  if (system6) {
+    // Mac scroll bar: an arrow box at each end of a dithered trough, with a
+    // square thumb that rides along it.
+    const int16_t boxH = static_cast<int16_t>(std::min<int>(row.height, 34));
+    const int16_t boxY = static_cast<int16_t>(row.y + (row.height - boxH) / 2);
+    drawArrowBox(renderer, fui::Rect{minusHit.x, boxY, boxH, boxH}, -1);
+    drawArrowBox(renderer, fui::Rect{static_cast<int16_t>(plusHit.right() - boxH), boxY, boxH, boxH}, +1);
+  } else {
+    screen.target().text(fui::Rect{minusHit.x, glyphY, stepWidth, lineHeight}, "-", glyph);
+    screen.target().text(fui::Rect{plusHit.x, glyphY, stepWidth, lineHeight}, "+", glyph);
+  }
   screen.frame().hit(minusHit, stepAction, -1, fui::InputTouch);
   screen.frame().hit(plusHit, stepAction, +1, fui::InputTouch);
 
   fui::SliderProps slider;
+  if (system6) {
+    const int16_t boxH = static_cast<int16_t>(std::min<int>(row.height, 34));
+    slider.track = fui::Paint::dither(fui::Color::LightGray);
+    slider.fill = fui::Paint::dither(fui::Color::LightGray);
+    slider.knob = fui::Paint::solid(fui::Color::White);
+    slider.border = fui::Paint::solid(fui::Color::Black);
+    slider.trackHeight = boxH;
+    slider.knobWidth = boxH;
+    slider.knobHeight = boxH;
+    slider.horizontalPadding = 0;
+  }
   slider.value = value;
   slider.max = 100;
   slider.action = sliderAction;
   slider.inputMask = fui::InputTouch | fui::InputDrag;
   const int16_t sideGap = static_cast<int16_t>(stepWidth + theme.spaceSm);
-  fui::slider(screen.frame(), row.inset(fui::Insets{0, sideGap, 0, sideGap}), slider);
+  const fui::Rect sliderRect = row.inset(fui::Insets{0, sideGap, 0, sideGap});
+  fui::slider(screen.frame(), sliderRect, slider);
+  if (system6) {
+    const int16_t boxH = static_cast<int16_t>(std::min<int>(row.height, 34));
+    renderer.drawRect(sliderRect.x, row.y + (row.height - boxH) / 2, sliderRect.width, boxH);
+  }
 }
 
 void FrontlightPanelActivity::render(RenderLock&&) {

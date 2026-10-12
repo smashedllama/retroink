@@ -175,7 +175,10 @@ void SleepScreenPickerActivity::loop() {
     if (swipe == MappedInputManager::SwipeDir::Left) step(1);
     if (swipe == MappedInputManager::SwipeDir::Right) step(-1);
     int tapX = 0, tapY = 0;
-    if (mappedInput.wasScreenTapped(tapX, tapY)) {
+    // Taps on the key bar belong to its Select/Left/Right keys; a tap that
+    // lands there after a key's release was swallowed must not also step.
+    const int keyBarTop = renderer.getScreenHeight() - UITheme::getInstance().getMetrics().buttonHintsHeight;
+    if (mappedInput.wasScreenTapped(tapX, tapY) && tapY < keyBarTop) {
       const Layout l = layout();
       if (tapX >= l.winX && tapX < l.winX + l.winW && tapY >= l.winY && tapY < l.winY + l.winH) {
         apply();
