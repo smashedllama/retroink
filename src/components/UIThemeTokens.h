@@ -12,6 +12,7 @@
 
 #include "AppCapabilities.h"
 #include "CrossPointSettings.h"
+#include "RockerSwitch.h"
 #include "UITheme.h"
 
 namespace UiThemeTokensDetail {
@@ -63,28 +64,20 @@ inline uint16_t configureUiList(freeink::ui::ListProps& props, const freeink::ui
   if (props.labelText.maxLines > 1) props.rowHeight = std::max(props.rowHeight, tokens.rowHeight);
   if (props.rowGap < 0) props.rowGap = tokens.listRowGap;
   if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
-    props.toggleWidth = 36;
-    props.toggleHeight = 22;
+    // Sized for RockerSwitch, which repaints the switch as an O|I rocker.
+    props.toggleWidth = RockerSwitch::kWidth;
+    props.toggleHeight = RockerSwitch::kHeight;
     props.toggleRadius = 0;
     props.toggleKnobRadius = 0;
-    props.toggleKnobInset = 3;
+    props.toggleKnobInset = RockerSwitch::kKnobInset;
     props.toggleBorderWidth = 2;
   }
   return freeink::ui::listVisibleRows(rect, props.rowHeight, props.rowGap);
 }
 
-// Sets an on/off row. The System 6 theme shows both positions, "I" (on) and
-// "O" (off), with the current one boxed, rather than the SDK's sliding switch:
-// a switch is drawn
-// in the row's own colours, so on a selected (inverted) row it looked already
-// switched, and the difference between on and off was only a thin border. The
-// letters read the same selected or not. Other themes keep the switch.
+// Sets an on/off row. On System 6 the SDK switch is repainted as an O|I rocker
+// (see RockerSwitch), so the state reads the same on a selected row.
 inline void applyUiToggle(freeink::ui::ListItem& item, const bool on) {
-  if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
-    item.toggle = false;
-    item.value = on ? "[I]  O" : "I  [O]";
-    return;
-  }
   item.toggle = true;
   item.toggleChecked = on;
   item.value = nullptr;

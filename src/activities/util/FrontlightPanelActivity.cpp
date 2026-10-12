@@ -102,13 +102,15 @@ void drawKeyGlyph(GfxRenderer& r, const int cx, const int cy, const KeyGlyph gly
       break;
     }
     case KeyGlyph::Touch: {
-      // The Mac arrow pointer: a wedge with a short tail.
-      for (int row = 0; row < 21; ++row) {
-        const int w = row < 15 ? row * 3 / 4 + 1 : 0;
-        if (w > 0) r.drawLine(x + 7, y + row, x + 7 + w, y + row, ink);
-      }
-      r.fillRect(x + 11, y + 14, 4, 9, ink);
-      r.fillRect(x + 8, y + 12, 3, 4, ink);
+      // A pointing hand: index finger up, three folded knuckles, thumb.
+      r.fillRect(x + 11, y, 5, 14, ink);       // index finger
+      r.fillRect(x + 7, y + 11, 15, 12, ink);  // palm
+      r.fillRect(x + 16, y + 9, 4, 5, ink);    // middle knuckle
+      r.fillRect(x + 20, y + 11, 4, 5, ink);   // ring knuckle
+      r.fillRect(x + 3, y + 13, 5, 7, ink);    // thumb
+      r.drawLine(x + 16, y + 14, x + 16, y + 17, !ink);  // finger gaps
+      r.drawLine(x + 20, y + 16, x + 20, y + 19, !ink);
+      r.fillRect(x + 8, y + 22, 13, 4, ink);   // wrist
       break;
     }
   }

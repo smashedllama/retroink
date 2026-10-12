@@ -44,6 +44,7 @@
 #include "activities/util/OptionSelectionActivity.h"
 #include "components/CompactHeader.h"
 #include "components/TouchHeaderBackButton.h"
+#include "components/RockerSwitch.h"
 #include "components/UITheme.h"
 #include "components/UIThemeTokens.h"
 #include "components/UiAppHelpers.h"
@@ -1346,6 +1347,12 @@ void SettingsActivity::buildSettingsScreen(UiApp::ScreenType& screen) {
         toggle.checked = SETTINGS.*(setting.valuePtr);
         toggle.toggleAction = ACTION_ROW;
         toggle.toggleValue = static_cast<int16_t>(i);
+        if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
+          toggle.toggleWidth = RockerSwitch::kWidth;
+          toggle.toggleHeight = RockerSwitch::kHeight;
+          toggle.knobInset = RockerSwitch::kKnobInset;
+          toggle.borderWidth = 2;
+        }
         screen.toggleRow(toggle);
       } else {
         const std::string value = settingValueText(setting);

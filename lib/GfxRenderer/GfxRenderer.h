@@ -31,6 +31,10 @@ enum Color : uint8_t { Clear = 0x00, White = 0x01, LightGray = 0x05, DarkGray = 
 
 class GfxRenderer {
  public:
+  // Lets a theme restyle a widget a library draws as plain filled rectangles.
+  // Called after every solid fillRect; one null check when unset.
+  using FillObserver = void (*)(const GfxRenderer& renderer, int x, int y, int width, int height, bool state);
+
   enum RenderMode { BW, GRAYSCALE_LSB, GRAYSCALE_MSB };
 
   // Logical screen orientation from the perspective of callers
@@ -138,6 +142,7 @@ class GfxRenderer {
   // per-pixel rotation, no per-pixel RMW.
   template <Color color>
   void fillRectImpl(int x, int y, int width, int height) const;
+  static inline FillObserver fillObserver_ = nullptr;
 
  public:
   explicit GfxRenderer(HalDisplay& halDisplay)
@@ -260,6 +265,7 @@ class GfxRenderer {
                        bool roundTopRight, bool roundBottomLeft, bool roundBottomRight, bool state) const;
   void maskRoundedRectOutsideCorners(int x, int y, int width, int height, int radius, Color color = Color::White) const;
   void fillRect(int x, int y, int width, int height, bool state = true) const;
+  static void setFillObserver(FillObserver observer) { fillObserver_ = observer; }
   void fillRectDither(int x, int y, int width, int height, Color color) const;
   void fillRoundedRect(int x, int y, int width, int height, int cornerRadius, Color color) const;
   void fillRoundedRect(int x, int y, int width, int height, int cornerRadius, bool roundTopLeft, bool roundTopRight,

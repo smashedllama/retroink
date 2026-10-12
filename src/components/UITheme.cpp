@@ -25,6 +25,7 @@
 #include "components/themes/lyra/LyraTheme.h"
 #include "components/themes/minimal/MinimalTheme.h"
 #include "components/themes/roundedraff/RoundedRaffTheme.h"
+#include "components/RockerSwitch.h"
 #include "components/themes/system6/System6Theme.h"
 #include "fontIds.h"
 
@@ -73,6 +74,7 @@ void UITheme::reload() {
 }
 
 void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
+  RockerSwitch::setEnabled(type == CrossPointSettings::UI_THEME::SYSTEM6);
   switch (type) {
     case CrossPointSettings::UI_THEME::SYSTEM6: {
       SETTINGS.uiScale = CrossPointSettings::UI_SCALE_LARGE;

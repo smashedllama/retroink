@@ -29,6 +29,7 @@
 #include "activities/settings/StatusBarSettingsActivity.h"
 #include "components/DrawerHandle.h"
 #include "components/SliderValue.h"
+#include "components/RockerSwitch.h"
 #include "components/UITheme.h"
 #include "components/UIThemeTokens.h"
 #include "components/UiAppHelpers.h"
@@ -806,6 +807,12 @@ void EpubReaderTouchMenuActivity::buildRootRows(UiApp::ScreenType& screen) {
       toggle.checked = rowToggleValue(row);
       toggle.toggleAction = ACTION_ROW;
       toggle.toggleValue = static_cast<int16_t>(top + i);
+      if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
+        toggle.toggleWidth = RockerSwitch::kWidth;
+        toggle.toggleHeight = RockerSwitch::kHeight;
+        toggle.knobInset = RockerSwitch::kKnobInset;
+        toggle.borderWidth = 2;
+      }
       screen.toggleRow(toggle);
     } else {
       screen.settingRow(props);

@@ -1442,6 +1442,7 @@ void GfxRenderer::fillRect(const int x, const int y, const int width, const int 
   } else {
     fillRectImpl<Color::White>(x, y, width, height);
   }
+  if (fillObserver_) fillObserver_(*this, x, y, width, height, state);
 }
 
 // NOTE: Those are in critical path, and need to be templated to avoid runtime checks for every pixel.
