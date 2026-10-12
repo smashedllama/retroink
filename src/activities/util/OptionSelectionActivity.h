@@ -13,6 +13,9 @@
 
 class OptionSelectionActivity final : public Activity {
  public:
+  // Pass as selectedIndex for an action menu: no row is marked "Selected".
+  static constexpr uint8_t kNoCurrentOption = 255;
+
   OptionSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::string activityName,
                           StrId titleId, std::vector<std::string> options, uint8_t selectedIndex,
                           bool readerMode = false, bool showTouchHeaderBackButton = false);

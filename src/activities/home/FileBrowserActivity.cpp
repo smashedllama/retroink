@@ -1455,6 +1455,7 @@ void FileBrowserActivity::buildListScreen(UiApp::ScreenType& screen) {
     props.topIndex = 0;
     props.nav = nullptr;
   }
+  if (UITheme::getInstance().isRowHighlightHidden()) props.selectedIndex = -1;
   props.action = ACTION_ROW;
   props.inputMask = mode == Mode::Books ? static_cast<uint16_t>(fui::InputTouch | fui::InputLongPress)
                                         : fui::InputTouch;  // physical buttons stay in loop()
@@ -1515,7 +1516,11 @@ void FileBrowserActivity::render(RenderLock&&) {
   // STR_SELECT instead. Directories in the same picker still descend, so keep STR_OPEN there.
   const bool selectingFirmwareFile =
       mode == Mode::PickFirmware && visibleEntries > 0 && std::string(entryNameAt(selectorIndex)).back() != '/';
-  const char* confirmLabel = visibleEntries == 0 ? "" : (selectingFirmwareFile ? tr(STR_SELECT) : tr(STR_OPEN));
+  // With no highlighted row on a touch screen there is nothing for Open to act on;
+  // entries are tapped directly.
+  const bool noHighlight = UITheme::getInstance().isRowHighlightHidden();
+  const char* confirmLabel =
+      visibleEntries == 0 || noHighlight ? "" : (selectingFirmwareFile ? tr(STR_SELECT) : tr(STR_OPEN));
   const auto labels = mappedInput.mapLabels(
       backLabel, confirmLabel, visibleEntries == 0 || mode == Mode::PickDirectory ? "" : tr(STR_DIR_UP),
       mode == Mode::PickDirectory ? tr(STR_SELECT) : (visibleEntries == 0 ? "" : tr(STR_DIR_DOWN)));

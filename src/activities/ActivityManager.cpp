@@ -289,6 +289,16 @@ void ActivityManager::loop() {
   }
 
   if (currentActivity) {
+#if CROSSINK_APP_CAP_TOUCH
+    // A physical key makes the highlighted row meaningful again; a touch hides it.
+    if (gpio.wasAnyPressed()) {
+      UITheme::getInstance().setNavHighlightVisible(true);
+    } else {
+      int downX = 0;
+      int downY = 0;
+      if (mappedInput.wasScreenTouchDown(downX, downY)) UITheme::getInstance().setNavHighlightVisible(false);
+    }
+#endif
     UITheme::getInstance().setKeyBarVisible(currentActivity->wantsKeyBar());
     mappedInput.setPowerAsConfirmInReaderMode(currentActivity->allowPowerAsConfirmInReaderMode());
 

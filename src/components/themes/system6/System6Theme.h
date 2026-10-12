@@ -35,6 +35,8 @@ class System6Theme final : public BaseTheme {
  public:
   void drawHeader(const GfxRenderer& renderer, Rect rect, const char* title, const char* subtitle = nullptr,
                   bool readerContext = false) const override;
+  void drawPopupChrome(const GfxRenderer& renderer, int dialogX, int dialogY, int dialogW, int dialogH,
+                       const std::vector<std::string>& titleLines, int innerPadding) const override;
   void drawButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3, const char* btn4,
                        bool allowInvertedText = false) const override;
   void drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,

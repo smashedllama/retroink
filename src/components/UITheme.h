@@ -22,6 +22,10 @@ class UITheme {
   // the activity manager from Activity::wantsKeyBar().
   void setKeyBarVisible(bool visible) { keyBarVisible = visible; }
   bool isKeyBarVisible() const { return keyBarVisible; }
+  // System 6 on a touch screen keeps no row highlighted while the user is
+  // tapping; a physical key brings it back (see ActivityManager::loop).
+  void setNavHighlightVisible(bool visible) { navHighlightVisible = visible; }
+  bool isRowHighlightHidden() const;
   const BaseTheme& getTheme() const { return *currentTheme; }
   Rect getScreenSafeArea(const GfxRenderer& renderer, bool hasFrontButtonHints = false,
                          bool hasSideButtonHints = false);
@@ -71,6 +75,7 @@ class UITheme {
   mutable bool metricsForTouch = false;
   mutable bool metricsForKeyBar = true;
   bool keyBarVisible = true;
+  bool navHighlightVisible = false;
 };
 
 // Helper macro to access current theme

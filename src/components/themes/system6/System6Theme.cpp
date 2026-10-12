@@ -348,6 +348,33 @@ void System6Theme::drawHeader(const GfxRenderer& r, Rect rect, const char* title
   }
 }
 
+void System6Theme::drawPopupChrome(const GfxRenderer& r, const int x, const int y, const int w, const int h,
+                                   const std::vector<std::string>& titleLines, const int innerPadding) const {
+  // An alert window: drop shadow, double outline, and a striped title bar with
+  // the title on a plate, like the charging dialog.
+  r.fillRect(x + 3, y + 3, w, h);
+  r.fillRect(x, y, w, h, false);
+  r.drawRect(x, y, w, h);
+  r.drawRect(x + 2, y + 2, w - 4, h - 4);
+
+  const int lineHeight = r.getLineHeight(UI_12_FONT_ID);
+  const int titleHeight = static_cast<int>(titleLines.size()) * lineHeight;
+  const int bandX = x + 4;
+  const int bandY = y + 4;
+  const int bandW = w - 8;
+  const int bandH = std::max(8, innerPadding + titleHeight + 2);
+  for (int ly = bandY + 3; ly < bandY + bandH - 1; ly += 4) r.drawLine(bandX + 3, ly, bandX + bandW - 4, ly);
+  r.drawLine(bandX, bandY + bandH, bandX + bandW - 1, bandY + bandH);
+
+  int widest = 0;
+  for (const auto& line : titleLines) {
+    widest = std::max(widest, r.getTextWidth(UI_12_FONT_ID, line.c_str(), EpdFontFamily::BOLD));
+  }
+  const int plateW = std::min(bandW - 8, widest + 20);
+  const int plateX = x + (w - plateW) / 2;
+  r.fillRect(plateX, y + innerPadding - 2, plateW, titleHeight + 4, false);
+}
+
 void System6Theme::drawButtonHints(GfxRenderer& r, const char* btn1, const char* btn2, const char* btn3,
                                    const char* btn4, bool allowInvertedText) const {
   // On touch devices these are real keys: tapping one acts as the front

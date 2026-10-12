@@ -1135,6 +1135,26 @@ void BaseTheme::drawTextField(const GfxRenderer& renderer, Rect rect, const int 
   }
 }
 
+void BaseTheme::drawPopupChrome(const GfxRenderer& renderer, const int dialogX, const int dialogY, const int dialogW,
+                                const int dialogH, const std::vector<std::string>&, const int) const {
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const int frameThickness = metrics.popupFrameThickness;
+  const int frameRadius = metrics.popupCornerRadius;
+
+  if (frameRadius > 0) {
+    renderer.fillRoundedRect(dialogX - frameThickness, dialogY - frameThickness, dialogW + frameThickness * 2,
+                             dialogH + frameThickness * 2, frameRadius + frameThickness, Color::White);
+    renderer.fillRoundedRect(dialogX, dialogY, dialogW, dialogH, frameRadius, Color::Black);
+    renderer.fillRoundedRect(dialogX + frameThickness, dialogY + frameThickness, dialogW - frameThickness * 2,
+                             dialogH - frameThickness * 2,
+                             frameRadius - frameThickness > 0 ? frameRadius - frameThickness : 0, Color::White);
+  } else {
+    renderer.fillRect(dialogX - frameThickness, dialogY - frameThickness, dialogW + frameThickness * 2,
+                      dialogH + frameThickness * 2, true);
+    renderer.fillRect(dialogX, dialogY, dialogW, dialogH, false);
+  }
+}
+
 void BaseTheme::drawOptionPopup(const GfxRenderer& renderer, const char* title, const std::vector<std::string>& options,
                                 int selectedIndex, const bool showConfirmationFooter, const char* cancelLabel,
                                 const char* saveLabel, const bool saveFocused, const int primaryOptionIndex,
@@ -1212,6 +1232,9 @@ void BaseTheme::drawOptionPopup(const GfxRenderer& renderer, const char* title, 
       rowHeight, maxDialogH - innerPadding * 2 - titleHeight - metrics.optionPopupTitleGap - noteHeight - footerSpace);
   const int rowStep = rowHeight + itemSpacing;
   const int maxVisibleOptions = std::max(1, std::min(optionCount, (maxListHeight + itemSpacing) / rowStep));
+  // On a touch screen nothing is pre-marked: the user picks, which also means a
+  // destructive confirm is never the default.
+  const bool highlightHidden = UITheme::getInstance().isRowHighlightHidden();
   const int safeSelectedIndex = std::clamp(selectedIndex, 0, optionCount - 1);
   const int centeredStart = std::clamp(safeSelectedIndex - maxVisibleOptions / 2, 0, optionCount - maxVisibleOptions);
   const int visibleStart =
@@ -1227,21 +1250,7 @@ void BaseTheme::drawOptionPopup(const GfxRenderer& renderer, const char* title, 
   const int dialogX = (pageWidth - dialogW) / 2;
   const int dialogY = (pageHeight - dialogH) / 2;
 
-  const int frameThickness = metrics.popupFrameThickness;
-  const int frameRadius = metrics.popupCornerRadius;
-
-  if (frameRadius > 0) {
-    renderer.fillRoundedRect(dialogX - frameThickness, dialogY - frameThickness, dialogW + frameThickness * 2,
-                             dialogH + frameThickness * 2, frameRadius + frameThickness, Color::White);
-    renderer.fillRoundedRect(dialogX, dialogY, dialogW, dialogH, frameRadius, Color::Black);
-    renderer.fillRoundedRect(dialogX + frameThickness, dialogY + frameThickness, dialogW - frameThickness * 2,
-                             dialogH - frameThickness * 2,
-                             frameRadius - frameThickness > 0 ? frameRadius - frameThickness : 0, Color::White);
-  } else {
-    renderer.fillRect(dialogX - frameThickness, dialogY - frameThickness, dialogW + frameThickness * 2,
-                      dialogH + frameThickness * 2, true);
-    renderer.fillRect(dialogX, dialogY, dialogW, dialogH, false);
-  }
+  drawPopupChrome(renderer, dialogX, dialogY, dialogW, dialogH, titleLines, innerPadding);
 
   int y = dialogY + innerPadding;
 
@@ -1313,14 +1322,15 @@ void BaseTheme::drawOptionPopup(const GfxRenderer& renderer, const char* title, 
     const char* labels[] = {options[visibleStart + primaryOffset].c_str(),
                             options[visibleStart + secondaryOffset].c_str()};
     const int selectedVisualIndex = safeSelectedIndex == primaryOptionIndex ? 0 : 1;
-    TouchActionButtons::draw(renderer, actionLayout, labels, 0, saveFocused ? -1 : selectedVisualIndex, optionFontId);
+    TouchActionButtons::draw(renderer, actionLayout, labels, 0, saveFocused || highlightHidden ? -1 : selectedVisualIndex,
+                             optionFontId);
   } else
 #endif
   {
     for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
       const int optionIndex = visibleStart + visibleIndex;
       const int itemY = y + visibleIndex * (rowHeight + itemSpacing);
-      const bool selected = !saveFocused && optionIndex == safeSelectedIndex;
+      const bool selected = !saveFocused && !highlightHidden && optionIndex == safeSelectedIndex;
       const bool disabled = optionIndex < static_cast<int>(disabledOptions.size()) && disabledOptions[optionIndex];
       const char* labelText = options[optionIndex].c_str();
 
@@ -1338,6 +1348,13 @@ void BaseTheme::drawOptionPopup(const GfxRenderer& renderer, const char* title, 
         } else {
           renderer.fillRect(itemRectX, itemY, itemRectW, rowHeight, rowColor == Color::Black);
         }
+      }
+
+      if (optionCount <= 4 && SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6 && !selected) {
+        // A short System 6 dialog: each choice is a boxed button with a shadow.
+        renderer.fillRect(itemRectX + 3, itemY + 3, itemRectW, rowHeight, true);
+        renderer.fillRect(itemRectX, itemY, itemRectW, rowHeight, false);
+        renderer.drawRect(itemRectX, itemY, itemRectW, rowHeight);
       }
 
       const auto style = primaryOptionIndex == optionIndex ? EpdFontFamily::BOLD : optionStyle;

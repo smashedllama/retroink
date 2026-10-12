@@ -133,6 +133,14 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
   metricsValid = false;
 }
 
+bool UITheme::isRowHighlightHidden() const {
+#if CROSSINK_APP_CAP_TOUCH
+  return gpio.hasTouch() && SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6 && !navHighlightVisible;
+#else
+  return false;
+#endif
+}
+
 const ThemeMetrics& UITheme::getMetrics() const {
 #if CROSSINK_APP_CAP_TOUCH
   // hasTouch() can flip once touch init completes after static construction, so the

@@ -50,7 +50,11 @@ void OptionSelectionActivity::onEnter() {
     cancel();
     return;
   }
-  if (currentIndex_ < 0 || currentIndex_ >= static_cast<int>(options_.size())) currentIndex_ = 0;
+  if (currentIndex_ == kNoCurrentOption) {
+    currentIndex_ = -1;  // an action menu: nothing is the current value
+  } else if (currentIndex_ < 0 || currentIndex_ >= static_cast<int>(options_.size())) {
+    currentIndex_ = 0;
+  }
   if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(options_.size())) selectedIndex_ = 0;
   topIndex_ = 0;
   visibleRows_ = 1;

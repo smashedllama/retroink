@@ -204,7 +204,9 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
       const int y = rowTop + i * rowH;
       TouchRegistry::getInstance().add(Rect{x + 20, y, w - 40, rowH - 8}, i, TouchRegistry::Item);
       renderer.drawRect(x + 20, y, w - 40, rowH - 8);
-      if (selected_ == i) renderer.fillRect(x + 24, y + 4, 8, rowH - 16);
+      if (selected_ == i && !UITheme::getInstance().isRowHighlightHidden()) {
+        renderer.fillRect(x + 24, y + 4, 8, rowH - 16);
+      }
       renderer.drawText(UI_10_FONT_ID, x + 42, y + 16, rows[i], true, EpdFontFamily::BOLD);
     }
   } else {

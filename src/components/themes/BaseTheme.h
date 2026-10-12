@@ -304,6 +304,10 @@ class BaseTheme {
                                bool saveFocused = false, int primaryOptionIndex = -1, const char* noteLabel = nullptr,
                                const char* noteBody = nullptr, const std::vector<bool>& disabledOptions = {},
                                int firstOptionIndex = -1) const;
+  // The frame behind an option popup. A theme can restyle it; the title lines
+  // are drawn afterwards, centred from the top of the dialog's inner padding.
+  virtual void drawPopupChrome(const GfxRenderer& renderer, int dialogX, int dialogY, int dialogW, int dialogH,
+                               const std::vector<std::string>& titleLines, int innerPadding) const;
   virtual void fillPopupProgress(const GfxRenderer& renderer, const Rect& layout, const int progress) const;
   // title is borrowed and must stay alive for the call; pass nullptr or "" for none.
   virtual void drawStatusBar(GfxRenderer& renderer, const float bookProgress, const int currentPage,

@@ -157,7 +157,7 @@ void DeskAccessoriesActivity::render(RenderLock&&) {
     const DeskEntry& entry = kEntries[static_cast<int>(items_[i])];
     const int y = rowTop + i * rowHeight;
     const int rowH = rowHeight - 6;
-    const bool active = i == selected_;
+    const bool active = i == selected_ && !UITheme::getInstance().isRowHighlightHidden();
     if (active) renderer.fillRect(rowX, y, rowW, rowH, true);
     GUI.drawMenuIcon(renderer, entry.icon, rowX + 10, y + (rowH - 26) / 2, !active);
     renderer.drawText(iconFont, rowX + 46, y + (rowH - renderer.getLineHeight(iconFont)) / 2, I18n::getInstance().get(entry.label), !active);

@@ -557,7 +557,7 @@ void RetroInkLibraryActivity::showActions() {
                                         tr(STR_LIBRARY_REFRESH),
                                         iconView() ? tr(STR_LIBRARY_VIEW_AS_SHELF) : tr(STR_LIBRARY_VIEW_AS_ICONS)};
     startActivityForResult(std::make_unique<OptionSelectionActivity>(renderer, mappedInput, "LibraryActions",
-                                                             StrId::STR_LIBRARY_BOOK_MENU, std::move(choices), 0),
+                                                             StrId::STR_LIBRARY_BOOK_MENU, std::move(choices), OptionSelectionActivity::kNoCurrentOption),
                            [this](const ActivityResult& result) {
                              if (const auto* choice = std::get_if<OptionSelectionResult>(&result.data)) {
                                switch (choice->index) {
@@ -582,7 +582,7 @@ void RetroInkLibraryActivity::showActions() {
   // Recover is conditional, so it stays last to keep every other index fixed.
   if (catalog_.recoveryCount(selectedRecord_)) choices.push_back(tr(STR_LIBRARY_RECOVER));
   startActivityForResult(std::make_unique<OptionSelectionActivity>(renderer, mappedInput, "LibraryActions",
-                                                           StrId::STR_LIBRARY_BOOK_MENU, std::move(choices), 0),
+                                                           StrId::STR_LIBRARY_BOOK_MENU, std::move(choices), OptionSelectionActivity::kNoCurrentOption),
                          [this, path, favorite](const ActivityResult& result) {
                            const auto* choice = std::get_if<OptionSelectionResult>(&result.data);
                            if (!choice) return;

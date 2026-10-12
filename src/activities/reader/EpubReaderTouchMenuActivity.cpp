@@ -35,6 +35,7 @@
 #include "components/UiAppHelpers.h"
 #include "components/icons/keyboardIcons.h"
 #include "components/icons/listIcons.h"
+#include "components/icons/retroIcons.h"
 #include "components/icons/touchHeaderIcons.h"
 #include "util/Dictionary.h"
 #include "util/DictionaryRegistry.h"
@@ -667,8 +668,26 @@ void EpubReaderTouchMenuActivity::buildDrawer(UiApp::ScreenType& screen) {
   sheet.radius = 0;
   sheet.ruleWidth = DRAWER_RULE_WIDTH;
   const int16_t tabBarHeight = static_cast<int16_t>(TAB_BAR_HEIGHT + TAB_BAR_VERTICAL_PADDING * 2);
+  const bool system6 = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6;
+  if (system6) sheet.grabber = fui::Paint::solid(fui::Color::White);  // a title-bar grip replaces the pill
   const fui::Rect sheetContent = screen.sheet(sheet, drawerHeight());
   drawerHandleRect = DrawerHandle::registerTap(screen.frame(), sheetContent, sheet, ACTION_DISMISS);
+  if (system6) {
+    // The grabber band becomes a System 6 title bar: heavy rule above, stripes
+    // within, a centred grip plate that is the part to pull on.
+    const int bandTop = sheetContent.y - DrawerHandle::bandHeight(sheet);
+    const int bandH = DrawerHandle::bandHeight(sheet);
+    renderer.fillRect(0, bandTop, renderer.getScreenWidth(), bandH, false);
+    renderer.fillRect(0, bandTop, renderer.getScreenWidth(), 3, true);
+    for (int ly = bandTop + 8; ly < bandTop + bandH - 5; ly += 4) {
+      renderer.drawLine(8, ly, renderer.getScreenWidth() - 9, ly);
+    }
+    renderer.drawLine(0, bandTop + bandH - 1, renderer.getScreenWidth() - 1, bandTop + bandH - 1);
+    const int plateW = 56;
+    const int plateX = (renderer.getScreenWidth() - plateW) / 2;
+    renderer.fillRect(plateX, bandTop + 5, plateW, bandH - 10, false);
+    renderer.drawRect(plateX, bandTop + 5, plateW, bandH - 10);
+  }
   // Give every tab row four pixels of white space above and below its icons.
   // The tab pill keeps its previous size so the selected background does not
   // become taller with the row.
@@ -712,9 +731,16 @@ void EpubReaderTouchMenuActivity::buildDrawer(UiApp::ScreenType& screen) {
 
 void EpubReaderTouchMenuActivity::buildTabBar(UiApp::ScreenType& screen, const fui::Rect rect,
                                               const bool drawBottomRule) {
-  const std::array<fui::BitmapRef, READER_DRAWER_TAB_COUNT> icons = {
-      fui::bitmapFromIcon(icon_case_sensitive_32), fui::bitmapFromIcon(icon_text_align_start_24),
-      fui::bitmapFromIcon(icon_ellipsis_24), fui::bitmapFromIcon(icon_bookmark_24), fui::bitmapFromIcon(icon_cog_24)};
+  const bool system6 = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6;
+  const std::array<fui::BitmapRef, READER_DRAWER_TAB_COUNT> icons =
+      system6 ? std::array<fui::BitmapRef, READER_DRAWER_TAB_COUNT>{
+                    fui::bitmapFromIcon(icon_retro_font_28), fui::bitmapFromIcon(icon_retro_layout_28),
+                    fui::bitmapFromIcon(icon_retro_more_28), fui::bitmapFromIcon(icon_retro_bookmark_28),
+                    fui::bitmapFromIcon(icon_retro_settings_28)}
+              : std::array<fui::BitmapRef, READER_DRAWER_TAB_COUNT>{
+                    fui::bitmapFromIcon(icon_case_sensitive_32), fui::bitmapFromIcon(icon_text_align_start_24),
+                    fui::bitmapFromIcon(icon_ellipsis_24), fui::bitmapFromIcon(icon_bookmark_24),
+                    fui::bitmapFromIcon(icon_cog_24)};
   std::array<fui::TabItem, READER_DRAWER_TAB_COUNT> tabs{};
   for (size_t i = 0; i < tabs.size(); ++i) {
     tabs[i].icon = icons[i];
@@ -730,6 +756,14 @@ void EpubReaderTouchMenuActivity::buildTabBar(UiApp::ScreenType& screen, const f
   props.tabStyles.selected.background = fui::Paint::solid(fui::Color::Black);
   props.tabStyles.selected.foreground = fui::Paint::solid(fui::Color::White);
   props.tabStyles.selected.radius = 4;
+  if (system6) {
+    // Square, boxed keys like System 6's bottom bar rather than rounded pills.
+    props.tabStyles.selected.radius = 0;
+    props.tabStyles.normal.border = fui::Paint::solid(fui::Color::Black);
+    props.tabStyles.normal.borderWidth = 1;
+    props.tabStyles.selected.border = fui::Paint::solid(fui::Color::Black);
+    props.tabStyles.selected.borderWidth = 1;
+  }
   props.tabInset = fui::Insets{static_cast<int16_t>(4 + TAB_BAR_VERTICAL_PADDING), 4,
                                static_cast<int16_t>(8 + TAB_BAR_VERTICAL_PADDING), 4};
   const int16_t ruleY = drawBottomRule ? static_cast<int16_t>(rect.bottom() - 1) : rect.y;

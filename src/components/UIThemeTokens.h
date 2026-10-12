@@ -58,6 +58,9 @@ inline uint16_t configureUiList(freeink::ui::ListProps& props, const freeink::ui
 #else
   if (rowType == UiListRowType::SingleLine) props.labelText.maxLines = 1;
 #endif
+  // On a touch screen rows are tapped, so none stays marked as selected until a
+  // physical key moves it.
+  if (UITheme::getInstance().isRowHighlightHidden()) props.selectedIndex = -1;
   if (props.rowHeight <= 0) props.rowHeight = uiListRowHeight(tokens, rowType);
   // Subtitle rows may wrap their labels, so retain FreeInkUI's font-derived
   // two-line height and avoid overlapping the following item.
