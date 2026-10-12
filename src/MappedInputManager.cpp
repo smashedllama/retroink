@@ -219,7 +219,14 @@ uint8_t MappedInputManager::mappedFrontButtonFor(const Button button) const {
   }
 }
 
-bool MappedInputManager::shouldUsePowerAsConfirmFallback() const { return !readerMode || powerAsConfirmInReaderMode; }
+bool MappedInputManager::shouldUsePowerAsConfirmFallback() const {
+#if CROSSINK_APP_CAP_TOUCH
+  // Without front buttons the side Power key keeps its own short/long actions;
+  // Confirm comes from the on-screen key bar. Reader popups still borrow it.
+  if (hasHomeKeyHardware() && touchInputEnabled()) return powerAsConfirmInReaderMode;
+#endif
+  return !readerMode || powerAsConfirmInReaderMode;
+}
 
 bool MappedInputManager::isFrontNavButtonSwapActive() const {
   return readerMode && shouldSwapReaderFrontNavButtons(static_cast<CrossPointSettings::FRONT_BUTTON_ORIENTATION_AWARE>(

@@ -120,7 +120,8 @@ void drawCompact(GfxRenderer& renderer, const char* title, const bool readerCont
   const int rightReserve =
       metrics.batteryWidth + 2 * metrics.headerSidePadding + (showDate ? headerDateReservedWidth(renderer) : 0);
   draw(renderer, header, title, readerContext, rightReserve, nullptr, verticalOffset);
-  if (showDate) {
+  // System 6 draws its own status area; a second date would land on the tabs.
+  if (showDate && SETTINGS.uiTheme != CrossPointSettings::UI_THEME::SYSTEM6) {
     const Layout back = layout(header);
     const int offset = effectiveVerticalOffset(back, header, verticalOffset);
     const int titleBaselineY = back.iconRect.y + offset +

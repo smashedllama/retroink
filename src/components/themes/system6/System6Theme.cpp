@@ -363,6 +363,12 @@ void System6Theme::drawButtonHints(GfxRenderer& r, const char* btn1, const char*
   constexpr int wideButtonPositions[] = {38, 154, 268, 384};
   const int* buttonPositions = r.getScreenWidth() >= 528 ? wideButtonPositions : narrowButtonPositions;
   const char* labels[] = {btn1, btn2, btn3, btn4};
+  // Up/Down only move a highlight; on a touch screen rows are tapped and
+  // swiped directly, so those two keys would just take up room.
+  if (touch && btn3 && btn4 && std::strcmp(btn3, tr(STR_DIR_UP)) == 0 && std::strcmp(btn4, tr(STR_DIR_DOWN)) == 0) {
+    labels[2] = "";
+    labels[3] = "";
+  }
   int topMargin, rightMargin, bottomMargin, leftMargin;
   r.getOrientedViewableTRBL(&topMargin, &rightMargin, &bottomMargin, &leftMargin);
   (void)topMargin;

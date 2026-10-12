@@ -27,7 +27,7 @@ constexpr ThemeMetrics makeValues() {
 }
 constexpr ThemeMetrics values = makeValues();
 // Height of the bottom key bar on touch devices: tall enough to hit with a finger.
-constexpr int kTouchButtonHintsHeight = 76;
+constexpr int kTouchButtonHintsHeight = 56;
 }  // namespace System6Metrics
 
 // No state, image assets, or extra framebuffer. Decoration is drawn in place.

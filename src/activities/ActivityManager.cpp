@@ -308,9 +308,28 @@ void ActivityManager::loop() {
       // Frontlight quick panel: top-edge down-swipe on home-key boards, except
       // that the open EPUB reader exposes the same action across the whole page.
       // Pushed, so it returns to whatever was underneath — including mid-book.
-      const bool lightPanelGesture = currentActivity->usesFullScreenReaderVerticalSwipes()
-                                         ? mappedInput.wasReaderLightPanelGesture()
-                                         : mappedInput.wasLightPanelGesture();
+      bool lightPanelGesture = currentActivity->usesFullScreenReaderVerticalSwipes()
+                                   ? mappedInput.wasReaderLightPanelGesture()
+                                   : mappedInput.wasLightPanelGesture();
+#if CROSSINK_APP_CAP_TOUCH
+      // Edge swipes are hard to land on a bezel-less touch panel, so a tap on the
+      // battery/clock corner of the header opens the same panel. Anything that
+      // registered its own target there keeps the tap.
+      if (!lightPanelGesture && mappedInput.hasHomeKey() && !currentActivity->usesFullScreenReaderVerticalSwipes()) {
+        int tapX = 0;
+        int tapY = 0;
+        int ignoredId = 0;
+        const int cornerBottom = renderer.getScreenHeight() / 14;
+        if (mappedInput.wasScreenTapped(tapX, tapY) && tapY < cornerBottom && tapX >= renderer.getScreenWidth() * 6 / 10) {
+          const auto& registry = TouchRegistry::getInstance();
+          bool claimed = false;
+          for (uint8_t kind = 0; kind <= TouchRegistry::Button && !claimed; ++kind) {
+            claimed = registry.hitTest(tapX, tapY, static_cast<TouchRegistry::Kind>(kind), ignoredId);
+          }
+          lightPanelGesture = !claimed;
+        }
+      }
+#endif
       if (supportsFrontlightDrawer(mappedInput.hasTouchHardware(), Frontlight.present(),
                                    hasStickyReaderDetailsPanel()) &&
           currentActivity->name != "FrontlightPanel" && currentActivity->allowFrontlightPanelGesture() &&
