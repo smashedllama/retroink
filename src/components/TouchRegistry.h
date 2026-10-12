@@ -22,6 +22,9 @@ class TouchRegistry {
   void add(const Rect& rect, int id, Kind kind);
   void publish();
   void clear();
+  // For a partial redraw that doesn't repaint the targets: carry the published set
+  // over so taps keep landing where the last full render drew them.
+  void keepPublished();
   bool hitTest(int x, int y, Kind kind, int& outId) const;
   // The drawn rect of the target with this kind and id (the newest, as hitTest does).
   bool findTarget(Kind kind, int id, Rect& out) const;
@@ -63,6 +66,7 @@ class TouchRegistry {
   constexpr void add(const Rect&, int, Kind) {}
   constexpr void publish() {}
   constexpr void clear() {}
+  constexpr void keepPublished() {}
   constexpr bool hitTest(int, int, Kind, int&) const { return false; }
   constexpr bool findTarget(Kind, int, Rect&) const { return false; }
 };

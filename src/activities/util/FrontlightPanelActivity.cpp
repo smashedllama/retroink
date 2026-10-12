@@ -293,7 +293,7 @@ void FrontlightPanelActivity::loop() {
   }
 
   const Rect homeButton = homeButtonRect();
-  if (context.activeReaderBook &&
+  if (showsHomeButton() &&
       mappedInput.wasTapInRect(homeButton.x, homeButton.y, homeButton.width, homeButton.height)) {
     activityManager.goHome();
     return;
@@ -303,7 +303,6 @@ void FrontlightPanelActivity::loop() {
     close();
     return;
   }
-
   fui::InputSnapshot snap{};
   if (uiReady) {
     snap = touchSnapshotFrom(mappedInput);
@@ -344,6 +343,11 @@ Rect FrontlightPanelActivity::homeButtonRect() const {
   const auto& metrics = UITheme::getInstance().getMetrics();
   return Rect{renderer.getScreenWidth() - HEADER_BUTTON_WIDTH, metrics.topPadding, HEADER_BUTTON_WIDTH,
               TouchHeaderBackButton::height(metrics, mappedInput)};
+}
+
+bool FrontlightPanelActivity::showsHomeButton() const {
+  return context.activeReaderBook &&
+         !(SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6 && mappedInput.hasHomeKey());
 }
 
 int FrontlightPanelActivity::computePanelBottom() const {
@@ -426,7 +430,13 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto& theme = screen.theme();
   const fui::SheetProps sheet = frontlightSheetProps();
-  const fui::Rect sheetRect{0, 0, static_cast<int16_t>(renderer.getScreenWidth()), static_cast<int16_t>(panelBottom)};
+  // System 6 paints its window (and title bar) first and wipes everything under
+  // it, so the sheet starts below the bar instead of over it.
+  const int16_t sheetTop = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6
+                               ? static_cast<int16_t>(metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput))
+                               : 0;
+  const fui::Rect sheetRect{0, sheetTop, static_cast<int16_t>(renderer.getScreenWidth()),
+                            static_cast<int16_t>(panelBottom - sheetTop)};
   fui::sheet(screen.frame(), sheetRect, sheet);
   // Body spans from below the header to the sheet's content edge. The grabber
   // owns the remaining band at the bottom of this top-anchored drawer.
@@ -521,6 +531,19 @@ void FrontlightPanelActivity::drawHeader() {
     titleFontId = UI_10_FONT_ID;
   }
 
+  if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
+    // The title bar already carries the Back box, clock and battery.
+    GUI.drawHeader(renderer, header, title, nullptr, false);
+    if (showsHomeButton()) {
+      const Rect button = homeButtonRect();
+      uiTarget.bitmap(fui::Rect{static_cast<int16_t>(button.x + (button.width - HEADER_ICON_SIZE) / 2),
+                                static_cast<int16_t>(button.y + (button.height - HEADER_ICON_SIZE) / 2),
+                                HEADER_ICON_SIZE, HEADER_ICON_SIZE},
+                      fui::bitmapFromIcon(icon_home_24), fui::BitmapMode::Center);
+    }
+    return;
+  }
+
   // Reuse the normal header chrome so the drawer retains its separator, clock,
   // and battery indicator. The date remains deliberately smaller than a page
   // title, matching its secondary status role.
@@ -583,10 +606,16 @@ void FrontlightPanelActivity::render(RenderLock&&) {
   // over) intact below the panel; only the top third is repainted. No full
   // clearScreen — same as the theme popups draw over the current frame.
   panelBottom = computePanelBottom();
+  const bool system6 = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6;
+  if (system6) {
+    drawHeader();
+    // Wipe whatever key bar the screen underneath left in the bottom band.
+    GUI.drawButtonHints(renderer, "", "", "", "");
+  }
   uiReady = false;
   app.render();
   uiReady = true;
-  drawHeader();
+  if (!system6) drawHeader();
 
   // The dialog is the topmost layer.
   if (optionPopup.isActive()) optionPopup.render(renderer);

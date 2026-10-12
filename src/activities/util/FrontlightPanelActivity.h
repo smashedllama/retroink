@@ -60,6 +60,9 @@ class FrontlightPanelActivity final : public Activity {
   void addStepSlider(UiApp::ScreenType& screen, const freeink::ui::Rect& row, uint8_t value,
                      freeink::ui::ActionId sliderAction, freeink::ui::ActionId stepAction);
   Rect homeButtonRect() const;
+  // The header Home icon: reader context only, and not where System 6's title bar
+  // already has the capacitive Home key to lean on.
+  bool showsHomeButton() const;
   // Height of the drop-down, derived from the content it holds (header +
   // sliders + toggle). Same layout math as buildPanelScreen so the frame,
   // content margin, and dismiss threshold all agree.

@@ -1848,6 +1848,11 @@ class SimulatorSmokeTest {
     inputScript.push_back(assertActivity("ClockDesk"));
     addTapTarget(TouchRegistry::Button, kKeySelect, "Touch: Clock mode toggled by key bar");
     inputScript.push_back(assertActivity("ClockDesk"));
+    // Seconds repaint only the clock face; the header Back box must still work.
+    addTapTarget(TouchRegistry::Button, 3, "Touch: Clock seconds on by key bar");
+    inputScript.push_back(assertActivity("ClockDesk"));
+    inputScript.push_back(render("Touch: Clock seconds ticking", 40));
+    inputScript.push_back(assertActivity("ClockDesk"));
     addTapTarget(TouchRegistry::Back, 0, "Touch: back from Clock by header");
     inputScript.push_back(assertActivity("DeskAccessories"));
 
@@ -1917,14 +1922,21 @@ class SimulatorSmokeTest {
         inputScript.push_back(touchRelease(width / 2, height / 4));
         inputScript.push_back(render("Frontlight Panel opened from touch gesture", 4));
         inputScript.push_back(assertActivity("FrontlightPanel"));
-        const Rect header = TouchHeaderBackButton::headerRect(renderer, mappedInputManager);
-        inputScript.push_back(touchDown(header.x + header.width - 32, header.y + header.height / 2));
-        inputScript.push_back(touchRelease(header.x + header.width - 32, header.y + header.height / 2));
-        inputScript.push_back(render("Home opened by Frontlight Panel Home button", 4));
-        inputScript.push_back(assertActivity("Home"));
-        inputScript.push_back(openSmokeBook());
-        inputScript.push_back(render("Reader reopened after Frontlight Panel Home button", 8));
-        inputScript.push_back(assertActivity("EpubReader"));
+        if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
+          // System 6's title bar owns the corner, so its panel closes by the
+          // header's Back box instead of a Home icon (the Home key remains).
+          addTapTarget(TouchRegistry::Back, 0, "Frontlight Panel closed by header Back");
+          inputScript.push_back(assertActivity("EpubReader"));
+        } else {
+          const Rect header = TouchHeaderBackButton::headerRect(renderer, mappedInputManager);
+          inputScript.push_back(touchDown(header.x + header.width - 32, header.y + header.height / 2));
+          inputScript.push_back(touchRelease(header.x + header.width - 32, header.y + header.height / 2));
+          inputScript.push_back(render("Home opened by Frontlight Panel Home button", 4));
+          inputScript.push_back(assertActivity("Home"));
+          inputScript.push_back(openSmokeBook());
+          inputScript.push_back(render("Reader reopened after Frontlight Panel Home button", 8));
+          inputScript.push_back(assertActivity("EpubReader"));
+        }
         inputScript.push_back(touchDown(width / 2, 8));
         inputScript.push_back(touchMove(width / 2, height / 4));
         inputScript.push_back(touchRelease(width / 2, height / 4));
@@ -1936,8 +1948,8 @@ class SimulatorSmokeTest {
         inputScript.push_back(render("Frontlight Panel remains open after in-drawer swipe up", 4));
         inputScript.push_back(assertActivity("FrontlightPanel"));
         // X4 Pro's portrait frontlight sheet ends just below mid-screen; this
-        // point lands in its centered 29 px handle band.
-        inputScript.push_back(touchDown(width / 2, height * 21 / 40));
+        // point lands in its centered handle band (the grabber sits at 55%).
+        inputScript.push_back(touchDown(width / 2, height * 11 / 20));
         inputScript.push_back(touchMove(width / 2, 8));
         inputScript.push_back(touchRelease(width / 2, 8));
         inputScript.push_back(render("Reader restored after Frontlight Panel handle drag up", 4));

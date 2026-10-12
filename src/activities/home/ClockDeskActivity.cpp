@@ -11,6 +11,7 @@
 #include "CrossPointSettings.h"
 #include "components/ClockFormat.h"
 #include "components/TouchHeaderBackButton.h"
+#include "components/TouchRegistry.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
@@ -344,6 +345,9 @@ void ClockDeskActivity::render(RenderLock&&) {
   // poll buttons while the panel is busy. contentW_ guards the case where no
   // full render has run yet to establish the layout.
   if (pendingSecondsTick_.exchange(false) && !forceFullRefresh_.load() && contentW_ > 0) {
+    // The tick doesn't repaint the header or key bar, so their touch targets
+    // must survive it or Back can't be tapped while seconds run.
+    TouchRegistry::getInstance().keepPublished();
     tickSecondsLocked();
     return;
   }

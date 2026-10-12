@@ -32,6 +32,15 @@ void TouchRegistry::publish() {
   live_.store(backIndex(), std::memory_order_release);
 }
 
+void TouchRegistry::keepPublished() {
+  if (!enabled_) return;
+  const uint8_t liveIndex = live_.load(std::memory_order_acquire);
+  const uint8_t back = backIndex();
+  if (liveIndex == back) return;
+  counts_[back] = counts_[liveIndex];
+  buffers_[back] = buffers_[liveIndex];
+}
+
 void TouchRegistry::clear() {
   counts_[0] = 0;
   counts_[1] = 0;
