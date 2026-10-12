@@ -83,6 +83,11 @@ class KeyboardEntryActivity : public Activity {
   // lives in the SDK; loop() feeds it the level-triggered touch state.
   freeink::ui::TouchHoldRouter touchRouter;
 
+  // On touch screens a tapped key would otherwise stay drawn as selected (and
+  // ghost on e-ink) until the next tap. The selection highlight only shows once
+  // the physical navigation keys are used.
+  bool showSelection = true;
+
   // loop() runs on the main task while render() rebuilds the interaction
   // table on the render task. This is only the first-published-table gate;
   // later renders publish into the SDK's double buffer without clearing it,

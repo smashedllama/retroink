@@ -137,6 +137,7 @@ void KeyboardEntryActivity::onEnter() {
   rightLongHandled = false;
   savedCursorPos = 0;
   rightStartCursorPos = 0;
+  showSelection = !mappedInput.hasTouchHardware();
   touchRouter.reset();
   touchRouter.holdMs = TOUCH_LONG_PRESS_MS;
   touchRouter.overrideHoldMs = TOUCH_DEL_LONG_PRESS_MS;
@@ -576,6 +577,7 @@ void KeyboardEntryActivity::loop() {
         touchRouter.update(interactions, tapCandidate, static_cast<int16_t>(tx), static_cast<int16_t>(ty), tapped,
                            static_cast<int16_t>(tapX), static_cast<int16_t>(tapY), inContact, millis());
     if (result.event) {
+      showSelection = false;
       syncSelectionToValue(result.event.value);
       if (activateValue(result.event.value, result.event.longPress)) {
         requestUpdate();
@@ -590,6 +592,16 @@ void KeyboardEntryActivity::loop() {
     }
   }
 #endif
+
+  if (!showSelection && (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
+                         mappedInput.wasPressed(MappedInputManager::Button::Down) ||
+                         mappedInput.wasPressed(MappedInputManager::Button::Left) ||
+                         mappedInput.wasPressed(MappedInputManager::Button::Right))) {
+    // Physical navigation brings the highlight back; it moves on the next press.
+    showSelection = true;
+    requestUpdate();
+    return;
+  }
 
   if (!cursorMode && mappedInput.wasPressed(MappedInputManager::Button::Up)) {
     upHeld = true;
@@ -1002,7 +1014,7 @@ void KeyboardEntryActivity::render(RenderLock&&) {
   props.modeLabel =
       (symbols || (inputType == InputType::Url && urlPanel)) ? tr(STR_KEY_MODE_ABC) : tr(STR_KEY_MODE_SYMBOLS);
   props.inputMask = static_cast<uint16_t>(fui::InputTouch | fui::InputLongPress);
-  props.selectedIndex = cursorMode ? -1 : static_cast<int16_t>(selectedLogicalIndex());
+  props.selectedIndex = (cursorMode || !showSelection) ? -1 : static_cast<int16_t>(selectedLogicalIndex());
   props.labelText.font = fui::GfxRendererTarget::FONT_BODY;
   props.altText.font = fui::GfxRendererTarget::FONT_SMALL;
   props.gap = static_cast<int16_t>(metrics.keyboardKeySpacing);
@@ -1015,8 +1027,10 @@ void KeyboardEntryActivity::render(RenderLock&&) {
   interactions.publish();
   interactionsReady.store(true, std::memory_order_release);
 
-  const auto labels = mappedInput.mapLabels(mappedInput.withBackArrow(tr(STR_BACK)), tr(STR_SELECT), tr(STR_DIR_LEFT),
-                                            tr(STR_DIR_RIGHT));
+  // With no visible selection there is nothing for Select/Left/Right to act on.
+  const bool keysActive = showSelection || cursorMode;
+  const auto labels = mappedInput.mapLabels(mappedInput.withBackArrow(tr(STR_BACK)), keysActive ? tr(STR_SELECT) : "",
+                                            keysActive ? tr(STR_DIR_LEFT) : "", keysActive ? tr(STR_DIR_RIGHT) : "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   GUI.drawSideButtonHints(renderer, ">", "<");
