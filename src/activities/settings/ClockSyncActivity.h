@@ -16,6 +16,8 @@ class ClockSyncActivity final : public Activity {
   void loop() override;
   bool skipLoopDelay() override { return true; }
   void render(RenderLock&&) override;
+  // Rows and the header Back box cover everything on a touch screen.
+  bool wantsKeyBar() const override { return !mappedInput.hasTouchHardware(); }
 
  private:
   enum State { SYNCING, SUCCESS, NO_WIFI, FAILED };

@@ -21,6 +21,8 @@ class DictionarySelectActivity final : public Activity {
   void onExit() override;
   void loop() override;
   void render(RenderLock&&) override;
+  // Rows and the header Back box cover everything on a touch screen.
+  bool wantsKeyBar() const override { return !mappedInput.hasTouchHardware(); }
 
  private:
   // Active SD card root directory for dictionaries (resolved in scanDictionaries()).

@@ -1805,7 +1805,7 @@ class SimulatorSmokeTest {
     inputCompletionStep = SmokeStep::Done;
 
     constexpr int kFocus = 0, kMoon = 1, kClock = 3, kPuzzle = 4, kCalendar = 5, kSystemInfo = 6;
-    constexpr int kKeyBack = 0, kKeySelect = 1;
+    constexpr int kKeySelect = 1;
     (void)kFocus;
 
     inputScript.push_back(openDeskAccessories());
@@ -1821,7 +1821,7 @@ class SimulatorSmokeTest {
     // Key bar Back.
     addTapTarget(TouchRegistry::Item, kSystemInfo, "Touch: System Info opened");
     inputScript.push_back(assertActivity("SystemInfoDesk"));
-    addTapTarget(TouchRegistry::Button, kKeyBack, "Touch: back from System Info by key bar");
+    addTapTarget(TouchRegistry::Back, 0, "Touch: back from System Info by header");
     inputScript.push_back(assertActivity("DeskAccessories"));
 
     // Key bar Select does what the front Select button did.
@@ -1829,7 +1829,7 @@ class SimulatorSmokeTest {
     inputScript.push_back(assertActivity("PuzzleDesk"));
     addTapTarget(TouchRegistry::Button, kKeySelect, "Touch: Puzzle shuffled by key bar");
     inputScript.push_back(assertActivity("PuzzleDesk"));
-    addTapTarget(TouchRegistry::Button, kKeyBack, "Touch: back from Puzzle by key bar");
+    addTapTarget(TouchRegistry::Back, 0, "Touch: back from Puzzle by header");
     inputScript.push_back(assertActivity("DeskAccessories"));
 
     // Moon Phase opens the date picker on its own when no date is known.

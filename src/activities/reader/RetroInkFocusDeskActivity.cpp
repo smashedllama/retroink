@@ -24,6 +24,19 @@ void formatFocusDuration(const uint16_t minutes, char* buffer, const size_t size
   }
 }
 
+// Item ids from here up are the editor's step buttons (rows use 0..itemCount).
+constexpr int kStepBase = 100;
+
+// A System 6 key-style button used for the editor steps.
+void drawStepButton(GfxRenderer& r, const int x, const int y, const int w, const int h, const char* label) {
+  r.fillRect(x + 3, y + 3, w, h);
+  r.fillRect(x, y, w, h, false);
+  r.drawRect(x, y, w, h);
+  const int textW = r.getTextWidth(UI_10_FONT_ID, label, EpdFontFamily::BOLD);
+  r.drawText(UI_10_FONT_ID, x + std::max(2, (w - textW) / 2), y + (h - r.getLineHeight(UI_10_FONT_ID)) / 2, label,
+             true, EpdFontFamily::BOLD);
+}
+
 uint8_t cadenceIndex(const uint8_t mode) {
   constexpr uint8_t modes[] = {CrossPointSettings::FOCUS_TIMER_EVERY_SECOND,
                                CrossPointSettings::FOCUS_TIMER_EVERY_MINUTE,
@@ -130,7 +143,13 @@ void RetroInkFocusDeskActivity::loop() {
   // Touch: tap a row to choose and open it, or a refresh option to pick it.
   int tappedRow = -1;
   if (mappedInput.hasTouchHardware() && mappedInput.wasItemTapped(tappedRow)) {
-    if (editor_ == Editor::None && tappedRow >= 0 && tappedRow < itemCount()) {
+    if ((editor_ == Editor::Length || editor_ == Editor::Goal) && tappedRow >= kStepBase) {
+      // The on-screen step buttons: -1 h, -5 min, +5 min, +1 h.
+      constexpr int kSteps[4] = {-12, -1, 1, 12};
+      const int step = kSteps[std::clamp(tappedRow - kStepBase, 0, 3)];
+      if (editor_ == Editor::Goal && (step == 12 || step == -12)) return;
+      adjust(step);
+    } else if (editor_ == Editor::None && tappedRow >= 0 && tappedRow < itemCount()) {
       selected_ = static_cast<uint8_t>(tappedRow);
       activate();
     } else if (editor_ == Editor::Refresh && tappedRow >= 0 && tappedRow < 3) {
@@ -217,14 +236,35 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
         formatFocusDuration(SETTINGS.focusDurationMinutes(), value, sizeof(value));
       }
       renderer.drawCenteredText(UI_12_FONT_ID, editorTop + 82, value, true, EpdFontFamily::BOLD);
-      if (editor_ == Editor::Length)
+      if (mappedInput.hasTouchHardware()) {
+        // Step buttons in the editor itself; the hour steps only apply to the
+        // session length.
+        const bool hours = editor_ == Editor::Length;
+        const char* labels[4] = {"-1 h", "-5", "+5", "+1 h"};
+        const int count = hours ? 4 : 2;
+        const int first = hours ? 0 : 1;
+        const int gap = 10;
+        const int bw = (w - 68 - 24 - gap * (count - 1)) / count;
+        const int bh = 44;
+        const int by = editorTop + 122;
+        int bx = x + 34 + 12;
+        for (int i = 0; i < count; ++i) {
+          const int id = kStepBase + first + i;
+          TouchRegistry::getInstance().add(Rect{bx, by, bw, bh}, id, TouchRegistry::Item);
+          drawStepButton(renderer, bx, by, bw, bh, labels[first + i]);
+          bx += bw + gap;
+        }
+      } else if (editor_ == Editor::Length) {
         renderer.drawCenteredText(UI_10_FONT_ID, editorTop + 147, tr(STR_FOCUS_SIDE_HOUR_HINT));
+      }
     }
   }
+  const bool touch = mappedInput.hasTouchHardware();
+  const bool stepEditor = editor_ == Editor::Length || editor_ == Editor::Goal;
   const auto labels = mappedInput.mapLabels(
-      tr(STR_BACK), editor_ == Editor::None ? tr(STR_SELECT) : tr(STR_DONE),
-      editor_ == Editor::Length || editor_ == Editor::Goal ? tr(STR_FOCUS_MINUS_FIVE) : tr(STR_DIR_UP),
-      editor_ == Editor::Length || editor_ == Editor::Goal ? tr(STR_FOCUS_PLUS_FIVE) : tr(STR_DIR_DOWN));
+      tr(STR_BACK), editor_ == Editor::None ? (touch ? "" : tr(STR_SELECT)) : tr(STR_DONE),
+      touch ? "" : (stepEditor ? tr(STR_FOCUS_MINUS_FIVE) : tr(STR_DIR_UP)),
+      touch ? "" : (stepEditor ? tr(STR_FOCUS_PLUS_FIVE) : tr(STR_DIR_DOWN)));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
   renderer.displayBuffer();
 }

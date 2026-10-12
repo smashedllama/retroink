@@ -30,5 +30,8 @@ class RetroInkFocusDeskActivity final : public Activity {
   void onExit() override;
   void loop() override;
   void render(RenderLock&&) override;
+  // On touch the rows and the +/- buttons are tapped; only an open editor needs
+  // its Done key.
+  bool wantsKeyBar() const override { return !mappedInput.hasTouchHardware() || editor_ != Editor::None; }
   bool allowPowerAsConfirmInReaderMode() const override { return true; }
 };

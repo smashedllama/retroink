@@ -45,4 +45,6 @@ class SleepScreenPickerActivity final : public Activity {
   void onExit() override;
   void loop() override;
   void render(RenderLock&&) override;
+  // Swipe or tap the sides to step, tap the middle to choose: no key bar.
+  bool wantsKeyBar() const override { return !mappedInput.hasTouchHardware(); }
 };

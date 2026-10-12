@@ -264,6 +264,37 @@ void ClipSelectionActivity::loop() {
 
   int touchX = 0;
   int touchY = 0;
+  {
+    // A drag that starts on a word selects from there at once.
+    int downX = 0;
+    int downY = 0;
+    if (mappedInput.wasScreenTouchDown(downX, downY)) {
+      touchDownValid = true;
+      touchDownX = downX;
+      touchDownY = downY;
+    }
+    if (!touchDragSelecting && touchDownValid) {
+      int heldX = 0;
+      int heldY = 0;
+      if (mappedInput.isScreenTouchHeld(heldX, heldY)) {
+        if (ClipSelectionPaging::hasDraggedFrom(touchDownX, touchDownY, heldX, heldY)) {
+          touchDownValid = false;
+          if (selectWordAtPoint(touchDownX, touchDownY)) {
+            if (startMarkIdx == -1) startMarkIdx = cursorIdx;
+            touchDragSelecting = true;
+            touchDragHasMoved = true;
+            touchDragStartX = touchDownX;
+            touchDragStartY = touchDownY;
+            touchDragPageEndIdx = -1;
+            requestUpdate();
+            return;
+          }
+        }
+      } else {
+        touchDownValid = false;
+      }
+    }
+  }
   if (touchDragSelecting) {
     if (mappedInput.isScreenTouchHeld(touchX, touchY)) {
       touchDragHasMoved =
@@ -496,9 +527,12 @@ void ClipSelectionActivity::render(RenderLock&&) {
 
   drawHighlights();
 
-  const auto confirmLabel = startMarkIdx == -1 ? tr(STR_SELECT) : tr(STR_DONE);
-  const auto labels =
-      mappedInput.mapLabels(mappedInput.withBackArrow(tr(STR_BACK)), confirmLabel, tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
+  // On touch a tap picks a word and a drag selects a run, so only Done (once a
+  // selection is started from the keys) is left.
+  const bool touch = mappedInput.hasTouchHardware();
+  const auto confirmLabel = startMarkIdx == -1 ? (touch ? "" : tr(STR_SELECT)) : tr(STR_DONE);
+  const auto labels = mappedInput.mapLabels(mappedInput.withBackArrow(tr(STR_BACK)), confirmLabel,
+                                            touch ? "" : tr(STR_DIR_LEFT), touch ? "" : tr(STR_DIR_RIGHT));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

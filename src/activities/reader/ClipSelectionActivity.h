@@ -63,6 +63,11 @@ class ClipSelectionActivity final : public Activity {
   bool hasSavedBuffer = false;
   bool usingFallbackFont = false;
   bool touchDragSelecting = false;
+  // Where the current finger went down, so a plain drag from a word can start a
+  // selection without waiting for the long-press.
+  bool touchDownValid = false;
+  int touchDownX = 0;
+  int touchDownY = 0;
   bool touchDragHasMoved = false;
   int touchDragStartX = 0;
   int touchDragStartY = 0;

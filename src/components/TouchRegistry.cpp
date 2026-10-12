@@ -41,6 +41,16 @@ void TouchRegistry::keepPublished() {
   buffers_[back] = buffers_[liveIndex];
 }
 
+bool TouchRegistry::hasPending(const Kind kind) const {
+  if (!enabled_) return false;
+  const uint8_t bufferIndex = backIndex();
+  const size_t count = counts_[bufferIndex];
+  for (size_t i = 0; i < count; ++i) {
+    if (buffers_[bufferIndex][i].kind == kind) return true;
+  }
+  return false;
+}
+
 void TouchRegistry::clear() {
   counts_[0] = 0;
   counts_[1] = 0;

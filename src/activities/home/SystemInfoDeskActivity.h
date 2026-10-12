@@ -24,4 +24,6 @@ class SystemInfoDeskActivity final : public Activity {
   void onExit() override;
   void loop() override;
   void render(RenderLock&&) override;
+  // Rows and the header Back box cover everything on a touch screen.
+  bool wantsKeyBar() const override { return !mappedInput.hasTouchHardware(); }
 };

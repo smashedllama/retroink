@@ -34,6 +34,8 @@ class SdFirmwareUpdateActivity : public Activity {
   void onEnter() override;
   void loop() override;
   void render(RenderLock&&) override;
+  // Rows and the header Back box cover everything on a touch screen.
+  bool wantsKeyBar() const override { return !mappedInput.hasTouchHardware(); }
   bool preventAutoSleep() override { return state == State::UPDATING || state == State::VALIDATING; }
   bool skipLoopDelay() override { return state == State::UPDATING; }
 

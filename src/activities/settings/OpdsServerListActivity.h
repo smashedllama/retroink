@@ -23,6 +23,8 @@ class OpdsServerListActivity final : public Activity {
   void onExit() override;
   void loop() override;
   void render(RenderLock&&) override;
+  // Rows and the header Back box cover everything on a touch screen.
+  bool wantsKeyBar() const override { return !mappedInput.hasTouchHardware(); }
 
  private:
   // FreeInkApp hosts the server list (themed rows, touch routing); the header

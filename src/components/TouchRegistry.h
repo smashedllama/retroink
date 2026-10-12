@@ -26,6 +26,9 @@ class TouchRegistry {
   // over so taps keep landing where the last full render drew them.
   void keepPublished();
   bool hitTest(int x, int y, Kind kind, int& outId) const;
+  // True when the frame being drawn (not yet published) has registered a target
+  // of this kind. Lets a later widget in the same frame avoid duplicating it.
+  bool hasPending(Kind kind) const;
   // The drawn rect of the target with this kind and id (the newest, as hitTest does).
   bool findTarget(Kind kind, int id, Rect& out) const;
 
@@ -67,6 +70,7 @@ class TouchRegistry {
   constexpr void publish() {}
   constexpr void clear() {}
   constexpr void keepPublished() {}
+  constexpr bool hasPending(Kind) const { return false; }
   constexpr bool hitTest(int, int, Kind, int&) const { return false; }
   constexpr bool findTarget(Kind, int, Rect&) const { return false; }
 };

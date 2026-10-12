@@ -221,8 +221,27 @@ void DeskCalendarActivity::loop() {
     pageMonth(1);
     return;
   }
+  // Swipe sideways to turn the month.
+  if (mappedInput.hasTouchHardware()) {
+    const auto swipe = mappedInput.wasSwipe();
+    if (swipe == MappedInputManager::SwipeDir::Left) {
+      pageMonth(1);
+      return;
+    }
+    if (swipe == MappedInputManager::SwipeDir::Right) {
+      pageMonth(-1);
+      return;
+    }
+  }
   int tapX = 0, tapY = 0;
   if (mappedInput.wasScreenTapped(tapX, tapY)) {
+    // Tapping the day's events opens the Day View with all of them.
+    const Rect agenda = agendaRect();
+    if (hasEvents_ && selectedDay_ > 0 && tapX >= agenda.x && tapX < agenda.x + agenda.width && tapY >= agenda.y &&
+        tapY < agenda.y + agenda.height) {
+      openDayView();
+      return;
+    }
     const int day = CalendarView::dayAt(renderer, gridRect(), viewYear_, viewMonth_, tapX, tapY);
     if (day != 0) {
       selectedDay_ = day;
@@ -289,8 +308,11 @@ void DeskCalendarActivity::render(RenderLock&&) {
     }
   }
 
-  const auto labels =
-      mappedInput.mapLabels(tr(STR_BACK), tr(STR_CALENDAR_OPTIONS), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
+  // On touch the month turns by swiping and days are tapped, so only Options
+  // (sync, day view, set date) is left for the key bar.
+  const bool touch = mappedInput.hasTouchHardware();
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_CALENDAR_OPTIONS), touch ? "" : tr(STR_DIR_LEFT),
+                                            touch ? "" : tr(STR_DIR_RIGHT));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   if (optionPopup_.processRender(renderer, mappedInput)) return;
   renderer.displayBuffer();

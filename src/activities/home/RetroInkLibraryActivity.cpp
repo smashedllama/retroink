@@ -913,9 +913,12 @@ void RetroInkLibraryActivity::render(RenderLock&&) {
     }
   }
   const bool ready = !catalog_.isScanning() && !catalog_.failed();
+  // Touch turns the page by swiping and picks a book by tapping, so Actions is
+  // the only key left; the edge keys switch shelves.
+  const bool stepKeys = ready && shelfBookCount() && !mappedInput.hasTouchHardware();
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), ready ? tr(STR_ACTIONS) : "",
-                                             ready && shelfBookCount() ? tr(STR_LIBRARY_PREV) : "",
-                                             ready && shelfBookCount() ? tr(STR_LIBRARY_NEXT) : "");
+                                             stepKeys ? tr(STR_LIBRARY_PREV) : "",
+                                             stepKeys ? tr(STR_LIBRARY_NEXT) : "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
   renderer.displayBuffer();
 }

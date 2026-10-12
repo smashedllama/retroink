@@ -356,6 +356,12 @@ void System6Theme::drawButtonHints(GfxRenderer& r, const char* btn1, const char*
   // A touch screen that hides the key bar draws nothing here, so the band and
   // its targets are simply absent.
   if (touch && !UITheme::getInstance().isKeyBarVisible()) return;
+  // The header already has a Back box on touch, so the bar's own Back key would
+  // be a duplicate; the bar keeps only what the screen can actually do.
+  if (touch && btn1 && btn1[0] && std::strstr(btn1, tr(STR_BACK)) &&
+      TouchRegistry::getInstance().hasPending(TouchRegistry::Back)) {
+    btn1 = "";
+  }
 
   const auto orientation = r.getOrientation();
   const bool invertText = allowInvertedText && orientation == GfxRenderer::Orientation::PortraitInverted;
@@ -372,6 +378,26 @@ void System6Theme::drawButtonHints(GfxRenderer& r, const char* btn1, const char*
   if (touch && btn3 && btn4 && std::strcmp(btn3, tr(STR_DIR_UP)) == 0 && std::strcmp(btn4, tr(STR_DIR_DOWN)) == 0) {
     labels[2] = "";
     labels[3] = "";
+  }
+  // On touch the keys that are left are centred as a group (their targets keep
+  // the slot ids, so the mapped button is unchanged).
+  int compactPositions[4] = {0, 0, 0, 0};
+  if (touch) {
+    int labeled = 0;
+    for (const char* label : labels) {
+      if (label && label[0]) ++labeled;
+    }
+    if (labeled > 0) {
+      constexpr int keyGap = 14;
+      const int total = labeled * buttonWidth + (labeled - 1) * keyGap;
+      int nextX = std::max(0, (r.getScreenWidth() - total) / 2);
+      for (int i = 0; i < 4; ++i) {
+        if (!labels[i] || !labels[i][0]) continue;
+        compactPositions[i] = nextX;
+        nextX += buttonWidth + keyGap;
+      }
+      buttonPositions = compactPositions;
+    }
   }
   int topMargin, rightMargin, bottomMargin, leftMargin;
   r.getOrientedViewableTRBL(&topMargin, &rightMargin, &bottomMargin, &leftMargin);
