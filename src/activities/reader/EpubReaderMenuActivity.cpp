@@ -734,9 +734,14 @@ void EpubReaderMenuActivity::render(RenderLock&&) {
     const Rect homeTouchRect = readerMenuHeaderActionTouchRect(headerRect, homeRect);
     const int titleRightReserve = headerRect.x + headerRect.width - homeRect.x + headerActionGap;
     TouchHeaderBackButton::draw(renderer, uiTarget, headerRect, title.c_str(), true, titleRightReserve);
-    TouchRegistry::getInstance().add(homeTouchRect, static_cast<int>(TOUCH_HOME_ICON_INDEX), TouchRegistry::Tab);
-    drawSdkIcon(uiTarget, icon_home_24, homeRect.x + (homeRect.width - tabIconSize) / 2,
-                homeRect.y + (homeRect.height - tabIconSize) / 2);
+    // System 6's title bar already fills that corner with the battery, and a
+    // board with a Home key doesn't need the icon.
+    const bool systemSixCorner = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6 && mappedInput.hasHomeKey();
+    if (!systemSixCorner) {
+      TouchRegistry::getInstance().add(homeTouchRect, static_cast<int>(TOUCH_HOME_ICON_INDEX), TouchRegistry::Tab);
+      drawSdkIcon(uiTarget, icon_home_24, homeRect.x + (homeRect.width - tabIconSize) / 2,
+                  homeRect.y + (homeRect.height - tabIconSize) / 2);
+    }
   } else {
     GUI.drawHeader(renderer, headerRect, title.c_str());
   }

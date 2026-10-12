@@ -392,8 +392,10 @@ class EpubReaderActivity final : public Activity {
   void resetCurrentBookStatsAfterDelete();
   void openFileTransfer();
   void openAutoPageTurnIntervalPicker(bool ignoreInitialConfirmRelease = false, bool returnToReaderMenu = false);
+  // holdX/holdY: where a touch-and-hold began, so the selection starts on that
+  // word and carries on with the finger still down.
   void startClipSelection(const DictionaryClippingRequest* dictionaryRequest = nullptr,
-                          bool ignoreInitialBackRelease = false);
+                          bool ignoreInitialBackRelease = false, int holdX = -1, int holdY = -1);
   void resetReadingPaceData();
   void captureGlobalReaderSettings();
   void restoreGlobalReaderSettings();

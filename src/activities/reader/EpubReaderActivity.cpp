@@ -83,7 +83,8 @@
 #include "util/ScreenshotUtil.h"
 
 namespace {
-constexpr unsigned long TOUCH_DICTIONARY_LOOKUP_HOLD_MS = 1000;
+// Holding a finger on the text this long starts a highlight that follows it.
+constexpr unsigned long TOUCH_DICTIONARY_LOOKUP_HOLD_MS = 450;
 // pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
 constexpr unsigned long longPressMenuMs = 600;
 constexpr uint16_t DEFAULT_AUTO_PAGE_TURN_INTERVAL_S = 30;
@@ -3484,11 +3485,7 @@ bool EpubReaderActivity::handleTouchDictionaryLookup() {
   }
 
   touchDictionaryLookupHandled = true;
-  if (!Dictionary::exists(epub->getCachePath().c_str())) {
-    return false;
-  }
-
-  openWordSelect(/*framebufferContainsPage=*/true, touchX, touchY, /*autoLookupInitialWord=*/true);
+  startClipSelection(nullptr, /*ignoreInitialBackRelease=*/false, touchX, touchY);
   return true;
 }
 
@@ -4294,7 +4291,7 @@ void EpubReaderActivity::openAutoPageTurnIntervalPicker(const bool ignoreInitial
 }
 
 void EpubReaderActivity::startClipSelection(const DictionaryClippingRequest* dictionaryRequest,
-                                            const bool ignoreInitialBackRelease) {
+                                            const bool ignoreInitialBackRelease, const int holdX, const int holdY) {
   if (!section || !epub) {
     requestUpdate();
     return;
@@ -4574,7 +4571,7 @@ void EpubReaderActivity::startClipSelection(const DictionaryClippingRequest* dic
   pauseReadingPaceTimer("clip_selection");
   auto clipSelection = makeUniqueNoThrow<ClipSelectionActivity>(
       renderer, mappedInput, std::move(wordStore), readerFontId, *section, startPage, layout.marginTop,
-      layout.marginLeft, dictionaryRequest, ignoreInitialBackRelease);
+      layout.marginLeft, dictionaryRequest, ignoreInitialBackRelease, holdX, holdY);
   if (!clipSelection) {
     LOG_ERR("CLIP", "OOM: failed to allocate clip selection activity");
     resumeReadingPaceTimer("clip_selection_alloc_failed");
@@ -4582,9 +4579,18 @@ void EpubReaderActivity::startClipSelection(const DictionaryClippingRequest* dic
     return;
   }
   startActivityForResult(std::move(clipSelection), [this, bookTitle = std::move(bookTitle), author = std::move(author),
-                                                    chapterTitle = std::move(chapterTitle),
-                                                    clippingLayoutSignature](const ActivityResult& result) {
+                                                    chapterTitle = std::move(chapterTitle), clippingLayoutSignature,
+                                                    holdX, holdY](const ActivityResult& result) {
     MemoryBudget::logHeapShape("clip.child_destroyed");
+    // A hold that was let go without dragging is a look-up of that word, as the
+    // hold has always been; dragging across a run is the clipping.
+    if (holdX >= 0 && !result.isCancelled && epub && Dictionary::exists(epub->getCachePath().c_str())) {
+      if (const auto* held = std::get_if<ClippingResult>(&result.data); held && held->wordCount == 1) {
+        resumeReadingPaceTimer("clip_hold_lookup");
+        openWordSelect(/*framebufferContainsPage=*/false, holdX, holdY, /*autoLookupInitialWord=*/true);
+        return;
+      }
+    }
     const char* clippingFeedback = nullptr;
     bool saved = false;
     if (!result.isCancelled) {

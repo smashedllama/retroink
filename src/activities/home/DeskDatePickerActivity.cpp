@@ -248,7 +248,8 @@ void DeskDatePickerActivity::render(RenderLock&&) {
 
   renderer.drawCenteredText(UI_10_FONT_ID, y + 12, touch ? tr(STR_DESK_PICKER_HINT_TOUCH) : tr(STR_DESK_PICKER_HINT));
 
-  const auto labels = mappedInput.mapLabels(tr(STR_CANCEL), tr(STR_DONE), "-", "+");
+  // On touch each field has its own - and + buttons.
+  const auto labels = mappedInput.mapLabels(tr(STR_CANCEL), tr(STR_DONE), touch ? "" : "-", touch ? "" : "+");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   renderer.displayBuffer();
 }

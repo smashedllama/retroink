@@ -31,7 +31,8 @@ ClipSelectionActivity::ClipSelectionActivity(GfxRenderer& renderer, MappedInputM
                                              ClipWordStore wordStore, const int fontId, Section& section,
                                              const int startPageInSection, const int marginTop, const int marginLeft,
                                              const DictionaryClippingRequest* dictionaryRequest,
-                                             const bool ignoreInitialBackRelease)
+                                             const bool ignoreInitialBackRelease, const int initialTouchX,
+                                             const int initialTouchY)
     : Activity("ClipSelection", renderer, mappedInput),
       wordStore(std::move(wordStore)),
       renderFontId(fontId),
@@ -41,6 +42,8 @@ ClipSelectionActivity::ClipSelectionActivity(GfxRenderer& renderer, MappedInputM
       marginLeft(marginLeft),
       hasDictionaryRequest(dictionaryRequest != nullptr),
       ignoreInitialBackRelease(ignoreInitialBackRelease),
+      initialTouchX(initialTouchX),
+      initialTouchY(initialTouchY),
       dictionaryRequest(dictionaryRequest ? *dictionaryRequest : DictionaryClippingRequest{}) {}
 
 void ClipSelectionActivity::onEnter() {
@@ -87,6 +90,17 @@ void ClipSelectionActivity::onEnter() {
     setResult(std::move(result));
     finish();
     return;
+  }
+  if (initialTouchX >= 0 && selectWordAtPoint(initialTouchX, initialTouchY)) {
+    // Opened by a touch-and-hold: the word under the finger is the anchor and
+    // the drag carries on from there, like selecting text with a mouse.
+    startMarkIdx = cursorIdx;
+    touchDragSelecting = true;
+    touchDragHasMoved = false;
+    touchDragStartX = initialTouchX;
+    touchDragStartY = initialTouchY;
+    touchDragPageEndIdx = -1;
+    touchDragStartedMs = static_cast<uint32_t>(millis());
   }
   requestUpdate();
 }
@@ -320,10 +334,14 @@ void ClipSelectionActivity::loop() {
       }
       return;
     }
-    if (mappedInput.wasScreenTouchReleased()) {
+    if (mappedInput.wasScreenTouchReleased() ||
+        (touchDragStartedMs != 0 && static_cast<uint32_t>(millis()) - touchDragStartedMs > 600)) {
+      // Either the release arrived, or the finger lifted while the page was
+      // still being prepared and its release went by unseen.
       touchDragSelecting = false;
       touchDragHasMoved = false;
       touchDragPageEndIdx = -1;
+      touchDragStartedMs = 0;
       confirmSelection();
       return;
     }

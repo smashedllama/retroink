@@ -29,7 +29,7 @@ class ClipSelectionActivity final : public Activity {
   ClipSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, ClipWordStore wordStore, int fontId,
                         Section& section, int startPageInSection, int marginTop, int marginLeft,
                         const DictionaryClippingRequest* dictionaryRequest = nullptr,
-                        bool ignoreInitialBackRelease = false);
+                        bool ignoreInitialBackRelease = false, int initialTouchX = -1, int initialTouchY = -1);
 
   void onEnter() override;
   void onExit() override;
@@ -63,6 +63,9 @@ class ClipSelectionActivity final : public Activity {
   bool hasSavedBuffer = false;
   bool usingFallbackFont = false;
   bool touchDragSelecting = false;
+  int initialTouchX = -1;
+  int initialTouchY = -1;
+  uint32_t touchDragStartedMs = 0;
   // Where the current finger went down, so a plain drag from a word can start a
   // selection without waiting for the long-press.
   bool touchDownValid = false;

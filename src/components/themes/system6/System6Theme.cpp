@@ -259,7 +259,9 @@ void System6Theme::drawHeader(const GfxRenderer& r, Rect rect, const char* title
   const bool touch = gpio.hasTouch();
   const int hintBand =
       touch ? UITheme::getInstance().getMetrics().buttonHintsHeight : System6Metrics::values.buttonHintsHeight;
-  const int contentBottom = r.getScreenHeight() - hintBand - 4;
+  // The window's lower edge sits where the list area ends on touch, so a row
+  // at the bottom isn't clipped by the frame.
+  const int contentBottom = r.getScreenHeight() - hintBand - (touch ? 1 : 4);
   desktop(r, 0, r.getScreenHeight());
   if (!home) {
     frame(r, Rect{x, y, end - x, std::max(h, contentBottom - y)});
@@ -609,6 +611,24 @@ void System6Theme::drawRecentBookCover(GfxRenderer& r, Rect rect, const std::vec
   frame(r, tile);
   const bool active = !books.empty() && selected == 0;
   if (active) r.fillRect(tile.x + 5, tile.y + 5, tile.width - 10, tile.height - 10);
+  if (books.empty()) {
+    // Empty shelf: the document icon and message sit together in the middle of
+    // the card instead of the icon drifting to the left.
+    const int emptyFont = uiScaleSpec().bodyFontId;
+    const int lineH = r.getLineHeight(emptyFont);
+    const auto lines = r.wrappedText(emptyFont, tr(STR_NO_RECENT_BOOKS), std::max(40, tile.width - 40), 2,
+                                     EpdFontFamily::BOLD);
+    const int blockH = 30 + 10 + static_cast<int>(lines.size()) * lineH;
+    int y = tile.y + std::max(6, (tile.height - blockH) / 2);
+    documentIcon(r, tile.x + (tile.width - 22) / 2, y, true);
+    y += 40;
+    for (const auto& line : lines) {
+      const int lineW = r.getTextWidth(emptyFont, line.c_str(), EpdFontFamily::BOLD);
+      r.drawText(emptyFont, tile.x + (tile.width - lineW) / 2, y, line.c_str(), true, EpdFontFamily::BOLD);
+      y += lineH;
+    }
+    return;
+  }
   bool coverDrawn = false;
   int textX = tile.x + 82;
   if (!books.empty() && !books.front().coverBmpPath.empty()) {

@@ -61,7 +61,9 @@ void drawProgressBar(const GfxRenderer& r, const int x, const int y, const int w
 
 void footer(GfxRenderer& r, const MappedInputManager* input, const char* left, const char* right) {
   if (!input) return;
-  const auto labels = input->mapLabels(left, right, tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
+  // Pages turn by swiping on a touch screen, so only the two actions remain.
+  const bool touch = input->hasTouchHardware();
+  const auto labels = input->mapLabels(left, right, touch ? "" : tr(STR_DIR_LEFT), touch ? "" : tr(STR_DIR_RIGHT));
   GUI.drawButtonHints(r, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
 }
 

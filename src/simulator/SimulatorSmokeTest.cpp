@@ -1871,6 +1871,15 @@ class SimulatorSmokeTest {
     addTapTarget(TouchRegistry::Cover, 0, "Touch: book opened from the shelf");
     inputScript.push_back(render("Touch: book opened settle", 20));
     inputScript.push_back(assertActivity("EpubReader"));
+    // Holding a finger on the text starts a clipping selection that follows it,
+    // and lifting the finger ends it back in the reader.
+    inputScript.push_back(touchDown(200, 150));
+    inputScript.push_back(render("Touch: hold on text", 70));
+    inputScript.push_back(assertActivity("ClipSelection"));
+    inputScript.push_back(touchMove(380, 150));
+    inputScript.push_back(touchRelease(380, 150));
+    inputScript.push_back(render("Touch: clipping drag finished", 30));
+    inputScript.push_back(assertActivity("EpubReader"));
     inputScript.push_back(goHomeAction());
     inputScript.push_back(render("Touch: Home", 6));
   }
