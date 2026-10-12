@@ -58,6 +58,62 @@ void drawArrowBox(GfxRenderer& r, const fui::Rect& box, const int direction) {
   }
 }
 
+// Pixel-style glyphs for the drawer keys, drawn with lines and boxes like the
+// Home screen's System 6 icons. `ink` is true for black on a white key.
+enum class KeyGlyph { Stats, Sync, Dark, Prefs, Touch };
+
+void drawKeyGlyph(GfxRenderer& r, const int cx, const int cy, const KeyGlyph glyph, const bool ink) {
+  const int x = cx - 14;
+  const int y = cy - 12;
+  switch (glyph) {
+    case KeyGlyph::Stats: {
+      // Bar chart on a baseline.
+      r.fillRect(x + 1, y + 14, 4, 9, ink);
+      r.fillRect(x + 8, y + 8, 4, 15, ink);
+      r.fillRect(x + 15, y + 11, 4, 12, ink);
+      r.fillRect(x + 22, y + 2, 4, 21, ink);
+      r.drawLine(x, y + 24, x + 27, y + 24, ink);
+      r.drawLine(x, y + 25, x + 27, y + 25, ink);
+      break;
+    }
+    case KeyGlyph::Sync: {
+      // Two opposing arrows.
+      r.fillRect(x + 1, y + 6, 20, 3, ink);
+      for (int k = 0; k <= 6; ++k) r.drawLine(x + 21 + k, y + 7 - (6 - k), x + 21 + k, y + 7 + (6 - k), ink);
+      r.fillRect(x + 6, y + 17, 20, 3, ink);
+      for (int k = 0; k <= 6; ++k) r.drawLine(x + 5 - k, y + 18 - (6 - k), x + 5 - k, y + 18 + (6 - k), ink);
+      break;
+    }
+    case KeyGlyph::Dark: {
+      // The classic "contrast" tile: outlined square, left half solid.
+      r.drawRect(x + 2, y, 24, 24, ink);
+      r.drawRect(x + 3, y + 1, 22, 22, ink);
+      r.fillRect(x + 2, y, 12, 24, ink);
+      break;
+    }
+    case KeyGlyph::Prefs: {
+      // Control-panel sliders.
+      for (int row = 0; row < 3; ++row) {
+        const int ly = y + 3 + row * 9;
+        r.fillRect(x + 1, ly + 1, 26, 2, ink);
+        const int knobX = x + 3 + ((row * 11 + 5) % 17);
+        r.fillRect(knobX, ly - 2, 7, 8, ink);
+      }
+      break;
+    }
+    case KeyGlyph::Touch: {
+      // The Mac arrow pointer: a wedge with a short tail.
+      for (int row = 0; row < 21; ++row) {
+        const int w = row < 15 ? row * 3 / 4 + 1 : 0;
+        if (w > 0) r.drawLine(x + 7, y + row, x + 7 + w, y + row, ink);
+      }
+      r.fillRect(x + 11, y + 14, 4, 9, ink);
+      r.fillRect(x + 8, y + 12, 3, 4, ink);
+      break;
+    }
+  }
+}
+
 // A key like the ones on System 6's bottom bar: white face, black outline and
 // a drop shadow. A key showing an active state is drawn solid black.
 void drawKeyBox(GfxRenderer& r, const fui::Rect& box, const char* label, const bool active) {
@@ -69,6 +125,13 @@ void drawKeyBox(GfxRenderer& r, const fui::Rect& box, const char* label, const b
   const int textX = box.x + std::max(2, (box.width - textW) / 2);
   const int textY = box.y + (box.height - r.getLineHeight(font)) / 2;
   r.drawText(font, textX, textY, label, !active);
+}
+
+void drawIconKey(GfxRenderer& r, const fui::Rect& box, const KeyGlyph glyph, const bool active) {
+  r.fillRect(box.x + 3, box.y + 3, box.width, box.height);
+  r.fillRect(box.x, box.y, box.width, box.height, active);
+  r.drawRect(box.x, box.y, box.width, box.height);
+  drawKeyGlyph(r, box.x + box.width / 2, box.y + box.height / 2, glyph, !active);
 }
 
 uint8_t percentFromPermille(const int16_t permille) {
@@ -482,8 +545,7 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
       fui::bitmapFromIcon(icon_tabler_moon_filled_24), fui::bitmapFromIcon(icon_sliders_horizontal_24),
       fui::bitmapFromIcon(pendingTouchscreenDisabled ? icon_device_tablet_off_24 : icon_device_tablet_24)};
   const bool system6 = isSystem6();
-  const char* const keyLabels[5] = {tr(STR_PANEL_STATS), tr(STR_PANEL_SYNC), tr(STR_PANEL_DARK),
-                                    tr(STR_PANEL_PREFS), tr(STR_PANEL_TOUCH)};
+  const KeyGlyph keyGlyphs[5] = {KeyGlyph::Stats, KeyGlyph::Sync, KeyGlyph::Dark, KeyGlyph::Prefs, KeyGlyph::Touch};
   const bool keyActive[5] = {false, false, SETTINGS.screenInverted != 0, false, pendingTouchscreenDisabled};
   for (int16_t i = 0; i < 5; ++i) {
     const int16_t x = static_cast<int16_t>(actionBar.x + i * slotWidth);
@@ -493,7 +555,7 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
     if (system6) {
       const fui::Rect key{static_cast<int16_t>(slot.x + 5), static_cast<int16_t>(slot.y + 8),
                           static_cast<int16_t>(slot.width - 14), static_cast<int16_t>(slot.height - 18)};
-      drawKeyBox(renderer, key, keyLabels[i], keyActive[i]);
+      drawIconKey(renderer, key, keyGlyphs[i], keyActive[i]);
     } else {
       screen.target().bitmap(slot, icons[static_cast<size_t>(i)], fui::BitmapMode::Center);
     }
