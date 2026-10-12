@@ -17,6 +17,11 @@ class UITheme {
   static UITheme& getInstance() { return instance; }
 
   const ThemeMetrics& getMetrics() const;
+  // System 6 on a touch screen draws a key bar at the bottom; a screen with
+  // nothing for it to do hides it and gets the space back. Set per screen by
+  // the activity manager from Activity::wantsKeyBar().
+  void setKeyBarVisible(bool visible) { keyBarVisible = visible; }
+  bool isKeyBarVisible() const { return keyBarVisible; }
   const BaseTheme& getTheme() const { return *currentTheme; }
   Rect getScreenSafeArea(const GfxRenderer& renderer, bool hasFrontButtonHints = false,
                          bool hasSideButtonHints = false);
@@ -64,6 +69,8 @@ class UITheme {
   mutable ThemeMetrics adjustedMetrics;
   mutable bool metricsValid = false;
   mutable bool metricsForTouch = false;
+  mutable bool metricsForKeyBar = true;
+  bool keyBarVisible = true;
 };
 
 // Helper macro to access current theme

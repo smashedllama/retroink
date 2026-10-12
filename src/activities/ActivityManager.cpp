@@ -20,6 +20,7 @@
 #include "boot_sleep/SleepActivity.h"
 #include "browser/OpdsBookBrowserActivity.h"
 #include "components/TouchRegistry.h"
+#include "components/UITheme.h"
 #include "home/AlertActivity.h"
 #include "home/CrashActivity.h"
 #include "home/FileBrowserActivity.h"
@@ -257,6 +258,7 @@ void ActivityManager::renderTaskLoop() {
       // Apply Night Mode to each activity's normal-polarity frame. SleepActivity
       // preserves it only for Quick Resume and clears it for other sleep screens.
       display.setInverted(SETTINGS.screenInverted != 0);
+      UITheme::getInstance().setKeyBarVisible(currentActivity->wantsKeyBar());
       currentActivity->render(std::move(lock));
       restoredActivityNeedsRender = false;
     }
@@ -287,6 +289,7 @@ void ActivityManager::loop() {
   }
 
   if (currentActivity) {
+    UITheme::getInstance().setKeyBarVisible(currentActivity->wantsKeyBar());
     mappedInput.setPowerAsConfirmInReaderMode(currentActivity->allowPowerAsConfirmInReaderMode());
 
     if (currentActivity->blocksGlobalInput()) {

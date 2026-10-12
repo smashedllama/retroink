@@ -257,7 +257,8 @@ void System6Theme::drawHeader(const GfxRenderer& r, Rect rect, const char* title
   const int y = std::max(rect.y, top);
   if (end - x < 80 || y < top) return;
   const bool touch = gpio.hasTouch();
-  const int hintBand = touch ? System6Metrics::kTouchButtonHintsHeight : System6Metrics::values.buttonHintsHeight;
+  const int hintBand =
+      touch ? UITheme::getInstance().getMetrics().buttonHintsHeight : System6Metrics::values.buttonHintsHeight;
   const int contentBottom = r.getScreenHeight() - hintBand - 4;
   desktop(r, 0, r.getScreenHeight());
   if (!home) {
@@ -352,6 +353,9 @@ void System6Theme::drawButtonHints(GfxRenderer& r, const char* btn1, const char*
   // On touch devices these are real keys: tapping one acts as the front
   // button in that slot (Back, Select, Left, Right).
   const bool touch = gpio.hasTouch();
+  // A touch screen that hides the key bar draws nothing here, so the band and
+  // its targets are simply absent.
+  if (touch && !UITheme::getInstance().isKeyBarVisible()) return;
 
   const auto orientation = r.getOrientation();
   const bool invertText = allowInvertedText && orientation == GfxRenderer::Orientation::PortraitInverted;

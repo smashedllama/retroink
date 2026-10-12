@@ -138,15 +138,16 @@ const ThemeMetrics& UITheme::getMetrics() const {
   // hasTouch() can flip once touch init completes after static construction, so the
   // cached copy is refreshed when the flag differs instead of copying the struct per call.
   const bool touch = gpio.hasTouch();
-  if (!metricsValid || touch != metricsForTouch) {
+  if (!metricsValid || touch != metricsForTouch || keyBarVisible != metricsForKeyBar) {
     adjustedMetrics = *currentMetrics;
     if (touch) {
       // System 6 keeps a bottom key bar on touch devices (tappable Back /
       // Select / Left / Right); other themes drop the band.
       adjustedMetrics.buttonHintsHeight =
-          currentMetrics == &System6Metrics::values ? System6Metrics::kTouchButtonHintsHeight : 0;
+          currentMetrics == &System6Metrics::values && keyBarVisible ? System6Metrics::kTouchButtonHintsHeight : 0;
     }
     metricsForTouch = touch;
+    metricsForKeyBar = keyBarVisible;
     metricsValid = true;
   }
 #else

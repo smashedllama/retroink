@@ -318,6 +318,8 @@ class SettingsActivity final : public Activity {
   explicit SettingsActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, bool dismissOnUpSwipe = false,
                             bool returnToParentOnClose = false, View view = View::Root);
   bool allowGlobalHomeSwipeGesture() const override { return false; }
+  // Tabs and rows are tapped and the header Back box leaves; no key bar needed.
+  bool wantsKeyBar() const override { return !mappedInput.hasTouchHardware(); }
   void onEnter() override;
   void onExit() override;
   void loop() override;

@@ -17,6 +17,7 @@
 #include "components/DrawerHandle.h"
 #include "components/HeaderDate.h"
 #include "components/RockerSwitch.h"
+#include "components/TouchRegistry.h"
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
 #include "components/UIThemeTokens.h"
@@ -138,10 +139,14 @@ void drawIconKey(GfxRenderer& r, const fui::Rect& box, const KeyGlyph glyph, con
   drawKeyGlyph(r, box.x + box.width / 2, box.y + box.height / 2, glyph, !active);
 }
 
+// The System 6 drawer floats over the current screen like an alert window, a
+// little below the top edge so the desktop shows around it.
+constexpr int kToastTop = 8;
+
 // Height of the title bar region the drawer content starts below. System 6's
 // bar is a fixed 40 px window title, so the drawer tucks right under it.
 int panelHeaderBand(const ThemeMetrics& metrics, const MappedInputManager& input) {
-  return isSystem6() ? 46 : TouchHeaderBackButton::height(metrics, input);
+  return isSystem6() ? kToastTop + 46 : TouchHeaderBackButton::height(metrics, input);
 }
 
 uint8_t percentFromPermille(const int16_t permille) {
@@ -534,7 +539,7 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
   // it, so the sheet starts at the title bar's lower edge and is drawn as a
   // window of the same width: framed, shadowed, and inside the desktop margin.
   const bool framed = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6;
-  const int16_t sheetTop = framed ? static_cast<int16_t>(metrics.topPadding + 38) : 0;
+  const int16_t sheetTop = framed ? static_cast<int16_t>(metrics.topPadding + kToastTop + 38) : 0;
   const int16_t sideMargin = framed ? 8 : 0;
   const fui::Rect sheetRect{sideMargin, sheetTop, static_cast<int16_t>(renderer.getScreenWidth() - sideMargin * 2),
                             static_cast<int16_t>(panelBottom - sheetTop)};
@@ -543,7 +548,7 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
     sheet.ruleWidth = 0;  // the frame below replaces the plain bottom rule
     sheet.grabber = fui::Paint::solid(fui::Color::White);  // replaced by a title-bar tab
     // Drop shadow first, so the sheet's own fill sits on top of it.
-    renderer.fillRect(sheetRect.x + 3, sheetRect.y + 3, sheetRect.width, sheetRect.height);
+    renderer.fillRect(sheetRect.x + 3, sheetRect.y - 38 + 3, sheetRect.width, sheetRect.height + 38);
   }
   fui::sheet(screen.frame(), sheetRect, sheet);
   if (framed) {
@@ -666,15 +671,35 @@ void FrontlightPanelActivity::drawHeader() {
   }
 
   if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6) {
-    // The title bar already carries the Back box, clock and battery.
-    GUI.drawHeader(renderer, header, title, nullptr, false);
-    if (showsHomeButton()) {
-      const Rect button = homeButtonRect();
-      uiTarget.bitmap(fui::Rect{static_cast<int16_t>(button.x + (button.width - HEADER_ICON_SIZE) / 2),
-                                static_cast<int16_t>(button.y + (button.height - HEADER_ICON_SIZE) / 2),
-                                HEADER_ICON_SIZE, HEADER_ICON_SIZE},
-                      fui::bitmapFromIcon(icon_home_24), fui::BitmapMode::Center);
-    }
+    // A System 6 window title bar for the floating drawer: close box on the
+    // left (Back), striped bar, centred title. The screen underneath stays put.
+    const int bx = 8;
+    const int by = metrics.topPadding + kToastTop;
+    const int bw = renderer.getScreenWidth() - 16;
+    constexpr int bh = 40;
+    renderer.fillRect(bx, by, bw, bh, false);
+    renderer.drawRect(bx, by, bw, bh);
+    renderer.drawRect(bx + 2, by + 2, bw - 4, bh - 4);
+    for (int dy = 7; dy < bh - 5; dy += 4) renderer.drawLine(bx + 6, by + dy, bx + bw - 7, by + dy);
+
+    constexpr int box = 30;
+    const int cbx = bx + 6;
+    const int cby = by + (bh - box) / 2;
+    renderer.fillRect(cbx, cby, box, box, false);
+    renderer.drawRect(cbx, cby, box, box);
+    const int cx = cbx + box / 2 + 4;
+    const int cy = cby + box / 2;
+    for (int i = 0; i < 9; ++i) renderer.drawLine(cx - i, cy - 8 + i, cx - i, cy + 8 - i);
+    TouchRegistry::getInstance().add(Rect{0, std::max(0, by - 6), 76, bh + 12}, 0, TouchRegistry::Back);
+
+    const int titleLeft = cbx + box + 14;
+    const int titleRight = bx + bw - 16;
+    const std::string visibleTitle = renderer.truncatedText(UI_12_FONT_ID, title, std::max(1, titleRight - titleLeft));
+    const int titleW = renderer.getTextWidth(UI_12_FONT_ID, visibleTitle.c_str());
+    const int titleX = std::clamp(bx + (bw - titleW) / 2, titleLeft, std::max(titleLeft, titleRight - titleW));
+    const int titleY = by + (bh - renderer.getLineHeight(UI_12_FONT_ID)) / 2;
+    renderer.fillRect(titleX - 7, by + 4, titleW + 14, bh - 8, false);
+    renderer.drawText(UI_12_FONT_ID, titleX, titleY, visibleTitle.c_str());
     return;
   }
 
@@ -767,15 +792,11 @@ void FrontlightPanelActivity::render(RenderLock&&) {
   // clearScreen — same as the theme popups draw over the current frame.
   panelBottom = computePanelBottom();
   const bool system6 = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6;
-  if (system6) {
-    drawHeader();
-    // Wipe whatever key bar the screen underneath left in the bottom band.
-    GUI.drawButtonHints(renderer, "", "", "", "");
-  }
   uiReady = false;
   app.render();
   uiReady = true;
-  if (!system6) drawHeader();
+  (void)system6;
+  drawHeader();
 
   // The dialog is the topmost layer.
   if (optionPopup.isActive()) optionPopup.render(renderer);

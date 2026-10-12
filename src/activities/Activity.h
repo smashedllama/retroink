@@ -75,6 +75,9 @@ class Activity {
   virtual bool usesFullScreenReaderVerticalSwipes() const { return false; }
   // Overlays can reserve the frontlight gesture for their own dismissal.
   virtual bool allowFrontlightPanelGesture() const { return true; }
+  // False when, on a touch screen, nothing on this screen needs System 6's
+  // bottom key bar (the header Back box and direct taps cover it).
+  virtual bool wantsKeyBar() const { return true; }
   // Partial-screen overlays preserve pixels from the activity beneath them.
   // After a full-screen child pops, ActivityManager must redraw that source
   // activity before pushing one of these overlays again.
