@@ -16,6 +16,7 @@
 #include "activities/settings/SettingsActivity.h"
 #include "components/DrawerHandle.h"
 #include "components/HeaderDate.h"
+#include "components/RockerSwitch.h"
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
 #include "components/UIThemeTokens.h"
@@ -65,6 +66,8 @@ enum class KeyGlyph { Stats, Sync, Dark, Prefs, Touch };
 void drawKeyGlyph(GfxRenderer& r, const int cx, const int cy, const KeyGlyph glyph, const bool ink) {
   const int x = cx - 14;
   const int y = cy - 12;
+  const int cx_ = cx;
+  const int cy_ = cy;
   switch (glyph) {
     case KeyGlyph::Stats: {
       // Bar chart on a baseline.
@@ -102,15 +105,14 @@ void drawKeyGlyph(GfxRenderer& r, const int cx, const int cy, const KeyGlyph gly
       break;
     }
     case KeyGlyph::Touch: {
-      // A pointing hand: index finger up, three folded knuckles, thumb.
-      r.fillRect(x + 11, y, 5, 14, ink);       // index finger
-      r.fillRect(x + 7, y + 11, 15, 12, ink);  // palm
-      r.fillRect(x + 16, y + 9, 4, 5, ink);    // middle knuckle
-      r.fillRect(x + 20, y + 11, 4, 5, ink);   // ring knuckle
-      r.fillRect(x + 3, y + 13, 5, 7, ink);    // thumb
-      r.drawLine(x + 16, y + 14, x + 16, y + 17, !ink);  // finger gaps
-      r.drawLine(x + 20, y + 16, x + 20, y + 19, !ink);
-      r.fillRect(x + 8, y + 22, 13, 4, ink);   // wrist
+      // Touch: a fingertip contact with ripples spreading out from it.
+      r.fillRect(cx_ - 3, cy_ - 3, 7, 7, ink);
+      for (const int radius : {9, 14}) {
+        r.drawArc(radius, cx_, cy_, 1, 1, 2, ink);
+        r.drawArc(radius, cx_, cy_, 1, -1, 2, ink);
+        r.drawArc(radius, cx_, cy_, -1, 1, 2, ink);
+        r.drawArc(radius, cx_, cy_, -1, -1, 2, ink);
+      }
       break;
     }
   }
@@ -602,16 +604,8 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
                           static_cast<int16_t>(hitW + sideInset.right), static_cast<int16_t>(rowH + theme.spaceSm * 2)};
   screen.frame().hit(hitRect, ACTION_TOGGLE);
   if (system6) {
-    // I/O switch: the lit side is solid, so the state reads at a glance.
-    constexpr int cellW = 40;
-    const int cellH = std::min<int>(rowH - 6, 34);
-    const int sx = headerRow.right() - cellW * 2;
-    const int sy = headerRow.y + (rowH - cellH) / 2;
-    drawKeyBox(renderer, fui::Rect{static_cast<int16_t>(sx), static_cast<int16_t>(sy), cellW, static_cast<int16_t>(cellH)},
-               "I", lightOn);
-    drawKeyBox(renderer,
-               fui::Rect{static_cast<int16_t>(sx + cellW), static_cast<int16_t>(sy), cellW, static_cast<int16_t>(cellH)},
-               "O", !lightOn);
+    RockerSwitch::paint(renderer, headerRow.right() - RockerSwitch::kWidth,
+                        headerRow.y + (rowH - RockerSwitch::kHeight) / 2, lightOn);
   } else {
     screen.target().bitmap(iconRect, lightIcon, fui::BitmapMode::Center);
   }

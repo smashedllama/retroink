@@ -597,10 +597,9 @@ void KeyboardEntryActivity::loop() {
                          mappedInput.wasPressed(MappedInputManager::Button::Down) ||
                          mappedInput.wasPressed(MappedInputManager::Button::Left) ||
                          mappedInput.wasPressed(MappedInputManager::Button::Right))) {
-    // Physical navigation brings the highlight back; it moves on the next press.
+    // Physical navigation brings the highlight back, and still moves it.
     showSelection = true;
     requestUpdate();
-    return;
   }
 
   if (!cursorMode && mappedInput.wasPressed(MappedInputManager::Button::Up)) {

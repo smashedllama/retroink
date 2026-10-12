@@ -870,6 +870,7 @@ void HomeActivity::onEnter() {
   Activity::onEnter();
 
   hasOpdsServers = OPDS_STORE.hasServers();
+  selectionVisible = !touchOnlySystem6Home();
   const bool isCarouselTheme =
       static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
 
@@ -958,6 +959,10 @@ int HomeActivity::getHighlightedBookIndex() const {
 }
 
 int HomeActivity::getVisibleRecentBookCount() const { return ::getVisibleRecentBookCount(recentBooks); }
+
+bool HomeActivity::touchOnlySystem6Home() const {
+  return mappedInput.hasTouchHardware() && SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6;
+}
 
 bool HomeActivity::canSwapHomeBook() const {
   return UITheme::getInstance().getMetrics().homeRecentBooksCount == 1 && recentBooks.size() > 1;
@@ -1528,6 +1533,15 @@ void HomeActivity::loop() {
   }
 
   if (quickActionsPopup.handleInput(mappedInput, [this] { requestUpdate(); })) return;
+
+  if (!selectionVisible && (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
+                            mappedInput.wasPressed(MappedInputManager::Button::Down) ||
+                            mappedInput.wasPressed(MappedInputManager::Button::Left) ||
+                            mappedInput.wasPressed(MappedInputManager::Button::Right))) {
+    // A physical key brings the highlight back, and still moves it.
+    selectionVisible = true;
+    requestUpdate();
+  }
 
   if (usesMinimalHomeInteraction()) {
     const int pressedFrontButton = mappedInput.getPressedFrontButton();
@@ -2307,8 +2321,9 @@ void HomeActivity::render(RenderLock&&) {
   coverRectW = pageWidth;
   coverRectH = homeCoverTileHeight;
 
+  const int shownSelector = selectionVisible ? selectorIndex : -1;
   GUI.drawRecentBookCover(
-      renderer, Rect{0, metrics.homeTopPadding, pageWidth, homeCoverTileHeight}, recentBooks, selectorIndex,
+      renderer, Rect{0, metrics.homeTopPadding, pageWidth, homeCoverTileHeight}, recentBooks, shownSelector,
       coverRendered, coverBufferStored, bufferRestored, std::bind(&HomeActivity::storeCoverBuffer, this),
       SETTINGS.showHomeReadingStats && hasAnyBookStats(currentBookStats) ? &currentBookStats : nullptr,
       currentBookProgressPercent);
@@ -2321,16 +2336,19 @@ void HomeActivity::render(RenderLock&&) {
       static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
   const int menuSelectedIndex = isCarouselTheme && mappedInput.hasTouchHardware()
                                     ? carouselMenuTouchDownIndex
-                                    : selectorIndex - getHomeMenuSelectionOffset(recentBooks);
+                                    : (selectionVisible ? selectorIndex - getHomeMenuSelectionOffset(recentBooks) : -1);
   GUI.drawButtonMenu(
       renderer, Rect{0, menuStartY, pageWidth, menuHeight}, static_cast<int>(menuItems.size()), menuSelectedIndex,
       [&menuItems](int index) { return menuItems[index].label; },
       [&menuItems](int index) { return menuItems[index].icon; });
 
   const char* readLabel = recentBooks.empty() ? "" : tr(STR_READ);
+  const bool touchOnly = touchOnlySystem6Home();
+  const char* selectLabel = touchOnly ? "" : tr(STR_SELECT);
+  if (touchOnly) readLabel = "";
   const auto labels = isCarouselTheme
-                          ? mappedInput.mapLabels(readLabel, tr(STR_SELECT), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT))
-                          : mappedInput.mapLabels(readLabel, tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
+                          ? mappedInput.mapLabels(readLabel, selectLabel, tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT))
+                          : mappedInput.mapLabels(readLabel, selectLabel, tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   displayHomeBuffer();

@@ -7,9 +7,12 @@ class GfxRenderer;
 // so the SDK is given a switch of this exact (unusual) size and the rocker is
 // painted over it as it is drawn.
 namespace RockerSwitch {
-constexpr int kWidth = 47;
-constexpr int kHeight = 27;
+constexpr int kWidth = 57;
+constexpr int kHeight = 31;
 constexpr int kKnobInset = 3;
+
+// Paints a rocker with its top-left corner at (x, y); `on` presses the I half.
+void paint(const GfxRenderer& renderer, int x, int y, bool on);
 
 // Starts or stops repainting SDK switches; follows the active UI theme.
 void setEnabled(bool enabled);

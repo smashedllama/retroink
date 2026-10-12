@@ -122,6 +122,10 @@ class HomeActivity final : public Activity {
   int getHighlightedBookIndex() const;
   int getVisibleRecentBookCount() const;
   bool canSwapHomeBook() const;
+  // System 6 on a touch screen: rows are tapped, so nothing stays highlighted
+  // until a physical key moves the selection, and there is no Read/Select key.
+  bool touchOnlySystem6Home() const;
+  bool selectionVisible = true;
   void showNextRecentBookOnHome();
   void updateHighlightedBookContext(bool allowEpubLoad = true);
   void loadRecentBooks(int maxBooks);
