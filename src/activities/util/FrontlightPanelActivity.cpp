@@ -138,6 +138,12 @@ void drawIconKey(GfxRenderer& r, const fui::Rect& box, const KeyGlyph glyph, con
   drawKeyGlyph(r, box.x + box.width / 2, box.y + box.height / 2, glyph, !active);
 }
 
+// Height of the title bar region the drawer content starts below. System 6's
+// bar is a fixed 40 px window title, so the drawer tucks right under it.
+int panelHeaderBand(const ThemeMetrics& metrics, const MappedInputManager& input) {
+  return isSystem6() ? 46 : TouchHeaderBackButton::height(metrics, input);
+}
+
 uint8_t percentFromPermille(const int16_t permille) {
   int value = (static_cast<int>(permille) * 100 + 500) / 1000;
   if (value < 0) value = 0;
@@ -451,7 +457,7 @@ int FrontlightPanelActivity::computePanelBottom() const {
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto tokens = uiThemeTokens(uiTarget);
   const int16_t lh = uiTarget.lineHeight(tokens.bodyText.font);
-  int y = metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput);
+  int y = metrics.topPadding + panelHeaderBand(metrics, mappedInput);
   if (context.showReaderDetails) {
     const int16_t titleLh = uiTarget.lineHeight(tokens.titleText.font);
     y += tokens.spaceLg * 2;
@@ -524,23 +530,40 @@ void FrontlightPanelActivity::panelScreen(UiApp::ScreenType& screen, void* user)
 void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto& theme = screen.theme();
-  const fui::SheetProps sheet = frontlightSheetProps();
   // System 6 paints its window (and title bar) first and wipes everything under
-  // it, so the sheet starts below the bar instead of over it.
-  const int16_t sheetTop = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6
-                               ? static_cast<int16_t>(metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput))
-                               : 0;
-  const fui::Rect sheetRect{0, sheetTop, static_cast<int16_t>(renderer.getScreenWidth()),
+  // it, so the sheet starts at the title bar's lower edge and is drawn as a
+  // window of the same width: framed, shadowed, and inside the desktop margin.
+  const bool framed = SETTINGS.uiTheme == CrossPointSettings::UI_THEME::SYSTEM6;
+  const int16_t sheetTop = framed ? static_cast<int16_t>(metrics.topPadding + 38) : 0;
+  const int16_t sideMargin = framed ? 8 : 0;
+  const fui::Rect sheetRect{sideMargin, sheetTop, static_cast<int16_t>(renderer.getScreenWidth() - sideMargin * 2),
                             static_cast<int16_t>(panelBottom - sheetTop)};
+  fui::SheetProps sheet = frontlightSheetProps();
+  if (framed) {
+    sheet.ruleWidth = 0;  // the frame below replaces the plain bottom rule
+    sheet.grabber = fui::Paint::solid(fui::Color::White);  // replaced by a title-bar tab
+    // Drop shadow first, so the sheet's own fill sits on top of it.
+    renderer.fillRect(sheetRect.x + 3, sheetRect.y + 3, sheetRect.width, sheetRect.height);
+  }
   fui::sheet(screen.frame(), sheetRect, sheet);
-  // Body spans from below the header to the sheet's content edge. The grabber
-  // owns the remaining band at the bottom of this top-anchored drawer.
+  if (framed) {
+    renderer.drawRect(sheetRect.x, sheetRect.y, sheetRect.width, sheetRect.height);
+    renderer.drawRect(sheetRect.x + 2, sheetRect.y - 1, sheetRect.width - 4, sheetRect.height - 1);
+    // A pull tab in the frame's lower edge, striped like a title bar.
+    const int tabW = 64;
+    const int tabH = 12;
+    const int tabX = sheetRect.x + (sheetRect.width - tabW) / 2;
+    const int tabY = sheetRect.y + sheetRect.height - tabH - 7;
+    renderer.fillRect(tabX, tabY, tabW, tabH, false);
+    renderer.drawRect(tabX, tabY, tabW, tabH);
+    for (int ly = tabY + 3; ly < tabY + tabH - 2; ly += 3) renderer.drawLine(tabX + 4, ly, tabX + tabW - 5, ly);
+  }
   const fui::Rect sheetContent = fui::sheetContentRect(sheetRect, sheet);
   drawerHandleRect = DrawerHandle::registerTap(screen.frame(), sheetContent, sheet, ACTION_DISMISS);
   const int16_t bottomInset = static_cast<int16_t>(renderer.getScreenHeight() - sheetContent.bottom());
   screen.setContentMargin(
-      fui::Insets{static_cast<int16_t>(metrics.topPadding + TouchHeaderBackButton::height(metrics, mappedInput)), 0,
-                  bottomInset, 0});
+      fui::Insets{static_cast<int16_t>(metrics.topPadding + panelHeaderBand(metrics, mappedInput)), sideMargin,
+                  bottomInset, sideMargin});
 
   const fui::Rect actionBar = screen.takeBottom(ACTION_BAR_HEIGHT);
   const int16_t slotWidth = static_cast<int16_t>(actionBar.width / 5);
