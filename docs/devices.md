@@ -9,7 +9,7 @@ RetroInk runs on three Xteink readers. They share the same reading engine,
 Library, dictionary, transfers and System 6 look, but the hardware is not the
 same, so a few things differ. This page puts them side by side.
 
-> **New in 0.6.0 (pre-release):** the **Xteink X4 Pro** is supported. Rows and
+> **New in 0.6.0:** the **Xteink X4 Pro** is supported. Rows and
 > cells marked **New** are things that arrived with it.
 
 ## At a glance
@@ -24,7 +24,7 @@ same, so a few things differ. This page puts them side by side.
 | Clock chip (keeps date and time asleep) | Yes | **No** | Yes |
 | Motion sensor | Yes | No | No |
 | USB Drive (SD card as a drive over USB-C) | No | No | **Yes** **New** |
-| Update over Wi-Fi | Yes | Yes | Not yet: manual install while 0.6.0 is a pre-release |
+| Update over Wi-Fi | Yes | Yes | Yes, from the same release |
 
 ## Features by device
 

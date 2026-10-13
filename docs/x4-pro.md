@@ -5,10 +5,9 @@ nav_order: 4
 
 # RetroInk on the X4 Pro
 
-> **Pre-release.** Support for the Xteink X4 Pro arrived in 0.6.0 as a GitHub
-> pre-release. It has been used on a real device, but not for long, so expect
-> rough edges and please report them on
-> [GitHub](https://github.com/smashedllama/retroink/issues).
+> **New in 0.6.0.** The X4 Pro is the newest device RetroInk runs on. It has
+> had less use than the X3 and X4, so expect some rough edges and please
+> report them on [GitHub](https://github.com/smashedllama/retroink/issues).
 
 The Pro has no front buttons. RetroInk is drawn for it with a touch-first
 layout: the same System 6 windows, with a tappable Back box in every title
@@ -84,8 +83,9 @@ Calendar without asking for a date, plus the reading-stats sleep screens.
 
 ## Known limits
 
-- **Pre-release:** while 0.6.0 is a pre-release, **Check for Updates** will not
-  see it. Install it by hand, as described in
+- **Updates:** **Check for Updates** finds the Pro file in the same release as
+  the X3/X4 one, so once it is installed the Pro updates over Wi-Fi like the
+  others. The first install is by hand, as described in
   [Installation](./installation.html#x4-pro).
 - A page of dense text is refreshed a screen at a time, as on any e-ink
   reader, so very quick taps can queue up.

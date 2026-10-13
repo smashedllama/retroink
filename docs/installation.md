@@ -14,7 +14,7 @@ you want to modify the code yourself.
 ## Supported Devices
 
 - Xteink X3, X4
-- **Xteink X4 Pro (pre-release). New** Its own firmware file,
+- **Xteink X4 Pro. New** Its own firmware file,
   `firmware-x4-pro-v*.bin`, built for its ESP32-S3 chip. See
   [X4 Pro](#x4-pro) below.
 - Seeed Studio Sticky (build from source with `pio run -e sticky`; releases
@@ -74,15 +74,15 @@ all-time totals, transfers, and syncing.
 
 ## X4 Pro
 
-**New in 0.6.0, as a pre-release.** The X4 Pro runs `firmware-x4-pro-v*.bin`,
+**New in 0.6.0.** The X4 Pro runs `firmware-x4-pro-v*.bin`,
 not the X3/X4 file, and it cannot run the X3/X4 file. See [RetroInk on the X4
 Pro](./x4-pro.html) for how it is used.
 
 1. **Back up the stock firmware first.** The Pro's stock layout is not the
    same as RetroInk's, so this is the way back if you want it.
 2. Download `firmware-x4-pro-v*.bin` from the [Releases
-   page](https://github.com/smashedllama/retroink/releases). It is marked as a
-   pre-release.
+   page](https://github.com/smashedllama/retroink/releases). The X3/X4 and
+   X4 Pro files are listed together in each release.
 3. Connect the Pro with USB-C and flash the file with the [web flash
    tool](#install-via-the-web-flash-tool-easiest) in Chrome or Edge. This is
    the route the Pro has been tested with.
@@ -91,9 +91,9 @@ Pro](./x4-pro.html) for how it is used.
 update](#install-via-sd-card) works the same as on an X3 or X4. `esptool` is
 possible with `--chip esp32s3`, but it has not been tested on a Pro.
 
-**Updates.** **Check for Updates** only looks at the latest full release, so
-it will not offer a pre-release. Install pre-releases by hand until a full
-release includes the Pro file.
+**Updates.** Once RetroInk is on the Pro, **Check for Updates** works like on an
+X3 or X4. Each release carries both firmware files, and the reader picks the
+one built for it.
 
 ## Update over Wi-Fi
 

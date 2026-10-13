@@ -21,18 +21,19 @@ X4 Pro have a clock chip and do not have this limit.
 
 ## Is the X4 Pro supported?
 
-Yes, as a pre-release since 0.6.0. It works on a real device but has had less
-use than the X3 and X4, so please report anything odd. **New**
+Yes, since 0.6.0. It works on a real device but has had less use than the X3
+and X4, so please report anything odd. **New**
 
 ## Where is Marble Maze on the X4 Pro?
 
 It needs a motion sensor. The X3 has one; the X4 and X4 Pro do not.
 
-## Will Check for Updates find the Pro build?
+## Will Check for Updates find the right build?
 
-Not while it is a pre-release. The updater only looks at the latest full
-release. Install pre-releases by hand, then updates over Wi-Fi resume once a
-full release includes the Pro firmware.
+Yes. Every release carries both `firmware-x3-x4-v*.bin` and
+`firmware-x4-pro-v*.bin`. The reader only accepts the file built for its own
+hardware, so an X3 or X4 never picks up the Pro file and the Pro never picks up
+the X3/X4 one.
 
 ## Can I go back to the stock firmware?
 

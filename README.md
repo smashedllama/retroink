@@ -17,7 +17,7 @@ RetroInk is distributed under the MIT License. See [LICENSE](./LICENSE) and
 
 - Xteink X3
 - Xteink X4
-- **Xteink X4 Pro (pre-release) — new in 0.6.0**
+- **Xteink X4 Pro — new in 0.6.0**
 - Seeed Studio Sticky
 
 **Not supported (yet):** the Xteink X4 Classic.
@@ -30,7 +30,7 @@ RetroInk is distributed under the MIT License. See [LICENSE](./LICENSE) and
 | Clock chip | Yes | **No** | Yes |
 | Motion sensor (Marble Maze) | Yes | No | No |
 | Minesweeper | No | No | **Yes** |
-| Update over Wi-Fi | Yes | Yes | Manual while pre-release |
+| Update over Wi-Fi | Yes | Yes | Yes |
 
 [Full comparison](https://smashedllama.github.io/retroink/devices.html) ·
 [X4 Pro guide](https://smashedllama.github.io/retroink/x4-pro.html) ·
@@ -61,7 +61,7 @@ The X4 Pro uses a different chip (ESP32-S3) and its own firmware file, so it can
 - Safe book moves across the device, web file manager, and WebDAV. RetroInk reviews old and current reading records before restoring progress after a move made elsewhere.
 - [Obsidian Clipping Sync](./docs/obsidian-sync.md): pushes saved highlights into an Obsidian vault over the local network (via the Local REST API plugin) or a webhook, on top of the existing `/My Clippings.txt` export, including highlights saved before you set it up.
 - [Calendar Sync](./docs/calendar-sync.md): puts your Google, Apple (iCloud) or Outlook calendar in the Desk Calendar from its iCal link, with event squares, a full-screen Day View, and two sleep screens (month with what is coming up, and a whole-day view with finished events struck through). Saved on the SD card.
-- **New:** X4 Pro support (pre-release): a touch-first layout with a tappable Back box in every window, a pull-down brightness and warmth panel, hold-and-drag highlighting while reading, Minesweeper, and swipes in the calendar, library and sleep screen picker.
+- **New:** X4 Pro support: a touch-first layout with a tappable Back box in every window, a pull-down brightness and warmth panel, hold-and-drag highlighting while reading, Minesweeper, and swipes in the calendar, library and sleep screen picker.
 - **New:** On/off settings are a two-position **O | I** rocker switch, and dialogs are System 6 alert windows.
 - Over-the-air updates from RetroInk's own releases, with the release notes shown before you install.
 - A matching System 6 redesign of the on-device web portal (the page you get connecting over Wi-Fi in File Transfer mode), including a Library tab with drag-and-drop custom shelves.

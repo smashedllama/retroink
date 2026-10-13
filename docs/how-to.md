@@ -18,7 +18,8 @@ release that added the X4 Pro.
   follow [the Pro steps](./installation.html#x4-pro). Back up the stock
   firmware first.
 - **Update later.** On an X3 or X4, **Settings > System > Check for Updates**.
-  The Pro updates by hand until a full (non-pre) release is out.
+  The Pro does the same: each release carries both files and the reader picks
+  its own.
 
 ## Reading
 
