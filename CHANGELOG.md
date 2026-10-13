@@ -1,8 +1,15 @@
-## [Unreleased]
+## [RetroInk 0.5.8] - 2026-10-12
 
 ### Added
 
 - **Move Selected** in the web file manager. Tick several files and folders (the box in the header row ticks everything in the folder), press **Move Selected**, and choose the destination once. Items move one after another with a "Moving 3 of 12..." count, and anything that could not move is listed afterwards, such as a name that already exists in the destination or a folder moved into itself. The rest still move.
+
+### Changed
+
+- **On/off settings are a rocker switch.** In RetroInk's System 6 look, every on/off setting is now a small two-position rocker marked **O | I**. The pressed half shows the state, so it reads the same whether or not the row is highlighted.
+- **Dialogs look like System 6 alerts.** Confirmation and choice dialogs have a striped title bar and a drop shadow, and a short list of choices is drawn as boxed buttons.
+- **Home with no books** centres the icon and the message together on the card instead of leaving the icon at the left.
+- The Library's **Book Menu** no longer shows "Selected" beside Open Book.
 
 ## [RetroInk 0.5.7] - 2026-10-04
 
