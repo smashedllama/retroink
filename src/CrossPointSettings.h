@@ -837,6 +837,7 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
 inline bool sleepScreenNeedsClock(const uint8_t mode) {
   switch (mode) {
     case CrossPointSettings::READING_STATS_SLEEP:
+    case CrossPointSettings::MINIMAL_STATS_SLEEP:  // Book Status: dated figures need a clock
     case CrossPointSettings::BOOK_WEEK_STATS_SLEEP:
     case CrossPointSettings::DASHBOARD_SLEEP:
       return true;

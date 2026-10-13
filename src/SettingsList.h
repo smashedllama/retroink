@@ -1010,13 +1010,9 @@ inline const std::vector<SettingInfo>& getBaseSettingsList() {
       }
     }
 
-    if (!gpio.deviceIsX3()) {
-      auto sleepScreenIt =
-          std::find_if(v.begin(), v.end(), [](const SettingInfo& s) { return s.nameId == StrId::STR_SLEEP_SCREEN; });
-      if (sleepScreenIt != v.end()) {
-        removeEnumRawValue(*sleepScreenIt, static_cast<uint8_t>(CrossPointSettings::MINIMAL_STATS_SLEEP));
-      }
-    }
+    // Book Status is among the clock-driven screens hideClockSleepScreens() drops
+    // on a reader with no clock, so it needs no device check of its own: an X3
+    // and an X4 Pro both have the chip and both offer it.
     return v;
   }();
 
