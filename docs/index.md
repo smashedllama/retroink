@@ -3,11 +3,20 @@ title: Home
 nav_order: 1
 ---
 
-# CrossInk
+# RetroInk
 
-Welcome to CrossInk, a personal fork of CrossPoint Reader.
+RetroInk is a System 6-styled e-reader firmware for the Xteink X3, X4 and X4
+Pro, built on CrossInk and CrossPoint Reader.
 
-[View on GitHub](https://github.com/uxjulia/CrossInk)
+[View on GitHub](https://github.com/smashedllama/retroink)
+
+## Start here
+
+- [What's Different in RetroInk](./whats-different.md)
+- [X3, X4 and X4 Pro](./devices.md) (side-by-side table)
+- [RetroInk on the X4 Pro](./x4-pro.md)
+- [How-to](./how-to.md)
+- [FAQ](./faq.md)
 
 ## User Docs
 

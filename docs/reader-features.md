@@ -201,11 +201,14 @@ from the reader menu or a configured shortcut, select text, and save it.
 
 On button devices, move the cursor with the direction buttons, press **Select**
 at the first word, move to the last word, then press **Done**. On touchscreen
-devices, a tap saves the single word you touch. To save a range, touch and hold
-the first word until range selection begins, drag to the last word, then lift
-your finger; CrossInk saves the clipping immediately. A touch drag does not
-turn pages, so use the direction buttons if a clipping must extend to another
-page.
+devices, a tap saves the single word you touch. To save a range, touch the
+first word and drag to the last, then lift your finger; RetroInk saves the
+clipping immediately. From the reading page you can do the same without opening
+the menu: touch and hold a word for about half a second, and the highlight
+starts under your finger and follows it like selecting text on a computer.
+Lifting without dragging looks the word up in the dictionary instead. A touch
+drag does not turn pages, so use the direction buttons if a clipping must
+extend to another page.
 
 A saved clipping is used in three ways:
 

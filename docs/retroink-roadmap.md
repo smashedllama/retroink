@@ -6,8 +6,11 @@ promised. Features that have shipped are listed in the
 
 ## Possible next
 
-- **X4 Pro and X4 Classic support.** They use a different chip (ESP32-S3), so
-  this needs its own port of the firmware rather than a new setting.
+- **X4 Classic support.** It shares the Pro's chip (ESP32-S3) but has buttons
+  only. The X4 Pro has been added as a pre-release; the Classic has not been
+  built or tested yet.
+- **X4 Pro graduates from pre-release.** More time on a real device, then a
+  full release so it can update over Wi-Fi like the X3 and X4.
 - **More than one calendar in Calendar Sync.** For example work and home,
   possibly marked differently on the Desk Calendar.
 - **Scrapbook.** Saved clippings and bookmarks together in one Mac-style desk

@@ -14,11 +14,17 @@ you want to modify the code yourself.
 ## Supported Devices
 
 - Xteink X3, X4
+- **Xteink X4 Pro (pre-release). New** Its own firmware file,
+  `firmware-x4-pro-v*.bin`, built for its ESP32-S3 chip. See
+  [X4 Pro](#x4-pro) below.
 - Seeed Studio Sticky (build from source with `pio run -e sticky`; releases
-  only include the X3/X4 firmware)
+  only include the X3/X4 and X4 Pro firmware)
 
-**Not supported (yet):** the Xteink X4 Pro and X4 Classic. They're built on a
-different chip (ESP32-S3), so this firmware can't run on them yet.
+**Not supported (yet):** the Xteink X4 Classic. It has not been built or
+tested with RetroInk.
+
+Not sure which device does what? [X3, X4 and X4 Pro](./devices.html) puts them
+side by side in a table.
 
 ## X3 vs X4
 
@@ -65,6 +71,29 @@ an X4:
 
 Everything else works the same on both: reading, the Library, Puzzle,
 all-time totals, transfers, and syncing.
+
+## X4 Pro
+
+**New in 0.6.0, as a pre-release.** The X4 Pro runs `firmware-x4-pro-v*.bin`,
+not the X3/X4 file, and it cannot run the X3/X4 file. See [RetroInk on the X4
+Pro](./x4-pro.html) for how it is used.
+
+1. **Back up the stock firmware first.** The Pro's stock layout is not the
+   same as RetroInk's, so this is the way back if you want it.
+2. Download `firmware-x4-pro-v*.bin` from the [Releases
+   page](https://github.com/smashedllama/retroink/releases). It is marked as a
+   pre-release.
+3. Connect the Pro with USB-C and flash the file with the [web flash
+   tool](#install-via-the-web-flash-tool-easiest) in Chrome or Edge. This is
+   the route the Pro has been tested with.
+
+**Other ways.** If the Pro is already running RetroInk, an [SD card
+update](#install-via-sd-card) works the same as on an X3 or X4. `esptool` is
+possible with `--chip esp32s3`, but it has not been tested on a Pro.
+
+**Updates.** **Check for Updates** only looks at the latest full release, so
+it will not offer a pre-release. Install pre-releases by hand until a full
+release includes the Pro file.
 
 ## Update over Wi-Fi
 
@@ -115,7 +144,8 @@ dmesg | grep tty
 ls /dev/cu.*
 ```
 
-Flash the firmware:
+Flash the firmware (use `--chip esp32s3` and the `firmware-x4-pro` file for an
+X4 Pro):
 
 ```sh
 # Linux

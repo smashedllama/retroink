@@ -61,11 +61,13 @@ The **Look Up Word** option in the reader menu is only visible when a dictionary
 ### Touchscreen
 
 In an EPUB reader with **Touch Reader Controls** enabled, touch and hold a
-word for about one second. CrossInk opens word selection on that word; lift
-your finger to look it up. To look up a phrase, keep holding after the
-selection opens, drag to the last word, then lift your finger. This is a
-direct shortcut from the reading page, so you do not need to open the reader
-menu first.
+word for about half a second, then lift your finger without dragging to look
+that word up. This is a direct shortcut from the reading page, so you do not
+need to open the reader menu first. If you drag before lifting, the same hold
+highlights a passage as a clipping instead (see [Clippings and
+Highlights](./reader-features.md#clippings-and-highlights)). To look up a
+phrase by touch, open word selection from the reader menu or a **Look Up Word**
+shortcut and drag across the words.
 
 When word selection is already open, including selection opened from a
 definition, touch a word to start a selection and drag before releasing to
@@ -132,9 +134,8 @@ Multi-word select works in both the reader word-select and the definition word-s
 
 On a touchscreen, use a press-and-drag selection instead of the button
 sequence: touch the first word, drag to the last word, and lift your finger to
-look up the selected phrase. The first long hold on the reading page is only
-needed to enter lookup; once word selection is open, touching a word starts
-the range immediately.
+look up the selected phrase. Once word selection is open, touching a word
+starts the range immediately.
 
 **Limitation:** Multi-word selection cannot span a page boundary. If a phrase crosses from one page to the next, only the words on the current page are available for selection. As a workaround, reduce the reader font size so more words fit on a single page, perform the lookup, then restore the original font size.
 

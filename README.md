@@ -7,7 +7,7 @@ AltFlow, built on
 
 RetroInk keeps CrossInk's reading, library, transfer, dictionary, synchronization,
 and accessibility features while presenting them through a memory-conscious
-black-and-white interface designed for the Xteink X3 and X4. This independent
+black-and-white interface designed for the Xteink X3, X4 and X4 Pro. This independent
 community project is not affiliated with or endorsed by Apple or Xteink.
 
 RetroInk is distributed under the MIT License. See [LICENSE](./LICENSE) and
@@ -17,15 +17,31 @@ RetroInk is distributed under the MIT License. See [LICENSE](./LICENSE) and
 
 - Xteink X3
 - Xteink X4
+- **Xteink X4 Pro (pre-release) — new in 0.6.0**
 - Seeed Studio Sticky
 
-**Not supported (yet):** the Xteink X4 Pro and X4 Classic.
+**Not supported (yet):** the Xteink X4 Classic.
+
+| | X3 | X4 | X4 Pro **new** |
+|---|---|---|---|
+| Firmware | `firmware-x3-x4-*.bin` | `firmware-x3-x4-*.bin` | `firmware-x4-pro-*.bin` |
+| Controls | Buttons | Buttons | **Touch**, Home key, edge keys |
+| Frontlight | No | No | **Warm + cool** |
+| Clock chip | Yes | **No** | Yes |
+| Motion sensor (Marble Maze) | Yes | No | No |
+| Minesweeper | No | No | **Yes** |
+| Update over Wi-Fi | Yes | Yes | Manual while pre-release |
+
+[Full comparison](https://smashedllama.github.io/retroink/devices.html) ·
+[X4 Pro guide](https://smashedllama.github.io/retroink/x4-pro.html) ·
+[How-to](https://smashedllama.github.io/retroink/how-to.html) ·
+[FAQ](https://smashedllama.github.io/retroink/faq.html)
 
 #### X3 vs X4
 
 Both run the same `firmware-x3-x4-*.bin`. The X3 has a clock chip that keeps counting while it sleeps; the original X4 has none and powers off completely when it sleeps, so it never knows the date or time. On an X4, Moon Phase, Earth, and Desk Calendar ask you to pick a date instead (Earth also takes a time and time zone); the date is saved and their sleep screens draw it. Features that need the real time as it passes are left out: the Clock accessory, the Today, Book Status, Book + Week, and Reading Year sleep screens, the daily reading goal and its countdown badge, and the header and reader clocks. A few things work slightly differently (Focus Session pauses while asleep, per-book stats and highlights aren't dated). [Full details](https://smashedllama.github.io/retroink/installation.html#x3-vs-x4).
 
-The X4 Pro and X4 Classic use a different chip (ESP32-S3), so they aren't supported yet.
+The X4 Pro uses a different chip (ESP32-S3) and its own firmware file, so it can't run the X3/X4 build and the X3/X4 can't run the Pro build. The X4 Classic isn't supported yet.
 
 ## What RetroInk adds
 
@@ -45,6 +61,8 @@ The X4 Pro and X4 Classic use a different chip (ESP32-S3), so they aren't suppor
 - Safe book moves across the device, web file manager, and WebDAV. RetroInk reviews old and current reading records before restoring progress after a move made elsewhere.
 - [Obsidian Clipping Sync](./docs/obsidian-sync.md): pushes saved highlights into an Obsidian vault over the local network (via the Local REST API plugin) or a webhook, on top of the existing `/My Clippings.txt` export, including highlights saved before you set it up.
 - [Calendar Sync](./docs/calendar-sync.md): puts your Google, Apple (iCloud) or Outlook calendar in the Desk Calendar from its iCal link, with event squares, a full-screen Day View, and two sleep screens (month with what is coming up, and a whole-day view with finished events struck through). Saved on the SD card.
+- **New:** X4 Pro support (pre-release): a touch-first layout with a tappable Back box in every window, a pull-down brightness and warmth panel, hold-and-drag highlighting while reading, Minesweeper, and swipes in the calendar, library and sleep screen picker.
+- **New:** On/off settings are a two-position **O | I** rocker switch, and dialogs are System 6 alert windows.
 - Over-the-air updates from RetroInk's own releases, with the release notes shown before you install.
 - A matching System 6 redesign of the on-device web portal (the page you get connecting over Wi-Fi in File Transfer mode), including a Library tab with drag-and-drop custom shelves.
 

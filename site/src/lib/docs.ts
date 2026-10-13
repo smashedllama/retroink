@@ -27,7 +27,16 @@ const modules = import.meta.glob<DocModule>("../../../docs/**/*.md");
 // these show up in the sidebar and the homepage's "Useful docs" list; the
 // rest stay in the repo and stay routable (a direct link still works), they
 // just aren't surfaced as if they were RetroInk's own documentation.
-const FEATURED_SLUGS = ["whats-different", "installation", "obsidian-sync", "calendar-sync"];
+const FEATURED_SLUGS = [
+  "whats-different",
+  "devices",
+  "installation",
+  "x4-pro",
+  "how-to",
+  "faq",
+  "obsidian-sync",
+  "calendar-sync",
+];
 
 const publicModules = Object.fromEntries(
   Object.entries(modules).filter(([path]) => !path.includes("/docs/development/")),

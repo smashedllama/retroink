@@ -31,6 +31,18 @@ Note: Even though some actions assigned to the front buttons could be used globa
 - Orientation aware
 - Long-press action
 
+## X4 Pro
+
+The X4 Pro has no front buttons, so these settings do not apply to it. It uses
+the touch screen, a capacitive Home key and two edge keys. See [RetroInk on the
+X4 Pro](./x4-pro.md) for the full list. In short:
+
+- **Home key:** short press goes Home; long press opens the reader menu in a
+  book.
+- **Edge keys:** move the highlight in lists and turn pages in a book.
+- **Power:** keeps its short and long press actions and is no longer used as
+  Select.
+
 ## Side Button Long-press Action
 
 When set to `Change Font Size`, hold a side button for about 2 seconds:

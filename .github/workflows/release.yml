@@ -51,10 +51,15 @@ jobs:
           echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
           sed -i "/^\[crossink\]$/,/^\[/s/^version = .*/version = $VERSION/" platformio.ini
 
-      - name: Build RetroInk
+      - name: Build RetroInk (X3/X4)
         env:
           CROSSINK_RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
         run: pio run -j1 -e default
+
+      - name: Build RetroInk (X4 Pro)
+        env:
+          CROSSINK_RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+        run: pio run -j1 -e x4-pro
 
       - name: Package license and checksum
         run: |
@@ -62,6 +67,9 @@ jobs:
           sha256sum "firmware-x3-x4-v${{ env.RELEASE_VERSION }}.bin" > \
             "firmware-x3-x4-v${{ env.RELEASE_VERSION }}.bin.sha256"
           cp ../../../LICENSE ../../../NOTICE.md .
+          cd ../x4-pro
+          sha256sum "firmware-x4-pro-v${{ env.RELEASE_VERSION }}.bin" > \
+            "firmware-x4-pro-v${{ env.RELEASE_VERSION }}.bin.sha256"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -72,10 +80,13 @@ jobs:
           body: |
             RetroInk by AltFlow, built on CrossInk 1.5.0 and CrossPoint Reader.
 
-            Install `firmware-x3-x4-v${{ env.RELEASE_VERSION }}.bin` on an Xteink X3 or X4.
+            Install `firmware-x3-x4-v${{ env.RELEASE_VERSION }}.bin` on an Xteink X3 or X4,
+            or `firmware-x4-pro-v${{ env.RELEASE_VERSION }}.bin` on an Xteink X4 Pro.
             The source, license, upstream attribution, and recovery instructions are included in this repository.
           files: |
             .pio/build/default/firmware-x3-x4-v${{ env.RELEASE_VERSION }}.bin
             .pio/build/default/firmware-x3-x4-v${{ env.RELEASE_VERSION }}.bin.sha256
+            .pio/build/x4-pro/firmware-x4-pro-v${{ env.RELEASE_VERSION }}.bin
+            .pio/build/x4-pro/firmware-x4-pro-v${{ env.RELEASE_VERSION }}.bin.sha256
             .pio/build/default/LICENSE
             .pio/build/default/NOTICE.md

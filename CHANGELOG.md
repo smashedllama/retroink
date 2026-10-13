@@ -1,3 +1,20 @@
+## [RetroInk 0.6.0] - 2026-10-12
+
+### Added
+
+- **X4 Pro support (pre-release).** The Xteink X4 Pro has its own firmware file, `firmware-x4-pro-v0.6.0.bin`. It is built for the Pro's touch screen, frontlight, Home key and two edge keys, and it keeps the System 6 look. While it is a pre-release, **Check for Updates** does not offer it; install it by hand (see Installation). Other devices are unchanged.
+- **Touch-first layout.** Every window has a tappable Back box in its title bar, rows and days open with a tap, and the bottom key bar shows only the keys a screen needs, or none. Nothing stays highlighted after a tap until an edge key is pressed.
+- **Quick panel.** Swipe down from the top edge (or tap the battery corner) for brightness and warmth scroll bars, an **I | O** light switch, and keys for Stats, Sync, Dark, Prefs and Touch.
+- **Hold and drag to highlight.** Hold a word for half a second and drag, then lift, to save a clipping. Lifting without dragging looks the word up instead.
+- **Minesweeper** in Desk Accessories, on touch screens: tap to dig, hold to flag, tap a number to clear around it.
+- **Reader menu drawer** is drawn in the System 6 style, with a striped title bar and boxed icon tabs.
+- **Swipes in more places:** the Desk Calendar turns the month and opens the Day View from its event list; the sleep screen picker steps with a swipe or tap; Focus Session has on-screen step buttons; the Library pages with swipes.
+
+### Changed
+
+- The Power button no longer doubles as Select on the Pro.
+- The on-screen keyboard no longer leaves the last key looking pressed.
+
 ## [RetroInk 0.5.8] - 2026-10-12
 
 ### Added
