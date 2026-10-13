@@ -68,6 +68,7 @@ struct SmokeDeskAccessory {
   const char* activity;
   bool needsClock;
   bool needsTilt;
+  bool needsTouch = false;
 };
 constexpr SmokeDeskAccessory kSmokeDeskAccessories[] = {
     {"Desk Accessory Moon Phase", "MoonPhaseDesk", false, false},
@@ -75,6 +76,7 @@ constexpr SmokeDeskAccessory kSmokeDeskAccessories[] = {
     {"Desk Accessory Clock", "ClockDesk", true, false},
     {"Desk Accessory Puzzle", "PuzzleDesk", false, false},
     {"Desk Accessory Marble Maze", "MarbleMazeDesk", false, true},
+    {"Desk Accessory Minesweeper", "MinesweeperDesk", false, false, true},
     {"Desk Accessory Calendar", "DeskCalendar", false, false},
     {"Desk Accessory System Info", "SystemInfoDesk", false, false},
 };
@@ -82,7 +84,10 @@ constexpr SmokeDeskAccessory kSmokeDeskAccessories[] = {
 int visibleDeskAccessoryCount() {
   int count = 0;
   for (const auto& entry : kSmokeDeskAccessories) {
-    if ((!entry.needsClock || halClock.isAvailable()) && (!entry.needsTilt || halTiltSensor.isAvailable())) ++count;
+    if ((!entry.needsClock || halClock.isAvailable()) && (!entry.needsTilt || halTiltSensor.isAvailable()) &&
+        (!entry.needsTouch || gpio.hasTouch())) {
+      ++count;
+    }
   }
   return count;
 }
@@ -91,6 +96,7 @@ const SmokeDeskAccessory& visibleDeskAccessory(int index) {
   for (const auto& entry : kSmokeDeskAccessories) {
     if (entry.needsClock && !halClock.isAvailable()) continue;
     if (entry.needsTilt && !halTiltSensor.isAvailable()) continue;
+    if (entry.needsTouch && !gpio.hasTouch()) continue;
     if (index-- == 0) return entry;
   }
   return kSmokeDeskAccessories[0];
@@ -1804,12 +1810,29 @@ class SimulatorSmokeTest {
     scriptIndex = 0;
     inputCompletionStep = SmokeStep::Done;
 
-    constexpr int kFocus = 0, kMoon = 1, kClock = 3, kPuzzle = 4, kCalendar = 5, kSystemInfo = 6;
+    // Minesweeper sits after Puzzle on a touch screen (Marble Maze needs a sensor).
+    constexpr int kFocus = 0, kMoon = 1, kClock = 3, kPuzzle = 4, kMines = 5, kCalendar = 6, kSystemInfo = 7;
     constexpr int kKeySelect = 1;
     (void)kFocus;
 
     inputScript.push_back(openDeskAccessories());
     inputScript.push_back(render("Touch: Desk Accessories", 4));
+    inputScript.push_back(assertActivity("DeskAccessories"));
+
+    // Minesweeper: dig, hold to flag, start over, leave by the header.
+    addTapTarget(TouchRegistry::Item, kMines, "Touch: Minesweeper opened");
+    inputScript.push_back(assertActivity("MinesweeperDesk"));
+    inputScript.push_back(touchDown(240, 360));
+    inputScript.push_back(touchRelease(240, 360));
+    inputScript.push_back(render("Touch: Minesweeper dug", 6));
+    inputScript.push_back(assertActivity("MinesweeperDesk"));
+    inputScript.push_back(touchDown(120, 200));
+    inputScript.push_back(render("Touch: Minesweeper flag hold", 60));
+    inputScript.push_back(touchRelease(120, 200));
+    inputScript.push_back(render("Touch: Minesweeper flagged", 6));
+    addTapTarget(TouchRegistry::Button, 1, "Touch: Minesweeper new game");
+    inputScript.push_back(assertActivity("MinesweeperDesk"));
+    addTapTarget(TouchRegistry::Back, 0, "Touch: back from Minesweeper by header");
     inputScript.push_back(assertActivity("DeskAccessories"));
 
     // Header Back box.

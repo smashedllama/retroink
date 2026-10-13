@@ -221,6 +221,16 @@ void menuIcon(const GfxRenderer& r, UIIcon icon, int x, int y, bool black) {
       r.fillRect(x + 17, y + 20, 4, 4, black);
       break;
     }
+    case MinesweeperIcon: {
+      // A mine: solid core with spokes inside a tile.
+      r.drawRect(x + 1, y + 1, 24, 24, black);
+      r.fillRect(x + 9, y + 9, 8, 8, black);
+      r.drawLine(x + 13, y + 5, x + 13, y + 21, black);
+      r.drawLine(x + 5, y + 13, x + 21, y + 13, black);
+      r.drawLine(x + 7, y + 7, x + 19, y + 19, black);
+      r.drawLine(x + 7, y + 19, x + 19, y + 7, black);
+      break;
+    }
     case CalendarIcon: {
       r.drawRect(x + 1, y + 4, 24, 22, black);
       r.drawLine(x + 1, y + 10, x + 25, y + 10, black);

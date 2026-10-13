@@ -1,0 +1,52 @@
+#pragma once
+
+#include <cstdint>
+
+#include "activities/Activity.h"
+
+// Minesweeper for touch screens. Tap a square to dig, hold one to plant a flag,
+// tap a number whose flags are all placed to clear around it. The Flag/Dig key
+// swaps what a tap does for anyone who'd rather not hold. The first dig is never
+// a mine, and the game isn't saved: a round is short enough to just start again.
+class MinesweeperDeskActivity final : public Activity {
+ public:
+  static constexpr int kCols = 8;
+  static constexpr int kRows = 12;
+  static constexpr int kCells = kCols * kRows;
+  static constexpr int kMines = 16;
+
+  MinesweeperDeskActivity(GfxRenderer& renderer, MappedInputManager& input)
+      : Activity("MinesweeperDesk", renderer, input) {}
+  void onEnter() override;
+  void onExit() override;
+  void loop() override;
+  void render(RenderLock&&) override;
+
+ private:
+  enum Flag : uint8_t { Mine = 1, Revealed = 2, Flagged = 4 };
+
+  uint8_t cell_[kCells] = {};
+  uint8_t near_[kCells] = {};  // mines in the 8 neighbours
+  bool minesPlaced_ = false;
+  bool flagMode_ = false;
+  bool holdHandled_ = false;     // this touch already planted a flag
+  bool swallowRelease_ = false;  // so its release must not also dig
+  bool lost_ = false;
+  bool won_ = false;
+  int hitCell_ = -1;  // the mine that ended the game
+  unsigned long startedMs_ = 0;
+  uint32_t seconds_ = 0;
+  GfxRenderer::Orientation previousOrientation_ = GfxRenderer::Orientation::Portrait;
+
+  void newGame();
+  void placeMines(int safeCell);
+  void dig(int index);
+  void chord(int index);
+  void reveal(int index);
+  void toggleFlag(int index);
+  void checkWon();
+  int flagsPlaced() const;
+  int cellAt(int x, int y) const;
+  void geometry(int& cellSize, int& left, int& top) const;
+  void drawCell(int index, int x, int y, int size) const;
+};

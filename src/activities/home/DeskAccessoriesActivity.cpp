@@ -13,6 +13,7 @@
 #include "EarthPhaseDeskActivity.h"
 #include "MoonPhaseDeskActivity.h"
 #include "MarbleMazeDeskActivity.h"
+#include "MinesweeperDeskActivity.h"
 #include "PuzzleDeskActivity.h"
 #include "SystemInfoDeskActivity.h"
 #include "components/TouchHeaderBackButton.h"
@@ -27,6 +28,7 @@ struct DeskEntry {
   UIIcon icon;
   bool needsClock;
   bool needsTilt;  // needs a motion sensor (the X3 has one; the X4 does not)
+  bool needsTouch = false;
 };
 
 // Indexed by DeskAction.
@@ -34,6 +36,7 @@ constexpr DeskEntry kEntries[] = {
     {StrId::STR_FOCUS_SESSION, Hourglass, false, false},    {StrId::STR_MOON_PHASE, MoonPhaseIcon, false, false},
     {StrId::STR_EARTH_PHASE, EarthPhaseIcon, false, false}, {StrId::STR_DESK_CLOCK, ClockIcon, true, false},
     {StrId::STR_PUZZLE, PuzzleIcon, false, false},          {StrId::STR_MARBLE_MAZE, MarbleMazeIcon, false, true},
+    {StrId::STR_MINESWEEPER, MinesweeperIcon, false, false, true},
     {StrId::STR_DESK_CALENDAR, CalendarIcon, false, false}, {StrId::STR_SYSTEM_INFO, SystemInfoIcon, false, false},
 };
 }  // namespace
@@ -46,6 +49,7 @@ void DeskAccessoriesActivity::onEnter() {
   for (int i = 0; i < kMaxItems; ++i) {
     if (kEntries[i].needsClock && !hasClock) continue;
     if (kEntries[i].needsTilt && !hasTilt) continue;
+    if (kEntries[i].needsTouch && !gpio.hasTouch()) continue;
     items_[itemCount_++] = static_cast<DeskAction>(i);
   }
   selected_ = 0;
@@ -78,6 +82,10 @@ void DeskAccessoriesActivity::activate() {
       break;
     case DeskAction::MarbleMaze:
       startActivityForResult(std::make_unique<MarbleMazeDeskActivity>(renderer, mappedInput),
+                             [this](const ActivityResult&) { requestUpdate(); });
+      break;
+    case DeskAction::Minesweeper:
+      startActivityForResult(std::make_unique<MinesweeperDeskActivity>(renderer, mappedInput),
                              [this](const ActivityResult&) { requestUpdate(); });
       break;
     case DeskAction::Calendar:

@@ -154,6 +154,7 @@ enum UIIcon {
   ClockIcon,
   PuzzleIcon,
   MarbleMazeIcon,
+  MinesweeperIcon,
   CalendarIcon,
   SystemInfoIcon
 };
