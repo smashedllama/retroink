@@ -1,4 +1,4 @@
-## [Unreleased]
+## [RetroInk 0.6.1] - 2026-10-15
 
 ### Changed
 
