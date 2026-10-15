@@ -1,3 +1,12 @@
+## [Unreleased]
+
+### Changed
+
+- **Focus Session is one screen.** The length is set on the same screen as **Start Focus**, with step buttons on touch and **Left**/**Right** (hold to run) on buttons, and the redraw setting is its second row. No more going back to the start to begin a session after changing it.
+- **Minesweeper:** **New Game** is in a **Menu** so it can't be tapped by accident. A tap digs, or flags while **Flag** is on; the hold-to-flag is gone.
+- **Quick panel (X4 Pro):** a **Home** key joins the row, for anyone who has given the Home key another job, and **Sync** now includes **Sync Stats**.
+- The **Book Status** sleep screen follows the clock like the other stats screens: offered on the X3 and X4 Pro, not on the X4. Settings, the web UI and the picker now agree.
+
 ## [RetroInk 0.6.0] - 2026-10-12
 
 ### Added

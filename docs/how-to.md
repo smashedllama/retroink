@@ -53,6 +53,22 @@ release that added the X4 Pro.
 - **Open a book's actions.** Hold the book on the Pro, or press **Select**
   on X3/X4.
 
+## Focus Session
+
+- **Start a focus session.** Desk Accessories > Focus Session. Set the length
+  with the step buttons (on the Pro) or **Left** and **Right** (X3/X4; hold to
+  run), then tap **Start Focus**. The length and the redraw setting are on the
+  same screen. **New**
+
+## Reading stats
+
+- **Sync stats between two readers.** **File Transfer > Sync Stats** on both,
+  then **Sync** on one. On the Pro you can also open the quick panel, tap
+  **Sync**, and choose **Sync Stats**. **New**
+- **Know what it syncs.** Only the all-time totals: sessions, time, pages and
+  finished books. The Reading Year calendar and per-book stats stay on the
+  reader that recorded them.
+
 ## Calendar and clippings
 
 - **See your calendar on the reader.** Set up
@@ -73,6 +89,7 @@ release that added the X4 Pro.
 ## Games and accessories
 
 - **Play Minesweeper (X4 Pro). New** Desk Accessories > Minesweeper. Tap to
-  dig, hold to flag.
+  dig. Press **Flag** to make taps plant flags, and **Dig** to go back.
+  **Menu** has New Game.
 - **Play the Puzzle.** Desk Accessories > Puzzle. Tap a tile next to the gap.
 - **Play Marble Maze (X3).** Desk Accessories > Marble Maze. Tilt the reader.

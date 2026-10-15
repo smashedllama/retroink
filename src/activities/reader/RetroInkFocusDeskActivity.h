@@ -10,7 +10,6 @@ class RetroInkFocusDeskActivity final : public Activity {
   Entry entry_;
   std::string returnBookPath_;
   uint8_t selected_ = 0;
-  bool settingsMenu_ = false;
   enum class Editor : uint8_t { None, Goal, Length, Refresh };
   Editor editor_ = Editor::None;
   uint8_t selectedCadence_ = 1;

@@ -7,6 +7,8 @@ nav_order: 7
 
 CrossInk can sync all-time reading stats between nearby readers running CrossInk from **File Transfer > Sync Stats**. The sync is direct reader-to-reader; it does not use a server, account, or one "main" reader. This only works with CrossInk reading stats. This will _NOT_ work with any other firmware's reading stats.
 
+On an X4 Pro, the quick panel's **Sync** key also lists **Sync Stats**.
+
 ## What Gets Synced
 
 Nearby Stats Sync shares only each reader's all-time counters:

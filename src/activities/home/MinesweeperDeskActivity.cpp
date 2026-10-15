@@ -211,13 +211,28 @@ void MinesweeperDeskActivity::onExit() {
 }
 
 void MinesweeperDeskActivity::loop() {
+  if (menu_.isActive()) {
+    menu_.handleInput(mappedInput, [this] { requestUpdate(); });
+    return;
+  }
   if (TouchHeaderBackButton::wasTapped(mappedInput, renderer) ||
       mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     finish();
     return;
   }
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    newGame();
+    // New Game sits behind the Menu so it can't be tapped in the middle of a
+    // round by accident.
+    const std::vector<std::string> choices = {tr(STR_MINES_NEW_GAME), tr(STR_EXIT)};
+    menu_.show(tr(STR_MINES_MENU), choices, 0, [this](const int index) {
+      if (index == 0) {
+        newGame();
+      } else if (index == 1) {
+        finish();
+        return;
+      }
+      requestUpdate();
+    });
     requestUpdate();
     return;
   }
@@ -229,30 +244,7 @@ void MinesweeperDeskActivity::loop() {
 
   int x = 0;
   int y = 0;
-  // A new touch clears any leftover from the last one.
-  if (mappedInput.wasScreenTouchDown(x, y)) {
-    holdHandled_ = false;
-    swallowRelease_ = false;
-  }
-  // Holding a square plants (or lifts) a flag, whatever the tap mode is.
-  unsigned long heldMs = 0;
-  if (mappedInput.isScreenTouchTapCandidate(x, y, heldMs)) {
-    if (!holdHandled_ && heldMs >= 450) {
-      holdHandled_ = true;
-      const int index = cellAt(x, y);
-      if (index >= 0) {
-        swallowRelease_ = true;
-        toggleFlag(index);
-        requestUpdate();
-      }
-      return;
-    }
-  }
   if (mappedInput.wasScreenTapped(x, y)) {
-    if (swallowRelease_) {
-      swallowRelease_ = false;
-      return;
-    }
     const int index = cellAt(x, y);
     if (index < 0) return;
     if (flagMode_ && !(cell_[index] & Revealed)) {
@@ -348,8 +340,9 @@ void MinesweeperDeskActivity::render(RenderLock&&) {
   (void)pageHeight;
   (void)metrics;
 
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_MINES_NEW), "",
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_MINES_MENU), "",
                                             flagMode_ ? tr(STR_MINES_DIG) : tr(STR_MINES_FLAG));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  if (menu_.processRender(renderer, mappedInput)) return;
   renderer.displayBuffer();
 }

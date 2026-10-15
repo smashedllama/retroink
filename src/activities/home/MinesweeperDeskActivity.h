@@ -3,11 +3,12 @@
 #include <cstdint>
 
 #include "activities/Activity.h"
+#include "components/OptionPopup.h"
 
-// Minesweeper for touch screens. Tap a square to dig, hold one to plant a flag,
-// tap a number whose flags are all placed to clear around it. The Flag/Dig key
-// swaps what a tap does for anyone who'd rather not hold. The first dig is never
-// a mine, and the game isn't saved: a round is short enough to just start again.
+// Minesweeper for touch screens. A tap digs a square, or plants a flag while the
+// Flag key is on; tapping a number whose flags are all placed clears around it.
+// New Game lives in the Menu so it can't be hit by accident. The first dig is
+// never a mine, and the game isn't saved: a round is short enough to restart.
 class MinesweeperDeskActivity final : public Activity {
  public:
   static constexpr int kCols = 8;
@@ -29,8 +30,7 @@ class MinesweeperDeskActivity final : public Activity {
   uint8_t near_[kCells] = {};  // mines in the 8 neighbours
   bool minesPlaced_ = false;
   bool flagMode_ = false;
-  bool holdHandled_ = false;     // this touch already planted a flag
-  bool swallowRelease_ = false;  // so its release must not also dig
+  OptionPopup menu_;
   bool lost_ = false;
   bool won_ = false;
   int hitCell_ = -1;  // the mine that ended the game

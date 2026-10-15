@@ -1324,13 +1324,9 @@ class SimulatorSmokeTest {
         break;
 
       case SmokeStep::FocusSettingsMenu:
-        if (!activityManager.isCurrentActivityNamed("RetroInkFocusDesk")) fail("Focus Settings did not open");
-        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Confirm);
-        step = SmokeStep::FocusLengthOpenRelease;
-        break;
-
-      case SmokeStep::FocusLengthOpenRelease:
-        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Confirm);
+        // Focus Session is one screen now: the length is set on it and the second
+        // row opens the redraw choice, which is open at this point.
+        if (!activityManager.isCurrentActivityNamed("RetroInkFocusDesk")) fail("Focus Desk did not stay open");
         SETTINGS.setFocusDurationMinutes(1440);
         SETTINGS.saveToFile();
         queueStep("24-hour Focus editor", SmokeStep::FocusLengthEditor);
@@ -1338,28 +1334,6 @@ class SimulatorSmokeTest {
 
       case SmokeStep::FocusLengthEditor:
         if (SETTINGS.focusDurationMinutes() != 1440) fail("Focus editor cannot hold 24 hours");
-        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Confirm);
-        step = SmokeStep::FocusLengthDoneRelease;
-        break;
-
-      case SmokeStep::FocusLengthDoneRelease:
-        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Confirm);
-        step = SmokeStep::FocusRefreshSelectPress;
-        break;
-
-      case SmokeStep::FocusRefreshSelectPress:
-        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Down);
-        step = SmokeStep::FocusRefreshSelectRelease;
-        break;
-
-      case SmokeStep::FocusRefreshSelectRelease:
-        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Down);
-        mappedInputManager.simulatorInjectPress(MappedInputManager::Button::Confirm);
-        step = SmokeStep::FocusRefreshOpenRelease;
-        break;
-
-      case SmokeStep::FocusRefreshOpenRelease:
-        mappedInputManager.simulatorInjectRelease(MappedInputManager::Button::Confirm);
         step = SmokeStep::FocusRefreshSecondPress;
         break;
 
@@ -1819,19 +1793,20 @@ class SimulatorSmokeTest {
     inputScript.push_back(render("Touch: Desk Accessories", 4));
     inputScript.push_back(assertActivity("DeskAccessories"));
 
-    // Minesweeper: dig, hold to flag, start over, leave by the header.
+    // Minesweeper: dig, switch to Flag and flag, open the Menu, leave by the header.
     addTapTarget(TouchRegistry::Item, kMines, "Touch: Minesweeper opened");
     inputScript.push_back(assertActivity("MinesweeperDesk"));
     inputScript.push_back(touchDown(240, 360));
     inputScript.push_back(touchRelease(240, 360));
     inputScript.push_back(render("Touch: Minesweeper dug", 6));
     inputScript.push_back(assertActivity("MinesweeperDesk"));
+    addTapTarget(TouchRegistry::Button, 3, "Touch: Minesweeper flag mode on");
     inputScript.push_back(touchDown(120, 200));
-    inputScript.push_back(render("Touch: Minesweeper flag hold", 60));
     inputScript.push_back(touchRelease(120, 200));
     inputScript.push_back(render("Touch: Minesweeper flagged", 6));
-    addTapTarget(TouchRegistry::Button, 1, "Touch: Minesweeper new game");
+    addTapTarget(TouchRegistry::Button, 1, "Touch: Minesweeper menu opened");
     inputScript.push_back(assertActivity("MinesweeperDesk"));
+    addTapTarget(TouchRegistry::Back, 0, "Touch: Minesweeper menu closed");
     addTapTarget(TouchRegistry::Back, 0, "Touch: back from Minesweeper by header");
     inputScript.push_back(assertActivity("DeskAccessories"));
 

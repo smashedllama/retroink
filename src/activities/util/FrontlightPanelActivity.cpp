@@ -13,6 +13,7 @@
 #include "activities/ActivityManager.h"
 #include "activities/RenderLock.h"
 #include "activities/home/BookActions.h"
+#include "activities/network/NearbyStatsSyncActivity.h"
 #include "activities/settings/SettingsActivity.h"
 #include "components/DrawerHandle.h"
 #include "components/HeaderDate.h"
@@ -44,6 +45,7 @@ constexpr int HEADER_ICON_SIZE = 24;
 constexpr int HEADER_BUTTON_WIDTH = 64;
 constexpr int HEADER_CONTENT_BOTTOM_GAP = 8;
 constexpr int ACTION_BAR_HEIGHT = 58;
+constexpr int kQuickCount = 6;  // Home, Stats, Sync, Dark, Prefs, Touch
 
 // System 6 look for the drawer: boxed keys, a scroll-bar slider and an I/O
 // switch, drawn straight to the renderer so they match the title bar above.
@@ -62,7 +64,7 @@ void drawArrowBox(GfxRenderer& r, const fui::Rect& box, const int direction) {
 
 // Pixel-style glyphs for the drawer keys, drawn with lines and boxes like the
 // Home screen's System 6 icons. `ink` is true for black on a white key.
-enum class KeyGlyph { Stats, Sync, Dark, Prefs, Touch };
+enum class KeyGlyph { Home, Stats, Sync, Dark, Prefs, Touch };
 
 void drawKeyGlyph(GfxRenderer& r, const int cx, const int cy, const KeyGlyph glyph, const bool ink) {
   const int x = cx - 14;
@@ -70,6 +72,16 @@ void drawKeyGlyph(GfxRenderer& r, const int cx, const int cy, const KeyGlyph gly
   const int cx_ = cx;
   const int cy_ = cy;
   switch (glyph) {
+    case KeyGlyph::Home: {
+      // A little house: pitched roof, walls, a door.
+      r.drawLine(x + 1, y + 12, x + 14, y, ink);
+      r.drawLine(x + 14, y, x + 27, y + 12, ink);
+      r.drawLine(x + 1, y + 13, x + 14, y + 1, ink);
+      r.drawLine(x + 14, y + 1, x + 27, y + 13, ink);
+      r.drawRect(x + 5, y + 12, 18, 12, ink);
+      r.fillRect(x + 12, y + 16, 5, 8, ink);
+      break;
+    }
     case KeyGlyph::Stats: {
       // Bar chart on a baseline.
       r.fillRect(x + 1, y + 14, 4, 9, ink);
@@ -327,14 +339,25 @@ void FrontlightPanelActivity::openGlobalSettings() {
 }
 
 void FrontlightPanelActivity::openSyncDialog() {
-  static constexpr std::array<StrId, 3> OPTIONS = {StrId::STR_SYNC_PROGRESS, StrId::STR_NEARBY_POSITION_SYNC,
-                                                   StrId::STR_SEND_NEARBY_BOOK};
+  static constexpr std::array<StrId, 4> OPTIONS = {StrId::STR_SYNC_PROGRESS, StrId::STR_NEARBY_POSITION_SYNC,
+                                                   StrId::STR_SEND_NEARBY_BOOK, StrId::STR_NEARBY_STATS_SYNC};
   drawerState.syncDialogOpen = true;
   const bool canSyncBookProgress = context.activeEpub;
   const bool canSendBook = !context.bookPath.empty();
-  optionPopup.show(StrId::STR_SYNC_AND_TRANSFER, OPTIONS.data(), OPTIONS.size(), canSyncBookProgress ? 0 : 2,
-                   [this](const int index) {
+  optionPopup.show(StrId::STR_SYNC_AND_TRANSFER, OPTIONS.data(), OPTIONS.size(),
+                   canSyncBookProgress ? 0 : (canSendBook ? 2 : 3), [this](const int index) {
                      drawerState.syncDialogOpen = false;
+                     if (index == 3) {
+                       // Reading stats go reader to reader, the same as File
+                       // Transfer > Sync Stats; the panel just gets you there.
+                       auto sync = makeUniqueNoThrow<NearbyStatsSyncActivity>(renderer, mappedInput);
+                       if (!sync) {
+                         close();
+                         return;
+                       }
+                       startActivityForResult(std::move(sync), [this](const ActivityResult&) { close(); });
+                       return;
+                     }
                      FrontlightPanelResult panelResult;
                      panelResult.state = drawerState;
                      panelResult.activeEpub = context.activeEpub;
@@ -345,7 +368,7 @@ void FrontlightPanelActivity::openSyncDialog() {
                      setResult(ActivityResult(std::move(panelResult)));
                      finish();
                    });
-  optionPopup.setDisabledOptions({!canSyncBookProgress, !canSyncBookProgress, !canSendBook});
+  optionPopup.setDisabledOptions({!canSyncBookProgress, !canSyncBookProgress, !canSendBook, false});
   optionPopup.setCancelCallback([this] { closeSyncDialog(); });
   requestUpdate();
 }
@@ -356,24 +379,28 @@ void FrontlightPanelActivity::closeSyncDialog() {
 }
 
 void FrontlightPanelActivity::activateQuickAction(const int index) {
-  if (index < 0 || index >= 5) return;
+  if (index < 0 || index >= kQuickCount) return;
   drawerState.selectedAction = static_cast<int8_t>(index);
   switch (index) {
     case 0:
-      openReadingStats();
+      // Home is here for anyone who has given the Home key another job.
+      activityManager.goHome();
       return;
     case 1:
-      openSyncDialog();
+      openReadingStats();
       return;
     case 2:
+      openSyncDialog();
+      return;
+    case 3:
       SETTINGS.screenInverted = SETTINGS.screenInverted ? 0 : 1;
       display.setInverted(SETTINGS.screenInverted != 0);
       requestUpdate();
       return;
-    case 3:
+    case 4:
       openGlobalSettings();
       return;
-    case 4:
+    case 5:
       toggleReaderTouchscreen();
       return;
   }
@@ -571,22 +598,25 @@ void FrontlightPanelActivity::buildPanelScreen(UiApp::ScreenType& screen) {
                   bottomInset, sideMargin});
 
   const fui::Rect actionBar = screen.takeBottom(ACTION_BAR_HEIGHT);
-  const int16_t slotWidth = static_cast<int16_t>(actionBar.width / 5);
-  const std::array<fui::BitmapRef, 5> icons = {
-      fui::bitmapFromIcon(icon_reading_stats_24), fui::bitmapFromIcon(icon_transfer_24),
+  const int16_t slotWidth = static_cast<int16_t>(actionBar.width / kQuickCount);
+  const std::array<fui::BitmapRef, kQuickCount> icons = {
+      fui::bitmapFromIcon(icon_home_24), fui::bitmapFromIcon(icon_reading_stats_24),
+      fui::bitmapFromIcon(icon_transfer_24),
       fui::bitmapFromIcon(icon_tabler_moon_filled_24), fui::bitmapFromIcon(icon_sliders_horizontal_24),
       fui::bitmapFromIcon(pendingTouchscreenDisabled ? icon_device_tablet_off_24 : icon_device_tablet_24)};
   const bool system6 = isSystem6();
-  const KeyGlyph keyGlyphs[5] = {KeyGlyph::Stats, KeyGlyph::Sync, KeyGlyph::Dark, KeyGlyph::Prefs, KeyGlyph::Touch};
-  const bool keyActive[5] = {false, false, SETTINGS.screenInverted != 0, false, pendingTouchscreenDisabled};
-  for (int16_t i = 0; i < 5; ++i) {
+  const KeyGlyph keyGlyphs[kQuickCount] = {KeyGlyph::Home, KeyGlyph::Stats, KeyGlyph::Sync,
+                                           KeyGlyph::Dark, KeyGlyph::Prefs, KeyGlyph::Touch};
+  const bool keyActive[kQuickCount] = {false, false, false, SETTINGS.screenInverted != 0, false,
+                                       pendingTouchscreenDisabled};
+  for (int16_t i = 0; i < kQuickCount; ++i) {
     const int16_t x = static_cast<int16_t>(actionBar.x + i * slotWidth);
-    const int16_t width = i == 4 ? static_cast<int16_t>(actionBar.right() - x) : slotWidth;
+    const int16_t width = i == kQuickCount - 1 ? static_cast<int16_t>(actionBar.right() - x) : slotWidth;
     const fui::Rect slot{x, actionBar.y, width, actionBar.height};
     screen.frame().hit(slot, ACTION_QUICK, i);
     if (system6) {
-      const fui::Rect key{static_cast<int16_t>(slot.x + 5), static_cast<int16_t>(slot.y + 8),
-                          static_cast<int16_t>(slot.width - 14), static_cast<int16_t>(slot.height - 18)};
+      const fui::Rect key{static_cast<int16_t>(slot.x + 4), static_cast<int16_t>(slot.y + 8),
+                          static_cast<int16_t>(slot.width - 11), static_cast<int16_t>(slot.height - 18)};
       drawIconKey(renderer, key, keyGlyphs[i], keyActive[i]);
     } else {
       screen.target().bitmap(slot, icons[static_cast<size_t>(i)], fui::BitmapMode::Center);

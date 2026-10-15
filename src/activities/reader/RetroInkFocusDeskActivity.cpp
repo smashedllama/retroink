@@ -1,5 +1,6 @@
 #include "RetroInkFocusDeskActivity.h"
 
+#include <Arduino.h>
 #include <HalClock.h>
 
 #include <I18n.h>
@@ -75,12 +76,6 @@ void RetroInkFocusDeskActivity::onExit() {
 bool RetroInkFocusDeskActivity::showsGoal() const { return entry_ == Entry::Stats && halClock.isAvailable(); }
 
 void RetroInkFocusDeskActivity::activate() {
-  if (entry_ == Entry::Home && settingsMenu_) {
-    editor_ = selected_ == 0 ? Editor::Length : Editor::Refresh;
-    if (editor_ == Editor::Refresh) selectedCadence_ = cadenceIndex(SETTINGS.focusTimerRefresh);
-    requestUpdate();
-    return;
-  }
   if (selected_ == 0) {
     startActivityForResult(std::make_unique<FocusSessionActivity>(renderer, mappedInput, SETTINGS.focusDurationMinutes(),
                                                                  returnBookPath_),
@@ -91,8 +86,10 @@ void RetroInkFocusDeskActivity::activate() {
     if (!showsGoal()) return;
     editor_ = Editor::Goal;
   } else {
-    settingsMenu_ = true;
-    selected_ = 0;
+    // Focus Session: the length is adjusted on this same screen, so the second
+    // row is just how often the timer redraws.
+    editor_ = Editor::Refresh;
+    selectedCadence_ = cadenceIndex(SETTINGS.focusTimerRefresh);
   }
   requestUpdate();
 }
@@ -118,10 +115,6 @@ void RetroInkFocusDeskActivity::loop() {
     if (editor_ != Editor::None) {
       editor_ = Editor::None;
       requestUpdate();
-    } else if (settingsMenu_) {
-      settingsMenu_ = false;
-      selected_ = 1;
-      requestUpdate();
     } else {
       finish();
     }
@@ -143,12 +136,21 @@ void RetroInkFocusDeskActivity::loop() {
   // Touch: tap a row to choose and open it, or a refresh option to pick it.
   int tappedRow = -1;
   if (mappedInput.hasTouchHardware() && mappedInput.wasItemTapped(tappedRow)) {
-    if ((editor_ == Editor::Length || editor_ == Editor::Goal) && tappedRow >= kStepBase) {
+    if (tappedRow >= kStepBase && (editor_ == Editor::Goal || (entry_ == Entry::Home && editor_ == Editor::None))) {
       // The on-screen step buttons: -1 h, -5 min, +5 min, +1 h.
       constexpr int kSteps[4] = {-12, -1, 1, 12};
       const int step = kSteps[std::clamp(tappedRow - kStepBase, 0, 3)];
       if (editor_ == Editor::Goal && (step == 12 || step == -12)) return;
-      adjust(step);
+      // Goal edits the goal; on the Focus Session screen the length is always
+      // the thing being changed.
+      if (editor_ == Editor::None) {
+        const int value = std::clamp<int>(SETTINGS.focusDurationMinutes() + step * 5, 5, 1440);
+        SETTINGS.setFocusDurationMinutes(static_cast<uint16_t>(value));
+        SETTINGS.saveToFile();
+        requestUpdate();
+      } else {
+        adjust(step);
+      }
     } else if (editor_ == Editor::None && tappedRow >= 0 && tappedRow < itemCount()) {
       selected_ = static_cast<uint8_t>(tappedRow);
       activate();
@@ -164,6 +166,34 @@ void RetroInkFocusDeskActivity::loop() {
   const bool frontNext = mappedInput.wasPressed(MappedInputManager::Button::Right);
   const bool previous = sidePrevious || frontPrevious;
   const bool next = sideNext || frontNext;
+  if (entry_ == Entry::Home && editor_ == Editor::None) {
+    // Focus Session on buttons: Left/Right change the length (hold to run),
+    // Up/Down move between Start Focus and the redraw setting.
+    static unsigned long lastRepeatMs = 0;
+    int lengthStep = 0;
+    if (frontPrevious) lengthStep = -1;
+    if (frontNext) lengthStep = 1;
+    if (lengthStep == 0) {
+      const bool holdLeft = mappedInput.isPressed(MappedInputManager::Button::Left);
+      const bool holdRight = mappedInput.isPressed(MappedInputManager::Button::Right);
+      if ((holdLeft || holdRight) && mappedInput.getHeldTime() > 500 && millis() - lastRepeatMs > 150) {
+        lengthStep = holdRight ? 1 : -1;
+        lastRepeatMs = millis();
+      }
+    }
+    if (lengthStep != 0) {
+      const int value = std::clamp<int>(SETTINGS.focusDurationMinutes() + lengthStep * 5, 5, 1440);
+      SETTINGS.setFocusDurationMinutes(static_cast<uint16_t>(value));
+      SETTINGS.saveToFile();
+      requestUpdate();
+      return;
+    }
+    if (sidePrevious || sideNext) {
+      selected_ = static_cast<uint8_t>((selected_ + itemCount() + (sidePrevious ? -1 : 1)) % itemCount());
+      requestUpdate();
+    }
+    return;
+  }
   if (editor_ != Editor::None) {
     if (previous) adjust(editor_ == Editor::Length && sidePrevious ? -12 : -1);
     if (next) adjust(editor_ == Editor::Length && sideNext ? 12 : 1);
@@ -193,12 +223,26 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
       formatFocusDuration(SETTINGS.focusDurationMinutes(), value, sizeof(value));
     }
     renderer.drawCenteredText(UI_12_FONT_ID, top + 43, value, true, EpdFontFamily::BOLD);
+    const bool lengthHere = entry_ == Entry::Home;
     const char* rows[2] = {
-        settingsMenu_ ? tr(STR_FOCUS_SESSION_LENGTH) : tr(STR_START_FOCUS),
-        settingsMenu_ ? tr(STR_FOCUS_TIMER_REFRESH)
-                      : entry_ == Entry::Stats ? tr(STR_READING_GOAL) : tr(STR_SETTINGS_TITLE),
+        tr(STR_START_FOCUS),
+        entry_ == Entry::Stats ? tr(STR_READING_GOAL) : tr(STR_FOCUS_TIMER_REFRESH),
     };
-    const int rowTop = top + 94;
+    int rowTop = top + 94;
+    if (lengthHere && mappedInput.hasTouchHardware()) {
+      // The length is changed right here with step buttons under the value.
+      const char* labels[4] = {"-1 h", "-5", "+5", "+1 h"};
+      const int gap = 10;
+      const int bw = (w - 40 - gap * 3) / 4;
+      const int by = top + 82;
+      int bx = x + 20;
+      for (int i = 0; i < 4; ++i) {
+        TouchRegistry::getInstance().add(Rect{bx, by, bw, 44}, kStepBase + i, TouchRegistry::Item);
+        drawStepButton(renderer, bx, by, bw, 44, labels[i]);
+        bx += bw + gap;
+      }
+      rowTop = top + 152;
+    }
     const int rowH = std::min(76, std::max(52, (bottom - rowTop - 20) / itemCount()));
     for (int i = 0; i < itemCount(); ++i) {
       const int y = rowTop + i * rowH;
@@ -207,7 +251,17 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
       if (selected_ == i && !UITheme::getInstance().isRowHighlightHidden()) {
         renderer.fillRect(x + 24, y + 4, 8, rowH - 16);
       }
-      renderer.drawText(UI_10_FONT_ID, x + 42, y + 16, rows[i], true, EpdFontFamily::BOLD);
+      renderer.drawText(UI_10_FONT_ID, x + 42, lengthHere && i == 1 ? y + 8 : y + 16, rows[i], true,
+                        EpdFontFamily::BOLD);
+      if (lengthHere && i == 1) {
+        // The current redraw rate, on the right of its row.
+        const char* cadenceName =
+            SETTINGS.focusTimerRefresh == CrossPointSettings::FOCUS_TIMER_EVERY_SECOND ? tr(STR_FOCUS_REFRESH_SECOND)
+            : SETTINGS.focusTimerRefresh == CrossPointSettings::FOCUS_TIMER_EVERY_FIVE_MINUTES
+                ? tr(STR_FOCUS_REFRESH_FIVE_MINUTES)
+                : tr(STR_FOCUS_REFRESH_MINUTE);
+        renderer.drawText(UI_10_FONT_ID, x + 42, y + 8 + renderer.getLineHeight(UI_10_FONT_ID) + 4, cadenceName);
+      }
     }
   } else {
     const int editorTop = top + 48;
@@ -263,10 +317,11 @@ void RetroInkFocusDeskActivity::render(RenderLock&&) {
   }
   const bool touch = mappedInput.hasTouchHardware();
   const bool stepEditor = editor_ == Editor::Length || editor_ == Editor::Goal;
+  const bool lengthOnScreen = entry_ == Entry::Home && editor_ == Editor::None;
   const auto labels = mappedInput.mapLabels(
       tr(STR_BACK), editor_ == Editor::None ? (touch ? "" : tr(STR_SELECT)) : tr(STR_DONE),
-      touch ? "" : (stepEditor ? tr(STR_FOCUS_MINUS_FIVE) : tr(STR_DIR_UP)),
-      touch ? "" : (stepEditor ? tr(STR_FOCUS_PLUS_FIVE) : tr(STR_DIR_DOWN)));
+      touch ? "" : (stepEditor || lengthOnScreen ? tr(STR_FOCUS_MINUS_FIVE) : tr(STR_DIR_UP)),
+      touch ? "" : (stepEditor || lengthOnScreen ? tr(STR_FOCUS_PLUS_FIVE) : tr(STR_DIR_DOWN)));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
   renderer.displayBuffer();
 }

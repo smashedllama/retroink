@@ -41,8 +41,11 @@ title bar.
 - **Brightness** and **Warmth** are scroll-bar sliders: drag the square, or tap
   the arrows to step.
 - The **I | O** rocker turns the light on and off.
-- The row of keys opens **Stats**, **Sync**, **Dark** mode, **Prefs** (global
-  settings) and the **Touch** toggle for the reader.
+- The row of keys is **Home**, **Stats**, **Sync**, **Dark** mode, **Prefs**
+  (global settings) and the **Touch** toggle for the reader. **Home** is there
+  for anyone who has given the Home key another job. **Sync** offers book
+  progress, nearby position sync, sending a book, and **Sync Stats** for
+  reading stats between readers.
 - Close it with the close box, or by dragging the striped tab at the bottom
   up.
 
@@ -75,9 +78,10 @@ title bar.
 The Pro has a clock chip, so it has the Clock, Moon Phase, Earth and Desk
 Calendar without asking for a date, plus the reading-stats sleep screens.
 
-- **Minesweeper** is new and only on touch screens. Tap to dig, hold to flag,
-  and tap a number whose flags are all placed to clear around it. The **Flag**
-  key swaps what a tap does. The first dig is never a mine.
+- **Minesweeper** is new and only on touch screens. Tap to dig, press **Flag**
+  to make taps plant flags instead, and tap a number whose flags are all
+  placed to clear around it. **New Game** is in the **Menu**, so it can't be
+  tapped by accident. The first dig is never a mine.
 - **Marble Maze** is not on the Pro, because it needs a motion sensor the Pro
   does not have.
 

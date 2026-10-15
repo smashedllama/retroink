@@ -60,6 +60,21 @@ Swipe up from the page, or hold the Home key. **New**
 Hold a word for half a second, drag, and lift. Let go without dragging to look
 the word up instead. **New**
 
+## Can I sync reading stats between readers?
+
+Yes, with **File Transfer > Sync Stats** on both readers (press **Sync** on
+one). On the X4 Pro the quick panel's **Sync** key also reaches it. It shares
+the all-time totals only: sessions, reading time, pages turned and finished
+books.
+
+## Why is my Reading Year calendar empty after syncing?
+
+The Reading Year grid is built from the days you read on *that* reader. Sync
+shares totals, not each day's history, so a reader that has just been set up
+starts with an empty year and fills it from now on. The grid also needs the
+reader to know today's date: run **Settings > System > Clock Sync Now** once on
+a Pro or X3.
+
 ## My clippings did not appear in Obsidian
 
 See [Obsidian Clipping Sync](./obsidian-sync.html) and make sure the reader and
