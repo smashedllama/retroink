@@ -5,9 +5,11 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.4",
+    "@astrojs/check": "^0.9.12",
+    "@astrojs/markdown-remark": "^7.3.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
-    "astro": "^5.0.0",
+    "astro": "^7.4.11",
+    "esbuild": "^0.28.2",
     "remark-github-blockquote-alert": "^2.1.0",
     "typescript": "^5.6.0"
   }

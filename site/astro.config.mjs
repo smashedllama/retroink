@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "astro/config";
+import { unified } from "@astrojs/markdown-remark";
 import { remarkAlert } from "remark-github-blockquote-alert";
 
 // Docs live at the repo root (../docs), outside the Astro project root, so Vite's
@@ -55,14 +56,27 @@ function visit(node, visitor) {
 }
 
 export default defineConfig({
+  // Astro 7 defaults this to "jsx", which drops whitespace between inline
+  // elements. Keep the HTML-aware compression this site was built with.
+  compressHTML: true,
   build: {
     format: "file",
   },
   markdown: {
-    remarkPlugins: [remarkAlert, rewriteMarkdownLinks],
+    // Astro 7's default processor is Sätteri, which does not run remark
+    // plugins. This site rewrites doc links and renders GitHub alerts.
+    processor: unified({
+      remarkPlugins: [remarkAlert, rewriteMarkdownLinks],
+    }),
   },
   vite: {
     plugins: [watchExternalDocs()],
+    build: {
+      // Vite 8 minifies CSS with Lightning CSS, which rewrites the
+      // JetBrains Mono latin unicode-range U+0000-00FF into the invalid
+      // token U+??. esbuild leaves that range intact.
+      cssMinify: "esbuild",
+    },
   },
   // Deployed as a GitHub Pages project site (github.com/smashedllama/retroink),
   // which serves from a /retroink subpath, not the domain root.
